@@ -1,6 +1,34 @@
+// src/App.jsx
 import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import Step1 from './pages/onboarding/Step1'
+import Step2 from './pages/onboarding/Step2'
+import Step3 from './pages/onboarding/Step3'
+import Step4 from './pages/onboarding/Step4'
+import Dashboard from './pages/Dashboard'
+import FoodSearch from "./pages/FoodSearch";
+import Progress from "./pages/Progress";
 
 export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/onboarding" element={<Navigate to="/onboarding/step1" replace />} />
+        <Route path="/onboarding/step1" element={<Step1 />} />
+        <Route path="/onboarding/step2" element={<Step2 />} />
+        <Route path="/onboarding/step3" element={<Step3 />} />
+        <Route path="/onboarding/step4" element={<Step4 />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/food" element={<FoodSearch />} />
+        <Route path="/progress" element={<Progress />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+function Landing() {
   return (
     <div className="app">
       <Nav />
@@ -26,7 +54,7 @@ function Nav() {
         </div>
         <div className="nav-cta">
           <button className="btn-ghost">Log in</button>
-          <button className="btn-primary">Start free</button>
+          <button className="btn-primary" onClick={() => window.location.href = '/onboarding/step1'}>Start free</button>
         </div>
       </div>
     </nav>
@@ -40,7 +68,7 @@ function Hero() {
       <h1>Track food.<br />Feel better.<br /><span className="accent">Actually stick to it.</span></h1>
       <p className="hero-sub">The only calorie tracker with an Aus & Asian food database, AI menu scanning, and a mood check-in that shows you what makes you feel your best.</p>
       <div className="hero-actions">
-        <button className="btn-primary btn-lg">Start for free — no account needed</button>
+        <button className="btn-primary btn-lg" onClick={() => window.location.href = '/onboarding/step1'}>Start for free — no account needed</button>
         <span className="hero-hint">Full app for 7 days, no credit card</span>
       </div>
       <div className="hero-mockup">
@@ -79,7 +107,7 @@ function Features() {
     { icon: '📸', title: 'Menu Scanning', desc: 'Point your camera at any menu — printed, screen, or Instagram post. Get instant calories and swap suggestions.', badge: 'Only on Nourish' },
     { icon: '😊', title: 'Mood & Energy Check-in', desc: '3 taps, 5 seconds. Track how food and sleep affect your mood and energy over time.', badge: 'Only on Nourish' },
     { icon: '🤖', title: 'AI Coach', desc: 'Personalised nudges based on your actual patterns — not generic advice. Knows your Friday habits better than you do.' },
-    { icon: '📊', title: 'Progress Tracking', desc: 'Weight trends, streak calendar, macro averages. See what\'s actually working over 7, 30, and 90 days.' },
+    { icon: '📊', title: 'Progress Tracking', desc: "Weight trends, streak calendar, macro averages. See what's actually working over 7, 30, and 90 days." },
     { icon: '🏋️', title: 'Trainer Dashboard', desc: 'Share your data with a trainer via invite link. You control exactly what they see and can revoke access anytime.' },
   ]
 
@@ -107,7 +135,7 @@ function Features() {
 function AusSection() {
   const cards = [
     { emoji: '🍜', title: 'Asian cuisines', desc: 'Vietnamese, Chinese, Indian, Thai, Korean, Japanese, Malaysian — all with accurate local portions.' },
-    { emoji: '🥧', title: 'Aussie classics', desc: 'Meat pie, sausage roll, Vegemite toast, Tim Tam — foods other apps just don\'t have.' },
+    { emoji: '🥧', title: 'Aussie classics', desc: "Meat pie, sausage roll, Vegemite toast, Tim Tam — foods other apps just don't have." },
     { emoji: '☕', title: 'Melbourne cafés', desc: 'Smashed avo, long black, acai bowl — logged from your actual local spots.' },
     { emoji: '🍱', title: 'Restaurant accurate', desc: 'Not generic estimates. Macros matched to how Melbourne and Sydney restaurants actually cook.' },
   ]
