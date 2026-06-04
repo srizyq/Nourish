@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -253,6 +254,7 @@ function Toast({ message, onDone }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function FoodSearch() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [activeCuisine, setActiveCuisine] = useState("all");
   const [activeMeal, setActiveMeal] = useState("Lunch");
@@ -336,32 +338,33 @@ export default function FoodSearch() {
 
         {/* Nav icons */}
         {[
-          { icon: "⊞", label: "Dashboard", active: false },
-          { icon: "⌕", label: "Food Search", active: true },
-          { icon: "↗", label: "Progress", active: false },
-          { icon: "▦", label: "Meal Plans", active: false },
-          { icon: "✦", label: "AI Insights", active: false },
-          { icon: "◉", label: "Scan", active: false },
-        ].map(({ icon, label, active }) => (
-          <div
-            key={label}
-            title={label}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: active ? "#0f1a0f" : "transparent",
-              color: active ? "#8fbc8f" : "#555",
-              fontSize: 18,
-              cursor: "pointer",
-            }}
-          >
-            {icon}
-          </div>
-        ))}
+  { icon: "⊞", label: "Dashboard", active: false, path: "/dashboard" },
+  { icon: "⌕", label: "Food Search", active: true, path: "/food" },
+  { icon: "↗", label: "Progress", active: false, path: "/progress" },
+  { icon: "▦", label: "Meal Plans", active: false, path: "/plans" },
+  { icon: "✦", label: "AI Insights", active: false, path: "/ai" },
+  { icon: "◉", label: "Scan", active: false, path: "/scan" },
+].map(({ icon, label, active, path }) => (
+  <div
+    key={label}
+    title={label}
+    onClick={() => navigate(path)}
+    style={{
+      width: 36,
+      height: 36,
+      borderRadius: 8,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: active ? "#0f1a0f" : "transparent",
+      color: active ? "#8fbc8f" : "#555",
+      fontSize: 18,
+      cursor: "pointer",
+    }}
+  >
+    {icon}
+  </div>
+))}
       </div>
 
       {/* ── Main content ─────────────────────────────────── */}
