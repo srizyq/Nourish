@@ -20,41 +20,79 @@ const CUISINES = [
 
 const MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
 
+// servingGrams: the approximate weight of "1 serving" (the macros above),
+// used to convert to/from g, kg, lb, oz. Exact for items with a stated
+// weight in `meta`; a reasonable estimate for dish-style items that don't
+// (e.g. "1 bowl", "2 rolls") since there's no reliable way to derive one.
 const FOODS = [
-  { id: 1, emoji: "🥩", name: "Meat pie", meta: "1 pie · 175g", cuisine: "australian", cal: 450, protein: 12, carbs: 38, fat: 28, fibre: 2, sodium: 820, sugar: 4 },
-  { id: 2, emoji: "🍗", name: "Chicken breast, grilled", meta: "100g", cuisine: "australian", cal: 165, protein: 31, carbs: 0, fat: 3.6, fibre: 0, sodium: 74, sugar: 0 },
-  { id: 3, emoji: "🥞", name: "Vegemite on toast", meta: "2 slices", cuisine: "australian", cal: 210, protein: 7, carbs: 36, fat: 4, fibre: 3, sodium: 560, sugar: 2 },
-  { id: 4, emoji: "🐟", name: "Barramundi, pan-fried", meta: "1 fillet · 180g", cuisine: "australian", cal: 220, protein: 38, carbs: 0, fat: 7, fibre: 0, sodium: 130, sugar: 0 },
-  { id: 5, emoji: "🍜", name: "Pho bo (beef noodle soup)", meta: "1 bowl", cuisine: "vietnamese", cal: 370, protein: 24, carbs: 42, fat: 9, fibre: 2, sodium: 950, sugar: 3 },
-  { id: 6, emoji: "🌯", name: "Goi cuon (fresh spring rolls)", meta: "2 rolls", cuisine: "vietnamese", cal: 130, protein: 7, carbs: 18, fat: 3, fibre: 1.5, sodium: 310, sugar: 2 },
-  { id: 7, emoji: "🍚", name: "Com tam (broken rice + pork)", meta: "1 plate", cuisine: "vietnamese", cal: 580, protein: 28, carbs: 72, fat: 16, fibre: 2, sodium: 780, sugar: 6 },
-  { id: 8, emoji: "🥟", name: "Dim sum — har gow", meta: "3 pieces", cuisine: "chinese", cal: 140, protein: 8, carbs: 18, fat: 3, fibre: 1, sodium: 380, sugar: 1 },
-  { id: 9, emoji: "🍱", name: "Char siu pork", meta: "100g", cuisine: "chinese", cal: 280, protein: 22, carbs: 18, fat: 12, fibre: 0, sodium: 640, sugar: 14 },
-  { id: 10, emoji: "🍲", name: "Wonton soup", meta: "1 bowl", cuisine: "chinese", cal: 260, protein: 14, carbs: 32, fat: 8, fibre: 1, sodium: 1100, sugar: 2 },
-  { id: 11, emoji: "🍛", name: "Chicken tikka masala", meta: "1 serve · 350g", cuisine: "indian", cal: 420, protein: 28, carbs: 24, fat: 22, fibre: 3, sodium: 890, sugar: 8 },
-  { id: 12, emoji: "🫓", name: "Garlic naan", meta: "1 piece", cuisine: "indian", cal: 220, protein: 6, carbs: 38, fat: 5, fibre: 1.5, sodium: 420, sugar: 3 },
-  { id: 13, emoji: "🟡", name: "Dal tadka", meta: "1 serve · 300g", cuisine: "indian", cal: 290, protein: 16, carbs: 40, fat: 7, fibre: 8, sodium: 560, sugar: 4 },
-  { id: 14, emoji: "🍝", name: "Pad Thai (chicken)", meta: "1 plate", cuisine: "thai", cal: 490, protein: 22, carbs: 62, fat: 14, fibre: 3, sodium: 1050, sugar: 12 },
-  { id: 15, emoji: "🥛", name: "Tom kha gai (coconut soup)", meta: "1 bowl", cuisine: "thai", cal: 310, protein: 18, carbs: 14, fat: 20, fibre: 2, sodium: 720, sugar: 5 },
-  { id: 16, emoji: "🍱", name: "Bibimbap", meta: "1 bowl", cuisine: "korean", cal: 490, protein: 22, carbs: 68, fat: 12, fibre: 4, sodium: 860, sugar: 6 },
-  { id: 17, emoji: "🌶️", name: "Kimchi jjigae (stew)", meta: "1 bowl", cuisine: "korean", cal: 260, protein: 15, carbs: 22, fat: 10, fibre: 4, sodium: 1200, sugar: 5 },
-  { id: 18, emoji: "🍣", name: "Salmon nigiri sushi", meta: "2 pieces", cuisine: "japanese", cal: 130, protein: 9, carbs: 16, fat: 3, fibre: 0, sodium: 290, sugar: 1 },
-  { id: 19, emoji: "🍜", name: "Tonkotsu ramen", meta: "1 bowl", cuisine: "japanese", cal: 550, protein: 26, carbs: 68, fat: 18, fibre: 2, sodium: 1350, sugar: 4 },
-  { id: 20, emoji: "🥘", name: "Laksa lemak", meta: "1 bowl", cuisine: "malaysian", cal: 520, protein: 18, carbs: 55, fat: 26, fibre: 3, sodium: 980, sugar: 5 },
-  { id: 21, emoji: "🍚", name: "Nasi lemak", meta: "1 serve", cuisine: "malaysian", cal: 440, protein: 14, carbs: 58, fat: 18, fibre: 3, sodium: 620, sugar: 4 },
+  { id: 1, emoji: "🥩", name: "Meat pie", meta: "1 pie · 175g", cuisine: "australian", cal: 450, protein: 12, carbs: 38, fat: 28, fibre: 2, sodium: 820, sugar: 4, servingGrams: 175 },
+  { id: 2, emoji: "🍗", name: "Chicken breast, grilled", meta: "100g", cuisine: "australian", cal: 165, protein: 31, carbs: 0, fat: 3.6, fibre: 0, sodium: 74, sugar: 0, servingGrams: 100 },
+  { id: 3, emoji: "🥞", name: "Vegemite on toast", meta: "2 slices", cuisine: "australian", cal: 210, protein: 7, carbs: 36, fat: 4, fibre: 3, sodium: 560, sugar: 2, servingGrams: 70 },
+  { id: 4, emoji: "🐟", name: "Barramundi, pan-fried", meta: "1 fillet · 180g", cuisine: "australian", cal: 220, protein: 38, carbs: 0, fat: 7, fibre: 0, sodium: 130, sugar: 0, servingGrams: 180 },
+  { id: 5, emoji: "🍜", name: "Pho bo (beef noodle soup)", meta: "1 bowl", cuisine: "vietnamese", cal: 370, protein: 24, carbs: 42, fat: 9, fibre: 2, sodium: 950, sugar: 3, servingGrams: 500 },
+  { id: 6, emoji: "🌯", name: "Goi cuon (fresh spring rolls)", meta: "2 rolls", cuisine: "vietnamese", cal: 130, protein: 7, carbs: 18, fat: 3, fibre: 1.5, sodium: 310, sugar: 2, servingGrams: 120 },
+  { id: 7, emoji: "🍚", name: "Com tam (broken rice + pork)", meta: "1 plate", cuisine: "vietnamese", cal: 580, protein: 28, carbs: 72, fat: 16, fibre: 2, sodium: 780, sugar: 6, servingGrams: 400 },
+  { id: 8, emoji: "🥟", name: "Dim sum — har gow", meta: "3 pieces", cuisine: "chinese", cal: 140, protein: 8, carbs: 18, fat: 3, fibre: 1, sodium: 380, sugar: 1, servingGrams: 90 },
+  { id: 9, emoji: "🍱", name: "Char siu pork", meta: "100g", cuisine: "chinese", cal: 280, protein: 22, carbs: 18, fat: 12, fibre: 0, sodium: 640, sugar: 14, servingGrams: 100 },
+  { id: 10, emoji: "🍲", name: "Wonton soup", meta: "1 bowl", cuisine: "chinese", cal: 260, protein: 14, carbs: 32, fat: 8, fibre: 1, sodium: 1100, sugar: 2, servingGrams: 350 },
+  { id: 11, emoji: "🍛", name: "Chicken tikka masala", meta: "1 serve · 350g", cuisine: "indian", cal: 420, protein: 28, carbs: 24, fat: 22, fibre: 3, sodium: 890, sugar: 8, servingGrams: 350 },
+  { id: 12, emoji: "🫓", name: "Garlic naan", meta: "1 piece", cuisine: "indian", cal: 220, protein: 6, carbs: 38, fat: 5, fibre: 1.5, sodium: 420, sugar: 3, servingGrams: 90 },
+  { id: 13, emoji: "🟡", name: "Dal tadka", meta: "1 serve · 300g", cuisine: "indian", cal: 290, protein: 16, carbs: 40, fat: 7, fibre: 8, sodium: 560, sugar: 4, servingGrams: 300 },
+  { id: 14, emoji: "🍝", name: "Pad Thai (chicken)", meta: "1 plate", cuisine: "thai", cal: 490, protein: 22, carbs: 62, fat: 14, fibre: 3, sodium: 1050, sugar: 12, servingGrams: 350 },
+  { id: 15, emoji: "🥛", name: "Tom kha gai (coconut soup)", meta: "1 bowl", cuisine: "thai", cal: 310, protein: 18, carbs: 14, fat: 20, fibre: 2, sodium: 720, sugar: 5, servingGrams: 350 },
+  { id: 16, emoji: "🍱", name: "Bibimbap", meta: "1 bowl", cuisine: "korean", cal: 490, protein: 22, carbs: 68, fat: 12, fibre: 4, sodium: 860, sugar: 6, servingGrams: 450 },
+  { id: 17, emoji: "🌶️", name: "Kimchi jjigae (stew)", meta: "1 bowl", cuisine: "korean", cal: 260, protein: 15, carbs: 22, fat: 10, fibre: 4, sodium: 1200, sugar: 5, servingGrams: 400 },
+  { id: 18, emoji: "🍣", name: "Salmon nigiri sushi", meta: "2 pieces", cuisine: "japanese", cal: 130, protein: 9, carbs: 16, fat: 3, fibre: 0, sodium: 290, sugar: 1, servingGrams: 60 },
+  { id: 19, emoji: "🍜", name: "Tonkotsu ramen", meta: "1 bowl", cuisine: "japanese", cal: 550, protein: 26, carbs: 68, fat: 18, fibre: 2, sodium: 1350, sugar: 4, servingGrams: 500 },
+  { id: 20, emoji: "🥘", name: "Laksa lemak", meta: "1 bowl", cuisine: "malaysian", cal: 520, protein: 18, carbs: 55, fat: 26, fibre: 3, sodium: 980, sugar: 5, servingGrams: 450 },
+  { id: 21, emoji: "🍚", name: "Nasi lemak", meta: "1 serve", cuisine: "malaysian", cal: 440, protein: 14, carbs: 58, fat: 18, fibre: 3, sodium: 620, sugar: 4, servingGrams: 350 },
 ];
 
 const RECENT = [1, 2, 5, 20, 16, 11].map(id => FOODS.find(f => f.id === id));
 
+// ─── Unit conversion ───────────────────────────────────────────────────────
+const UNITS = [
+  { id: "serving", label: "serving", toGrams: null },
+  { id: "g", label: "g", toGrams: 1 },
+  { id: "kg", label: "kg", toGrams: 1000 },
+  { id: "lb", label: "lb", toGrams: 453.592 },
+  { id: "oz", label: "oz", toGrams: 28.3495 },
+];
+
+// How many base servings `amount` of `unit` represents for a food whose
+// "1 serving" (its base cal/protein/etc values) weighs `servingGrams`.
+function amountToServings(amount, unitId, servingGrams) {
+  if (!amount || amount <= 0) return 0;
+  if (unitId === "serving") return amount;
+  const unit = UNITS.find(u => u.id === unitId);
+  const grams = amount * unit.toGrams;
+  return grams / (servingGrams || 100);
+}
+
+function scaleFood(food, servings) {
+  const round1 = n => Math.round(n * 10) / 10;
+  return {
+    ...food,
+    cal: Math.round(food.cal * servings),
+    protein: round1(food.protein * servings),
+    carbs: round1(food.carbs * servings),
+    fat: round1(food.fat * servings),
+    fibre: round1((food.fibre || 0) * servings),
+    sodium: Math.round((food.sodium || 0) * servings),
+    sugar: round1((food.sugar || 0) * servings),
+  };
+}
+
 // ─── Barcode Scanner ──────────────────────────────────────────────────────────
 
-function BarcodeScanner({ onAddFood, onClose }) {
+function BarcodeScanner({ onAddFood, onClose, defaultMeal }) {
   const videoRef = useRef(null);
   const readerRef = useRef(null);
   const [scanning, setScanning] = useState(false);
   const [looking, setLooking] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [meal, setMeal] = useState(defaultMeal);
 
   useEffect(() => { return () => stopScanner(); }, []);
 
@@ -134,12 +172,16 @@ function BarcodeScanner({ onAddFood, onClose }) {
               <div style={{ fontSize: 12, color: "#555" }}>Sugar <span style={{ color: "#888" }}>{result.sugar}g</span></div>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div><span style={{ fontSize: 18, fontWeight: 700, color: "#8fbc8f" }}>{result.cal}</span><span style={{ fontSize: 12, color: "#555" }}> kcal per {result.serving}</span></div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={reset} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
-              <button onClick={() => { onAddFood({ ...result, source: 'off' }); onClose(); }} style={{ background: "#8fbc8f", border: "none", borderRadius: 8, padding: "7px 18px", fontSize: 13, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>+ Add</button>
-            </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <span style={{ fontSize: 18, fontWeight: 700, color: "#8fbc8f" }}>{result.cal}</span>
+            <span style={{ fontSize: 12, color: "#555" }}> kcal per {result.serving}</span>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <select value={meal} onChange={e => setMeal(e.target.value)} style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
+              {MEALS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <button onClick={reset} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
+            <button onClick={() => { onAddFood({ ...result, source: 'off' }, meal); onClose(); }} style={{ background: "#8fbc8f", border: "none", borderRadius: 8, padding: "7px 18px", fontSize: 13, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>+ Add to {meal}</button>
           </div>
         </div>
       )}
@@ -157,7 +199,7 @@ function BarcodeScanner({ onAddFood, onClose }) {
 //    it required posting a secret API key from the browser, which can't be
 //    done safely client-side) ────────────────────────────────────────────────
 
-function ScanModal({ onClose, onAddFood }) {
+function ScanModal({ onClose, onAddFood, defaultMeal }) {
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -167,7 +209,7 @@ function ScanModal({ onClose, onAddFood }) {
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
         </div>
         <div style={{ padding: 20 }}>
-          <BarcodeScanner onAddFood={onAddFood} onClose={onClose} />
+          <BarcodeScanner onAddFood={onAddFood} onClose={onClose} defaultMeal={defaultMeal} />
         </div>
       </div>
     </div>
@@ -185,7 +227,18 @@ function MacroPill({ value, unit = "g", label, color }) {
   );
 }
 
-function FoodCard({ food, isExpanded, onToggle, activeMeal, onAdd }) {
+function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd }) {
+  const [amount, setAmount] = useState(1);
+  const [unit, setUnit] = useState("serving");
+  const [meal, setMeal] = useState(defaultMeal);
+
+  useEffect(() => { setMeal(defaultMeal); }, [defaultMeal]);
+
+  const servingGrams = food.servingGrams || 100;
+  const servings = amountToServings(Number(amount) || 0, unit, servingGrams);
+  const scaled = scaleFood(food, servings || 0);
+  const gramsEquivalent = Math.round(servings * servingGrams);
+
   return (
     <div style={{ background: "#181818", border: `1px solid ${isExpanded ? "#4a7a4a" : "#1e1e1e"}`, borderRadius: 10, marginBottom: 8, overflow: "hidden", transition: "border-color 0.15s", cursor: "pointer" }}>
       <div onClick={onToggle} style={{ display: "flex", alignItems: "center", padding: "11px 14px", gap: 12 }}>
@@ -203,36 +256,55 @@ function FoodCard({ food, isExpanded, onToggle, activeMeal, onAdd }) {
       {isExpanded && (
         <div style={{ borderTop: "1px solid #1e1e1e", padding: "14px", background: "#141414" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 14 }}>
-            <MacroPill value={food.protein} label="Protein" color="#8fbc8f" />
-            <MacroPill value={food.carbs} label="Carbs" color="#6aabcf" />
-            <MacroPill value={food.fat} label="Fat" color="#b48250" />
-            <MacroPill value={food.fibre} label="Fibre" color="#9f97e8" />
+            <MacroPill value={scaled.protein} label="Protein" color="#8fbc8f" />
+            <MacroPill value={scaled.carbs} label="Carbs" color="#6aabcf" />
+            <MacroPill value={scaled.fat} label="Fat" color="#b48250" />
+            <MacroPill value={scaled.fibre} label="Fibre" color="#9f97e8" />
           </div>
           <div style={{ display: "flex", gap: 16, marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid #1e1e1e" }}>
-            <div style={{ fontSize: 12, color: "#555" }}>Sodium <span style={{ color: "#888" }}>{food.sodium}mg</span></div>
-            <div style={{ fontSize: 12, color: "#555" }}>Sugar <span style={{ color: "#888" }}>{food.sugar}g</span></div>
+            <div style={{ fontSize: 12, color: "#555" }}>Sodium <span style={{ color: "#888" }}>{scaled.sodium}mg</span></div>
+            <div style={{ fontSize: 12, color: "#555" }}>Sugar <span style={{ color: "#888" }}>{scaled.sugar}g</span></div>
+            <div style={{ fontSize: 12, color: "#555", marginLeft: "auto" }}>
+              <span style={{ color: "#8fbc8f", fontWeight: 600 }}>{scaled.cal}</span> kcal{unit !== "g" && ` · ≈${gramsEquivalent}g`}
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <PortionSelect food={food} activeMeal={activeMeal} onAdd={onAdd} />
-          </div>
+          <AddControls
+            amount={amount} setAmount={setAmount}
+            unit={unit} setUnit={setUnit}
+            meal={meal} setMeal={setMeal}
+            onAdd={() => onAdd(scaled, meal)}
+            disabled={!servings}
+          />
         </div>
       )}
     </div>
   );
 }
 
-function PortionSelect({ food, activeMeal, onAdd }) {
-  const [portion, setPortion] = useState("1 serving");
-  const portions = ["1 serving", "0.5 serving", "100g", "200g", "Custom"];
+function AddControls({ amount, setAmount, unit, setUnit, meal, setMeal, onAdd, disabled }) {
   return (
-    <>
-      <select value={portion} onChange={e => setPortion(e.target.value)} style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
-        {portions.map(p => <option key={p} value={p}>{p}</option>)}
-      </select>
-      <button onClick={() => onAdd(food, portion)} style={{ background: "#8fbc8f", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}>
-        + Add to {activeMeal}
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          type="number" min="0" step="any" value={amount}
+          onChange={e => setAmount(e.target.value)}
+          style={{ width: 70, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#e8e8e8", fontSize: 13, outline: "none", fontFamily: "inherit" }}
+        />
+        <select value={unit} onChange={e => setUnit(e.target.value)} style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
+          {UNITS.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
+        </select>
+        <select value={meal} onChange={e => setMeal(e.target.value)} style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
+          {MEALS.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </div>
+      <button
+        onClick={onAdd}
+        disabled={disabled}
+        style={{ background: disabled ? "#2a2a2a" : "#8fbc8f", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, color: disabled ? "#666" : "#0f0f0f", cursor: disabled ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}
+      >
+        + Add to {meal}
       </button>
-    </>
+    </div>
   );
 }
 
@@ -309,6 +381,7 @@ export default function FoodSearch() {
           sodium: Math.round(get("sodium")),
           sugar: get("sugars"),
           source: "usda",
+          servingGrams: 100,
         };
       }).filter(Boolean).slice(0, 15);
       setOffResults(parsed);
@@ -338,9 +411,9 @@ export default function FoodSearch() {
 
   const showRecent = query === "" && activeCuisine === "all";
 
-  function handleAdd(food) {
-    addFoodLog(food, activeMeal);
-    setToast(`${food.name} added to ${activeMeal}`);
+  function handleAdd(food, meal) {
+    addFoodLog(food, meal);
+    setToast(`${food.name} added to ${meal}`);
     setExpandedId(null);
   }
 
@@ -463,7 +536,7 @@ export default function FoodSearch() {
                 food={food}
                 isExpanded={expandedId === food.id}
                 onToggle={() => handleToggle(food.id)}
-                activeMeal={activeMeal}
+                defaultMeal={activeMeal}
                 onAdd={handleAdd}
               />
             ))
@@ -479,7 +552,8 @@ export default function FoodSearch() {
       {scanOpen && (
         <ScanModal
           onClose={() => setScanOpen(false)}
-          onAddFood={food => { addFoodLog(food, activeMeal); setToast(`${food.name} added to ${activeMeal}`); }}
+          defaultMeal={activeMeal}
+          onAddFood={(food, meal) => { addFoodLog(food, meal); setToast(`${food.name} added to ${meal}`); }}
         />
       )}
     </div>
