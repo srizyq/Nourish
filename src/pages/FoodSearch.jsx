@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useFoodLogs } from '../hooks/useFoodLogs';
+import { useRecentFoods } from '../hooks/useRecentFoods';
 import { todayLocalDate } from '../lib/patterns';
 import AppNav from '../components/AppNav';
 
@@ -47,8 +48,6 @@ const FOODS = [
   { id: 21, emoji: "🍚", name: "Nasi lemak", meta: "1 serve", cuisine: "malaysian", cal: 440, protein: 14, carbs: 58, fat: 18, fibre: 3, sodium: 620, sugar: 4, servingGrams: 350 },
 ];
 
-const RECENT = [1, 2, 5, 20, 16, 11].map(id => FOODS.find(f => f.id === id));
-
 // ─── Unit conversion ───────────────────────────────────────────────────────
 const UNITS = [
   { id: "serving", label: "serving", toGrams: null },
@@ -80,6 +79,77 @@ function scaleFood(food, servings) {
     sodium: Math.round((food.sodium || 0) * servings),
     sugar: round1((food.sugar || 0) * servings),
   };
+}
+
+// ─── Live search ─────────────────────────────────────────────────────────
+// Open Food Facts — no API key required, strong global/branded coverage
+// (this is what finds things like Weet-Bix, Vegemite, etc. that aren't in
+// the curated FOODS list above).
+async function searchOpenFoodFacts(q) {
+  const res = await fetch(
+    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&fields=product_name,generic_name,brands,nutriments,code`
+  );
+  if (!res.ok) throw new Error(`Open Food Facts search failed: ${res.status}`);
+  const data = await res.json();
+  return (data.products || []).map(p => {
+    const n = p.nutriments || {};
+    const cal = Math.round(n["energy-kcal_100g"] || (n["energy_100g"] ? n["energy_100g"] / 4.184 : 0) || 0);
+    const name = p.product_name || p.generic_name;
+    if (!cal || !name) return null;
+    return {
+      id: "off_" + p.code,
+      emoji: "📦",
+      name: p.brands ? `${name} (${p.brands})` : name,
+      meta: "100g",
+      cuisine: "all",
+      cal,
+      protein: Math.round((n.proteins_100g || 0) * 10) / 10,
+      carbs: Math.round((n.carbohydrates_100g || 0) * 10) / 10,
+      fat: Math.round((n.fat_100g || 0) * 10) / 10,
+      fibre: Math.round((n.fiber_100g || 0) * 10) / 10,
+      sodium: Math.round((n.sodium_100g || 0) * 1000),
+      sugar: Math.round((n.sugars_100g || 0) * 10) / 10,
+      source: "off",
+      servingGrams: 100,
+    };
+  }).filter(Boolean);
+}
+
+// USDA FoodData Central — bonus source when a key is configured, strong for
+// generic/raw ingredients. Optional; Open Food Facts alone already covers
+// arbitrary branded/packaged foods without needing a key.
+async function searchUSDAFoods(q) {
+  const apiKey = import.meta.env.VITE_USDA_API_KEY;
+  if (!apiKey) return [];
+  const res = await fetch(
+    `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=15&api_key=${apiKey}`
+  );
+  const data = await res.json();
+  return (data.foods || []).map(f => {
+    const nutrients = f.foodNutrients || [];
+    const get = (name) => {
+      const n = nutrients.find(n => n.nutrientName?.toLowerCase().includes(name));
+      return n ? Math.round(n.value * 10) / 10 : 0;
+    };
+    const cal = get("energy") || 0;
+    if (!cal) return null;
+    return {
+      id: "usda_" + f.fdcId,
+      emoji: "🥗",
+      name: f.description,
+      meta: (f.brandOwner ? f.brandOwner + " · " : "") + "100g",
+      cuisine: "all",
+      cal: Math.round(cal),
+      protein: get("protein"),
+      carbs: get("carbohydrate"),
+      fat: get("total lipid"),
+      fibre: get("fiber"),
+      sodium: Math.round(get("sodium")),
+      sugar: get("sugars"),
+      source: "usda",
+      servingGrams: 100,
+    };
+  }).filter(Boolean);
 }
 
 // ─── Barcode Scanner ──────────────────────────────────────────────────────────
@@ -320,6 +390,7 @@ function Toast({ message, onDone }) {
 
 export default function FoodSearch() {
   const { addFood: addFoodLog } = useFoodLogs(todayLocalDate());
+  const { rows: recentRows, loading: recentLoading, refetch: refetchRecent } = useRecentFoods(6);
   const [query, setQuery] = useState("");
   const [activeCuisine, setActiveCuisine] = useState("all");
   const [activeMeal, setActiveMeal] = useState("Lunch");
@@ -328,9 +399,10 @@ export default function FoodSearch() {
   const [toast, setToast] = useState(null);
   const [scanOpen, setScanOpen] = useState(false);
 
-  // USDA FoodData Central live search state
-  const [offResults, setOffResults] = useState([]);
-  const [offLoading, setOffLoading] = useState(false);
+  // Live external search (Open Food Facts + optional USDA) state
+  const [liveResults, setLiveResults] = useState([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState(null);
   const searchTimer = useRef(null);
 
   const inputRef = useRef(null);
@@ -346,71 +418,70 @@ export default function FoodSearch() {
     });
   }, [query, activeCuisine]);
 
-  // Search USDA FoodData Central after 500ms debounce
-  const searchOFF = useCallback(async (q) => {
-    if (!q || q.length < 2) { setOffResults([]); return; }
-    const apiKey = import.meta.env.VITE_USDA_API_KEY;
-    if (!apiKey) { setOffResults([]); setOffLoading(false); return; }
-    setOffLoading(true);
+  const runLiveSearch = useCallback(async (q) => {
+    setLiveLoading(true);
+    setLiveError(null);
+    let off = [];
+    let usda = [];
     try {
-      const res = await fetch(
-        `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=20&api_key=${apiKey}`
-      );
-      const data = await res.json();
-      const parsed = (data.foods || []).map(f => {
-        const nutrients = f.foodNutrients || [];
-        const get = (name) => {
-          const n = nutrients.find(n => n.nutrientName?.toLowerCase().includes(name));
-          return n ? Math.round(n.value * 10) / 10 : 0;
-        };
-        const cal = get("energy") || 0;
-        if (!cal) return null;
-        return {
-          id: "usda_" + f.fdcId,
-          emoji: "🥗",
-          name: f.description,
-          meta: (f.brandOwner ? f.brandOwner + " · " : "") + "100g",
-          cuisine: "all",
-          cal: Math.round(cal),
-          protein: get("protein"),
-          carbs: get("carbohydrate"),
-          fat: get("total lipid"),
-          fibre: get("fiber"),
-          sodium: Math.round(get("sodium")),
-          sugar: get("sugars"),
-          source: "usda",
-          servingGrams: 100,
-        };
-      }).filter(Boolean).slice(0, 15);
-      setOffResults(parsed);
+      off = await searchOpenFoodFacts(q);
+    } catch (err) {
+      console.error("Open Food Facts search error:", err);
+      setLiveError("Live search is temporarily unavailable — try again in a moment.");
+    }
+    try {
+      usda = await searchUSDAFoods(q);
     } catch (err) {
       console.error("USDA search error:", err);
-      setOffResults([]);
-    } finally {
-      setOffLoading(false);
     }
+    const seen = new Set(off.map(f => f.name.toLowerCase()));
+    const usdaUnique = usda.filter(f => !seen.has(f.name.toLowerCase()));
+    setLiveResults([...off, ...usdaUnique].slice(0, 25));
+    setLiveLoading(false);
   }, []);
+
   // Trigger search with debounce when query changes
   useEffect(() => {
     clearTimeout(searchTimer.current);
-    if (!query.trim()) { setOffResults([]); setOffLoading(false); return; }
-    setOffLoading(true);
-    searchTimer.current = setTimeout(() => searchOFF(query.trim()), 500);
+    if (!query.trim()) { setLiveResults([]); setLiveLoading(false); setLiveError(null); return; }
+    setLiveLoading(true);
+    searchTimer.current = setTimeout(() => runLiveSearch(query.trim()), 500);
     return () => clearTimeout(searchTimer.current);
-  }, [query, searchOFF]);
+  }, [query, runLiveSearch]);
 
-  // Combine local + USDA results, deduplicating by name
+  // Combine local + live results, deduplicating by name
   const allResults = useMemo(() => {
     if (!query.trim()) return localFiltered;
     const localNames = new Set(localFiltered.map(f => f.name.toLowerCase()));
-    const deduped = offResults.filter(f => !localNames.has(f.name.toLowerCase()));
+    const deduped = liveResults.filter(f => !localNames.has(f.name.toLowerCase()));
     return [...localFiltered, ...deduped];
-  }, [localFiltered, offResults, query]);
+  }, [localFiltered, liveResults, query]);
 
   const showRecent = query === "" && activeCuisine === "all";
 
-  function handleAdd(food, meal) {
-    addFoodLog(food, meal);
+  const recentFoods = useMemo(() => recentRows.map(row => {
+    const match = FOODS.find(f => f.name.toLowerCase() === row.food_name.toLowerCase());
+    return {
+      id: "recent_" + row.id,
+      emoji: match?.emoji || "🍽️",
+      name: row.food_name,
+      meta: "Logged before",
+      cuisine: "all",
+      cal: Number(row.calories) || 0,
+      protein: Number(row.protein_g) || 0,
+      carbs: Number(row.carbs_g) || 0,
+      fat: Number(row.fat_g) || 0,
+      fibre: 0,
+      sodium: 0,
+      sugar: 0,
+      servingGrams: 100,
+      source: row.source || "log",
+    };
+  }), [recentRows]);
+
+  async function handleAdd(food, meal) {
+    await addFoodLog(food, meal);
+    refetchRecent();
     setToast(`${food.name} added to ${meal}`);
     setExpandedId(null);
   }
@@ -460,8 +531,8 @@ export default function FoodSearch() {
               placeholder="Search any food, dish, or product…"
               style={{ flex: 1, background: "none", border: "none", outline: "none", color: "#e8e8e8", fontSize: 15, fontFamily: "inherit" }}
             />
-            {offLoading && <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid #333", borderTopColor: "#8fbc8f", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />}
-            {query && !offLoading && <button onClick={() => { setQuery(""); setOffResults([]); }} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 }}>✕</button>}
+            {liveLoading && <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid #333", borderTopColor: "#8fbc8f", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />}
+            {query && !liveLoading && <button onClick={() => { setQuery(""); setLiveResults([]); setLiveError(null); }} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 }}>✕</button>}
             <div onClick={() => setScanOpen(true)} style={{ background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "7px 12px", color: "#8fbc8f", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }} onMouseEnter={e => e.currentTarget.style.borderColor = "#4a7a4a"} onMouseLeave={e => e.currentTarget.style.borderColor = "#3a5a3a"}>
               <i className="ti ti-barcode" style={{ fontSize: 14 }} /> Scan barcode
             </div>
@@ -482,26 +553,34 @@ export default function FoodSearch() {
           {showRecent && (
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Recently logged</div>
-              <div className="grid-3">
-                {RECENT.map(food => (
-                  <div key={food.id} onClick={() => setExpandedId(food.id)} style={{ background: "#181818", border: "1px solid #1e1e1e", borderRadius: 8, padding: "10px 12px", cursor: "pointer", transition: "border-color 0.15s" }} onMouseEnter={e => e.currentTarget.style.borderColor = "#3a5a3a"} onMouseLeave={e => e.currentTarget.style.borderColor = "#1e1e1e"}>
-                    <div style={{ fontSize: 13, color: "#ccc", marginBottom: 3 }}>{food.emoji} {food.name}</div>
-                    <div style={{ fontSize: 12, color: "#555" }}>{food.cal} kcal</div>
-                  </div>
-                ))}
-              </div>
+              {recentLoading ? null : recentFoods.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "20px", color: "#444", fontSize: 13, background: "#141414", border: "1px dashed #2a2a2a", borderRadius: 10 }}>
+                  Log some food to see it here
+                </div>
+              ) : (
+                recentFoods.map(food => (
+                  <FoodCard
+                    key={food.id}
+                    food={food}
+                    isExpanded={expandedId === food.id}
+                    onToggle={() => handleToggle(food.id)}
+                    defaultMeal={activeMeal}
+                    onAdd={handleAdd}
+                  />
+                ))
+              )}
             </div>
           )}
 
           {/* Results header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <span style={{ fontSize: 12, color: "#555" }}>
-              {showRecent ? "Popular foods" : offLoading ? "Searching…" : `${allResults.length} result${allResults.length !== 1 ? "s" : ""}`}
+              {showRecent ? "Popular foods" : liveLoading ? "Searching…" : `${allResults.length} result${allResults.length !== 1 ? "s" : ""}`}
             </span>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              {query && offResults.length > 0 && (
+              {query && liveResults.length > 0 && (
                 <div style={{ background: "#0a1520", border: "1px solid #2a4a6a", borderRadius: 6, padding: "3px 10px", fontSize: 11, color: "#6aabcf", display: "flex", alignItems: "center", gap: 5 }}>
-                🇺🇸 USDA Database
+                🌐 Live search
               </div>
               )}
               <div style={{ background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 6, padding: "3px 10px", fontSize: 11, color: "#8fbc8f", display: "flex", alignItems: "center", gap: 5 }}>📍 Aus/Asian DB</div>
@@ -509,12 +588,14 @@ export default function FoodSearch() {
           </div>
 
           {/* Food list */}
-          {allResults.length === 0 && !offLoading ? (
+          {allResults.length === 0 && !liveLoading ? (
             <div style={{ textAlign: "center", padding: "48px 20px", color: "#444", fontSize: 14 }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
-              No foods found for "{query}"
+              <div style={{ fontSize: 32, marginBottom: 12 }}>{liveError ? "⚠️" : "🔍"}</div>
+              {liveError || `No foods found for "${query}"`}
               <br />
-              <span style={{ fontSize: 12, color: "#333", marginTop: 8, display: "block" }}>Try a different search term or use the scan button</span>
+              <span style={{ fontSize: 12, color: "#333", marginTop: 8, display: "block" }}>
+                {liveError ? "Your Aus/Asian database and barcode scanning still work fine." : "Try a different search term or use the scan button"}
+              </span>
             </div>
           ) : (
             allResults.map(food => (
@@ -540,7 +621,7 @@ export default function FoodSearch() {
         <ScanModal
           onClose={() => setScanOpen(false)}
           defaultMeal={activeMeal}
-          onAddFood={(food, meal) => { addFoodLog(food, meal); setToast(`${food.name} added to ${meal}`); }}
+          onAddFood={async (food, meal) => { await addFoodLog(food, meal); refetchRecent(); setToast(`${food.name} added to ${meal}`); }}
         />
       )}
     </div>

@@ -72,6 +72,17 @@ export async function deleteFoodLog(id) {
   if (error) throw error;
 }
 
+export async function getRecentFoodLogs(userId, limit = 40) {
+  const { data, error } = await supabase
+    .from('food_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data;
+}
+
 // ─── checkins ──────────────────────────────────────────────────────────────
 
 export async function getCheckinForDate(userId, date) {
