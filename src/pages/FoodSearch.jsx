@@ -136,9 +136,20 @@ async function searchOpenFoodFacts(q) {
 async function searchUSDAFoods(q) {
   const apiKey = import.meta.env.VITE_USDA_API_KEY;
   if (!apiKey) return [];
-  const res = await fetch(
-    `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=25&dataType=${encodeURIComponent("Foundation,SR Legacy,Survey (FNDDS)")}&api_key=${apiKey}`
-  );
+  // dataType is a comma-delimited list — encode each value individually and
+  // keep the commas literal, since USDA splits on them server-side.
+  // encodeURIComponent deliberately leaves ( and ) unescaped (an old spec
+  // quirk), but USDA's API gateway 400s on literal parens in the query
+  // string, so they need escaping by hand.
+  const encodeParam = (s) => encodeURIComponent(s).replace(/[()]/g, c => c === "(" ? "%28" : "%29");
+  const dataTypes = ["Foundation", "SR Legacy", "Survey (FNDDS)"].map(encodeParam).join(",");
+  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=25&dataType=${dataTypes}&api_key=${apiKey}`;
+  // USDA's API gateway has occasional one-off 400s unrelated to the query
+  // itself (confirmed by retrying the exact same request) — one retry
+  // absorbs that.
+  let res = await fetch(url);
+  if (!res.ok) res = await fetch(url);
+  if (!res.ok) throw new Error(`USDA search failed: ${res.status}`);
   const data = await res.json();
   return (data.foods || []).map(f => {
     const nutrients = f.foodNutrients || [];
@@ -476,7 +487,16 @@ export default function FoodSearch() {
     return genericResults.filter(f => !localNames.has(f.name.toLowerCase()));
   }, [localFiltered, genericResults, query]);
 
-  const foodsResults = useMemo(() => [...localFiltered, ...genericFiltered], [localFiltered, genericFiltered]);
+  const foodsResults = useMemo(() => {
+    const combined = [...localFiltered, ...genericFiltered];
+    const seen = new Set();
+    return combined.filter(f => {
+      const key = f.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [localFiltered, genericFiltered]);
 
   // Packaged/branded results (Open Food Facts, AU-scoped) shown in their
   // own demoted section below — this is what stops a search like "chicken
