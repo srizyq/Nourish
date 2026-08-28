@@ -1,46 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
-import LogoMark from '../components/LogoMark';
-
-// ─── Sidebar (matches AI Insights — avatar active here) ────────────────────────
-function Sidebar({ navigate, initials }) {
-  const sbIconBase = {
-    width: 36, height: 36, display: "flex", alignItems: "center",
-    justifyContent: "center", borderRadius: 8, cursor: "pointer",
-    color: "#666666", fontSize: 18,
-  };
-
-  return (
-    <div style={{
-      width: 52, background: "#0f0f0f", borderRight: "1px solid #1e1e1e",
-      display: "flex", flexDirection: "column", alignItems: "center",
-      padding: "20px 0", gap: 28, flexShrink: 0,
-      position: "sticky", top: 0, height: "100vh",
-    }}>
-      <LogoMark size={28} />
-
-      <div style={sbIconBase} title="Dashboard"   onClick={() => navigate("/dashboard")}><i className="ti ti-layout-dashboard" /></div>
-      <div style={sbIconBase} title="Food search" onClick={() => navigate("/food")}><i className="ti ti-search" /></div>
-      <div style={sbIconBase} title="Progress"    onClick={() => navigate("/progress")}><i className="ti ti-chart-line" /></div>
-      <div style={sbIconBase} title="Meal plans"  onClick={() => navigate("/meals")}><i className="ti ti-calendar" /></div>
-      <div style={sbIconBase} title="AI insights" onClick={() => navigate("/insights")}><i className="ti ti-sparkles" /></div>
-
-      <div style={{ flex: 1 }} />
-
-      <div style={sbIconBase} title="Settings" onClick={() => navigate("/settings")}><i className="ti ti-settings" /></div>
-      <div
-        title="Profile"
-        style={{
-          width: 32, height: 32, background: "#0f1a0f", border: "1px solid #4a7a4a",
-          borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 11, color: "#8fbc8f", fontWeight: 600, cursor: "pointer",
-        }}
-      >{initials}</div>
-    </div>
-  );
-}
+import AppNav from '../components/AppNav';
 
 // ─── Reusable bits ──────────────────────────────────────────────────────────────
 function Card({ children, style }) {
@@ -106,7 +67,6 @@ function TextInput({ value, onChange, type = 'text', suffix, width = '120px' }) 
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function Profile() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { profile, save: saveProfile } = useProfile();
   const [saved, setSaved] = useState(false);
@@ -146,13 +106,13 @@ export default function Profile() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0f0f0f', fontFamily: "'DM Sans', sans-serif" }}>
-      <Sidebar navigate={navigate} initials={initials} />
+      <AppNav active="profile" initials={initials} />
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div className="app-content-pad" style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
         {/* Top bar */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '20px 28px', borderBottom: '1px solid #1e1e1e',
+        <div className="page-pad-top" style={{
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px 16px',
+          paddingTop: 20, paddingBottom: 20, borderBottom: '1px solid #1e1e1e',
           position: 'sticky', top: 0, background: '#0f0f0f', zIndex: 10,
         }}>
           <div>
@@ -178,10 +138,10 @@ export default function Profile() {
         </div>
 
         {/* Content */}
-        <div style={{ padding: '24px 28px' }}>
+        <div className="page-pad">
 
           {/* Identity header */}
-          <Card style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <Card style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '20px' }}>
             <div style={{
               width: 64, height: 64, borderRadius: '50%',
               background: '#0f1a0f', border: '1px solid #4a7a4a',
@@ -210,7 +170,7 @@ export default function Profile() {
           </Card>
 
           {/* Details + stats, side by side like the rest of the app */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+          <div className="grid-2" style={{ alignItems: 'start' }}>
             <Card style={{ marginBottom: 0 }}>
               <SectionLabel>Your details</SectionLabel>
               <FieldRow label="Name">

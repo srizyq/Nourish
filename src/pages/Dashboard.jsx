@@ -7,36 +7,7 @@ import { useFoodLogs } from '../hooks/useFoodLogs';
 import { useCheckins } from '../hooks/useCheckins';
 import { useHistory } from '../hooks/useHistory';
 import { todayLocalDate, dateNDaysAgo, generateInsights, computeStreak } from '../lib/patterns';
-import LogoMark from '../components/LogoMark';
-
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
-function Sidebar({ navigate, initials }) {
-  const sbIconBase = {
-    width: 36, height: 36, display: 'flex', alignItems: 'center',
-    justifyContent: 'center', borderRadius: 8, cursor: 'pointer',
-    color: '#666', fontSize: 18,
-  };
-  const sbIconActive = { ...sbIconBase, color: '#8fbc8f', background: '#0f1a0f' };
-
-  return (
-    <div style={{
-      width: 52, background: '#0f0f0f', borderRight: '1px solid #1e1e1e',
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: '20px 0', gap: 28, flexShrink: 0, minHeight: '100vh',
-      position: 'sticky', top: 0,
-    }}>
-      <LogoMark size={28} />
-      <div style={sbIconActive} title="Dashboard"   onClick={() => navigate('/dashboard')}><i className="ti ti-layout-dashboard" /></div>
-      <div style={sbIconBase}   title="Food Search" onClick={() => navigate('/food')}><i className="ti ti-search" /></div>
-      <div style={sbIconBase}   title="Progress"    onClick={() => navigate('/progress')}><i className="ti ti-chart-line" /></div>
-      <div style={sbIconBase}   title="Meal Plans"  onClick={() => navigate('/meals')}><i className="ti ti-calendar" /></div>
-      <div style={sbIconBase}   title="AI Insights" onClick={() => navigate('/insights')}><i className="ti ti-sparkles" /></div>
-      <div style={{ flex: 1 }} />
-      <div style={sbIconBase} title="Settings" onClick={() => navigate('/settings')}><i className="ti ti-settings" /></div>
-      <div style={{ width: 32, height: 32, background: '#181818', border: '1px solid #2a2a2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#8fbc8f', fontWeight: 600, cursor: 'pointer' }} onClick={() => navigate('/profile')}>{initials}</div>
-    </div>
-  );
-}
+import AppNav from '../components/AppNav';
 
 // ─── Calorie Ring ─────────────────────────────────────────────────────────────
 function CalorieRing({ consumed, target }) {
@@ -203,7 +174,7 @@ function ShortcutRow({ navigate }) {
     { label: 'Progress',  icon: '📈', action: () => navigate('/progress') },
   ];
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginBottom: '20px' }}>
+    <div className="grid-5" style={{ marginBottom: '20px' }}>
       {shortcuts.map((s, i) => (
         <button key={i} onClick={s.action} style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '14px 8px', cursor: s.action ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }} onMouseEnter={e => { if (s.action) e.currentTarget.style.borderColor = '#3a5a3a'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#1e1e1e'; }}>
           <span style={{ fontSize: '20px', lineHeight: 1 }}>{s.icon}</span>
@@ -260,11 +231,11 @@ export default function Dashboard() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0f0f0f', fontFamily: "'DM Sans', sans-serif" }}>
-      <Sidebar navigate={navigate} initials={initials} />
+      <AppNav active="dashboard" initials={initials} />
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
         {/* Top bar */}
-        <div style={{ height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', borderBottom: '1px solid #1e1e1e', position: 'sticky', top: 0, background: '#0f0f0f', zIndex: 10 }}>
+        <div className="page-pad-top" style={{ minHeight: 52, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px 12px', paddingTop: 10, paddingBottom: 10, borderBottom: '1px solid #1e1e1e', position: 'sticky', top: 0, background: '#0f0f0f', zIndex: 10 }}>
           <div>
             <span style={{ fontFamily: "'Syne', sans-serif", fontSize: '16px', fontWeight: 600, color: '#e8e8e8' }}>{greeting}, {name} 👋</span>
             <span style={{ color: '#444', fontSize: '13px', marginLeft: '12px' }}>{dateStr}</span>
@@ -282,20 +253,20 @@ export default function Dashboard() {
         </div>
 
         {/* Content */}
-        <div style={{ padding: '24px 28px', maxWidth: '1100px' }}>
+        <div className="page-pad app-content-pad" style={{ maxWidth: '1100px' }}>
           {isGuest && <GuestBanner daysRemaining={daysRemaining} onSave={() => navigate('/settings')} />}
           <ShortcutRow navigate={navigate} />
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+          <div className="grid-2" style={{ marginBottom: '16px' }}>
             {/* Calorie ring */}
             <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <span style={{ color: '#666', fontSize: '13px', fontWeight: 500 }}>Calories</span>
                 <span style={{ color: '#444', fontSize: '12px' }}>{calorieTarget.toLocaleString()} target</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
                 <CalorieRing consumed={consumed} target={calorieTarget} />
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 160 }}>
                   <div style={{ marginBottom: '4px' }}>
                     <span style={{ color: '#555', fontSize: '12px' }}>Consumed </span>
                     <span style={{ color: '#e8e8e8', fontWeight: 600 }}>{consumed}</span>

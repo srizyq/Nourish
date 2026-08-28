@@ -1,8 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { useNavigate } from 'react-router-dom';
 import { useFoodLogs } from '../hooks/useFoodLogs';
 import { todayLocalDate } from '../lib/patterns';
-import LogoMark from '../components/LogoMark';
+import AppNav from '../components/AppNav';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -320,7 +319,6 @@ function Toast({ message, onDone }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function FoodSearch() {
-  const navigate = useNavigate();
   const { addFood: addFoodLog } = useFoodLogs(todayLocalDate());
   const [query, setQuery] = useState("");
   const [activeCuisine, setActiveCuisine] = useState("all");
@@ -424,25 +422,14 @@ export default function FoodSearch() {
   return (
     <div style={{ minHeight: "100vh", background: "#0f0f0f", color: "#e8e8e8", fontFamily: "'DM Sans', sans-serif", display: "flex" }}>
 
-      {/* ── Sidebar ── */}
-      <div style={{ width: 52, background: "#0f0f0f", borderRight: "1px solid #1e1e1e", display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 0", gap: 28, flexShrink: 0, position: "sticky", top: 0, height: "100vh" }}>
-        <LogoMark size={28} />
-        <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, cursor: "pointer", color: "#666", fontSize: 18 }} title="Dashboard" onClick={() => navigate("/dashboard")}><i className="ti ti-layout-dashboard" /></div>
-        <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, cursor: "pointer", color: "#8fbc8f", background: "#0f1a0f", fontSize: 18 }} title="Food search"><i className="ti ti-search" /></div>
-        <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, cursor: "pointer", color: "#666", fontSize: 18 }} title="Progress" onClick={() => navigate("/progress")}><i className="ti ti-chart-line" /></div>
-        <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, cursor: "pointer", color: "#666", fontSize: 18 }} title="Meal plans" onClick={() => navigate("/meals")}><i className="ti ti-calendar" /></div>
-        <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, cursor: "pointer", color: "#666", fontSize: 18 }} title="AI insights" onClick={() => navigate("/insights")}><i className="ti ti-sparkles" /></div>
-        <div style={{ flex: 1 }} />
-        <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, cursor: "pointer", color: "#666", fontSize: 18 }} title="Settings" onClick={() => navigate("/settings")}><i className="ti ti-settings" /></div>
-        <div style={{ width: 32, height: 32, background: "#181818", border: "1px solid #2a2a2a", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#8fbc8f", fontWeight: 600, cursor: "pointer" }} onClick={() => navigate("/profile")} />
-      </div>
+      <AppNav active="food" />
 
       {/* ── Main content ── */}
-      <div style={{ flex: 1, overflow: "auto" }}>
+      <div className="app-content-pad" style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
 
         {/* Top bar */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px", borderBottom: "1px solid #1e1e1e", background: "#0f0f0f", position: "sticky", top: 0, zIndex: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="page-pad-top" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px 12px", paddingTop: 14, paddingBottom: 14, borderBottom: "1px solid #1e1e1e", background: "#0f0f0f", position: "sticky", top: 0, zIndex: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16, color: "#e8e8e8" }}>Food search</span>
             <div style={{ position: "relative" }}>
               <button onClick={() => setMealDropdownOpen(o => !o)} style={{ background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "4px 10px", fontSize: 12, color: "#8fbc8f", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
@@ -461,7 +448,7 @@ export default function FoodSearch() {
         </div>
 
         {/* Page body */}
-        <div style={{ padding: "20px 24px" }}>
+        <div className="page-pad">
 
           {/* Search bar */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
@@ -495,7 +482,7 @@ export default function FoodSearch() {
           {showRecent && (
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Recently logged</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              <div className="grid-3">
                 {RECENT.map(food => (
                   <div key={food.id} onClick={() => setExpandedId(food.id)} style={{ background: "#181818", border: "1px solid #1e1e1e", borderRadius: 8, padding: "10px 12px", cursor: "pointer", transition: "border-color 0.15s" }} onMouseEnter={e => e.currentTarget.style.borderColor = "#3a5a3a"} onMouseLeave={e => e.currentTarget.style.borderColor = "#1e1e1e"}>
                     <div style={{ fontSize: 13, color: "#ccc", marginBottom: 3 }}>{food.emoji} {food.name}</div>

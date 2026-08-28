@@ -8,7 +8,7 @@ import { Line, Bar } from "react-chartjs-2";
 import { useProfile } from "../hooks/useProfile";
 import { useHistory } from "../hooks/useHistory";
 import { todayLocalDate, dateNDaysAgo, streakFor, computeStreak } from "../lib/patterns";
-import LogoMark from "../components/LogoMark";
+import AppNav from "../components/AppNav";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, Filler);
 
@@ -125,6 +125,7 @@ export default function Progress() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const [range, setRange] = useState(30);
+  const initials = (profile?.name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
 
   const today = todayLocalDate();
   const { dailyData, loading } = useHistory(dateNDaysAgo(range - 1), today);
@@ -212,46 +213,29 @@ export default function Progress() {
     },
   };
 
-  const sidebarStyle = {
-    width: 52, background: C.bg, borderRight: `1px solid ${C.border}`,
-    display: "flex", flexDirection: "column", alignItems: "center",
-    padding: "20px 0", gap: 28, flexShrink: 0,
-  };
   const sbIconBase = {
     width: 36, height: 36, display: "flex", alignItems: "center",
     justifyContent: "center", borderRadius: 8, cursor: "pointer",
     color: C.textM, fontSize: 18,
   };
-  const sbIconActive = { ...sbIconBase, color: C.green, background: C.bgAI };
 
   return (
     <div style={{ display: "flex", height: "100vh", background: C.bg, fontFamily: "'DM Sans', sans-serif", color: C.textP, overflow: "hidden" }}>
 
-      {/* ── sidebar ── */}
-      <div style={sidebarStyle}>
-        <LogoMark size={28} />
-        <div style={sbIconBase}   title="Dashboard"   onClick={() => navigate("/dashboard")}><i className="ti ti-layout-dashboard" /></div>
-        <div style={sbIconBase}   title="Food search"  onClick={() => navigate("/food")}><i className="ti ti-search" /></div>
-        <div style={sbIconActive} title="Progress"><i className="ti ti-chart-line" /></div>
-        <div style={sbIconBase}   title="Meal plans"   onClick={() => navigate("/meals")}><i className="ti ti-calendar" /></div>
-        <div style={sbIconBase}   title="AI insights"  onClick={() => navigate("/insights")}><i className="ti ti-sparkles" /></div>
-        <div style={{ flex: 1 }} />
-        <div style={sbIconBase}   title="Settings"     onClick={() => navigate("/settings")}><i className="ti ti-settings" /></div>
-        <div style={{ width: 32, height: 32, background: C.bgCard, border: `1px solid ${C.border2}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: C.green, fontWeight: 600, cursor: "pointer" }} onClick={() => navigate("/profile")} />
-      </div>
+      <AppNav active="progress" initials={initials} />
 
       {/* ── main ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
 
         {/* top bar */}
-        <div style={{ height: 52, background: C.bg, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 24px", gap: 16, flexShrink: 0 }}>
+        <div className="page-pad-top" style={{ minHeight: 52, background: C.bg, borderBottom: `1px solid ${C.border}`, display: "flex", flexWrap: "wrap", alignItems: "center", paddingTop: 8, paddingBottom: 8, gap: 16, flexShrink: 0 }}>
           <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 600 }}>Progress</span>
           <div style={{ flex: 1 }} />
           <div style={{ ...sbIconBase, fontSize: 18 }} title="Notifications"><i className="ti ti-bell" /></div>
         </div>
 
         {/* scrollable content */}
-        <div style={{ flex: 1, overflowY: "auto", padding: 24 }}>
+        <div className="page-pad app-content-pad" style={{ flex: 1, overflowY: "auto" }}>
 
           {!hasData && !loading && (
             <div style={{
@@ -295,7 +279,7 @@ export default function Progress() {
           </div>
 
           {/* stat cards */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+          <div className="grid-4" style={{ marginBottom: 24 }}>
             <StatCard label="Avg. calories" value={hasData ? avgCalories.toLocaleString() : "—"} hint={hasData ? `over ${loggedDays.length} logged days` : "No data yet"} />
             <StatCard label="Days on target" value={hasData && calorieTarget ? daysOnTarget : "—"} hint={calorieTarget ? "within 10% of goal" : "Set a calorie target in Settings"} />
             <StatCard label="Avg. protein" value={hasData ? `${avgProtein}g` : "—"} hint={hasData ? `over ${loggedDays.length} logged days` : "No data yet"} />
@@ -303,7 +287,7 @@ export default function Progress() {
           </div>
 
           {/* charts */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+          <div className="grid-2" style={{ marginBottom: 24 }}>
             <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
               <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS, marginBottom: 2 }}>Calories vs goal</div>
               <div style={{ fontSize: 12, color: C.textM, marginBottom: 16 }}>Daily intake over the last {range} days</div>
@@ -325,7 +309,7 @@ export default function Progress() {
           </div>
 
           {/* bottom row */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="grid-2">
 
             {/* streak badges */}
             <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>

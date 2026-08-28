@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
 import { supabase } from '../lib/supabase';
-import LogoMark from '../components/LogoMark';
+import AppNav from '../components/AppNav';
 
 // ─── Shared calc (matches onboarding Step3) ────────────────────────────────────
 const activityMultipliers = {
@@ -60,45 +60,6 @@ function splitFromGrams(proteinG, carbsG, fatG) {
   const total = proteinCal + carbsCal + fatCal;
   if (!total) return goalMacroSplits.maintain;
   return { protein: proteinCal / total, carbs: carbsCal / total, fat: fatCal / total };
-}
-
-// ─── Sidebar ─────────────────────────────────────────────────────────────────
-function Sidebar({ navigate }) {
-  const sbIconBase = {
-    width: 36, height: 36, display: "flex", alignItems: "center",
-    justifyContent: "center", borderRadius: 8, cursor: "pointer",
-    color: "#666666", fontSize: 18,
-  };
-  const sbIconActive = { ...sbIconBase, color: "#8fbc8f", background: "#0f1a0f" };
-
-  return (
-    <div style={{
-      width: 52, background: "#0f0f0f", borderRight: "1px solid #1e1e1e",
-      display: "flex", flexDirection: "column", alignItems: "center",
-      padding: "20px 0", gap: 28, flexShrink: 0,
-      position: "sticky", top: 0, height: "100vh",
-    }}>
-      <LogoMark size={28} />
-
-      <div style={sbIconBase} title="Dashboard"   onClick={() => navigate("/dashboard")}><i className="ti ti-layout-dashboard" /></div>
-      <div style={sbIconBase} title="Food search" onClick={() => navigate("/food")}><i className="ti ti-search" /></div>
-      <div style={sbIconBase} title="Progress"    onClick={() => navigate("/progress")}><i className="ti ti-chart-line" /></div>
-      <div style={sbIconBase} title="Meal plans"  onClick={() => navigate("/meals")}><i className="ti ti-calendar" /></div>
-      <div style={sbIconBase} title="AI insights" onClick={() => navigate("/insights")}><i className="ti ti-sparkles" /></div>
-
-      <div style={{ flex: 1 }} />
-
-      <div style={sbIconActive} title="Settings"><i className="ti ti-settings" /></div>
-      <div
-        title="Profile"
-        onClick={() => navigate("/profile")}
-        style={{
-        width: 32, height: 32, background: "#181818", border: "1px solid #2a2a2a",
-        borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 11, color: "#8fbc8f", fontWeight: 600, cursor: "pointer",
-      }} />
-    </div>
-  );
 }
 
 // ─── Reusable bits ──────────────────────────────────────────────────────────────
@@ -273,6 +234,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profile, save: saveProfile } = useProfile();
+  const initials = (profile?.name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
   const [tab, setTab] = useState('goals');
   const [saved, setSaved] = useState(false);
 
@@ -349,13 +311,13 @@ export default function Settings() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0f0f0f', fontFamily: "'DM Sans', sans-serif" }}>
-      <Sidebar navigate={navigate} />
+      <AppNav active="settings" initials={initials} />
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      <div className="app-content-pad" style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
         {/* Top bar */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '20px 28px', borderBottom: '1px solid #1e1e1e',
+        <div className="page-pad-top" style={{
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px 16px',
+          paddingTop: 20, paddingBottom: 20, borderBottom: '1px solid #1e1e1e',
           position: 'sticky', top: 0, background: '#0f0f0f', zIndex: 10,
         }}>
           <div>
@@ -383,7 +345,7 @@ export default function Settings() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: '4px', padding: '16px 28px 0', borderBottom: '1px solid #1e1e1e' }}>
+        <div className="page-pad-top" style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingTop: 16, borderBottom: '1px solid #1e1e1e' }}>
           {TABS.map(t => {
             const sel = tab === t.id;
             return (
@@ -401,6 +363,8 @@ export default function Settings() {
                   cursor: 'pointer',
                   fontFamily: "'DM Sans', sans-serif",
                   marginBottom: '-1px',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
                 }}
               >
                 {t.label}
@@ -410,7 +374,7 @@ export default function Settings() {
         </div>
 
         {/* Content */}
-        <div style={{ padding: '24px 28px' }}>
+        <div className="page-pad">
 
           {/* ── GOALS & TARGETS ── */}
           {tab === 'goals' && (
@@ -442,7 +406,7 @@ export default function Settings() {
                 </div>
               </Card>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+              <div className="grid-2" style={{ alignItems: 'start' }}>
 
               <Card style={{ marginBottom: 0 }}>
                 <SectionLabel>Calorie target</SectionLabel>
@@ -540,7 +504,7 @@ export default function Settings() {
 
           {/* ── NOTIFICATIONS ── */}
           {tab === 'notifs' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+            <div className="grid-2" style={{ alignItems: 'start' }}>
               <Card style={{ marginBottom: 0 }}>
                 <SectionLabel>Reminders</SectionLabel>
                 {[
@@ -571,7 +535,7 @@ export default function Settings() {
 
           {/* ── ACCOUNT ── */}
           {tab === 'account' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+            <div className="grid-2" style={{ alignItems: 'start' }}>
               <Card style={{ marginBottom: 0 }}>
                 <SectionLabel>Account</SectionLabel>
                 <FieldRow label="Status" hint={isGuest ? `Guest mode · ${daysRemaining} days left` : 'Signed in'}>
