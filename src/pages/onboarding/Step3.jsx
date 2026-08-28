@@ -86,7 +86,7 @@ export default function Step3() {
   const [targets, setTargets] = useState(null);
 
   useEffect(() => {
-    const saved = JSON.parse(sessionStorage.getItem('nourish_onboarding') || '{}');
+    const saved = JSON.parse(sessionStorage.getItem('attune_onboarding') || '{}');
     setData(saved);
 
     if (saved.age && saved.weight && saved.height && saved.activity && saved.goal) {
@@ -110,8 +110,8 @@ export default function Step3() {
   }, []);
 
   const handleNext = () => {
-    const existing = JSON.parse(sessionStorage.getItem('nourish_onboarding') || '{}');
-    sessionStorage.setItem('nourish_onboarding', JSON.stringify({ ...existing, targets }));
+    const existing = JSON.parse(sessionStorage.getItem('attune_onboarding') || '{}');
+    sessionStorage.setItem('attune_onboarding', JSON.stringify({ ...existing, targets }));
     navigate('/onboarding/step4');
   };
 

@@ -1,30 +1,44 @@
 // src/App.jsx
 import './App.css'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { AuthProvider } from './context/AuthProvider'
+import RequireAuth from './components/RequireAuth'
 import Step1 from './pages/onboarding/Step1'
 import Step2 from './pages/onboarding/Step2'
 import Step3 from './pages/onboarding/Step3'
 import Step4 from './pages/onboarding/Step4'
+import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import FoodSearch from "./pages/FoodSearch";
 import Progress from "./pages/Progress";
+import AIInsights from "./pages/AIInsights";
+import MealPlans from './pages/MealPlans'
+import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/onboarding" element={<Navigate to="/onboarding/step1" replace />} />
-        <Route path="/onboarding/step1" element={<Step1 />} />
-        <Route path="/onboarding/step2" element={<Step2 />} />
-        <Route path="/onboarding/step3" element={<Step3 />} />
-        <Route path="/onboarding/step4" element={<Step4 />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/food" element={<FoodSearch />} />
-        <Route path="/progress" element={<Progress />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/onboarding" element={<Navigate to="/onboarding/step1" replace />} />
+          <Route path="/onboarding/step1" element={<Step1 />} />
+          <Route path="/onboarding/step2" element={<Step2 />} />
+          <Route path="/onboarding/step3" element={<Step3 />} />
+          <Route path="/onboarding/step4" element={<Step4 />} />
+          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="/food" element={<RequireAuth><FoodSearch /></RequireAuth>} />
+          <Route path="/progress" element={<RequireAuth><Progress /></RequireAuth>} />
+          <Route path="/insights" element={<RequireAuth><AIInsights /></RequireAuth>} />
+          <Route path="/meals" element={<RequireAuth><MealPlans /></RequireAuth>} />
+          <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+          <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   )
 }
 
@@ -43,18 +57,19 @@ function Landing() {
 }
 
 function Nav() {
+  const navigate = useNavigate();
   return (
     <nav className="nav">
       <div className="nav-inner">
-        <div className="nav-logo">nourish</div>
+        <div className="nav-logo">attune</div>
         <div className="nav-links">
           <a href="#features">Features</a>
           <a href="#aus">For Australians</a>
           <a href="#pricing">Pricing</a>
         </div>
         <div className="nav-cta">
-          <button className="btn-ghost">Log in</button>
-          <button className="btn-primary" onClick={() => window.location.href = '/onboarding/step1'}>Start free</button>
+          <button className="btn-ghost" onClick={() => navigate('/login')}>Log in</button>
+          <button className="btn-primary" onClick={() => navigate('/onboarding/step1')}>Start free</button>
         </div>
       </div>
     </nav>
@@ -65,10 +80,10 @@ function Hero() {
   return (
     <section className="hero">
       <div className="hero-badge">🇦🇺 Built for Melbourne</div>
-      <h1>Track food.<br />Feel better.<br /><span className="accent">Actually stick to it.</span></h1>
-      <p className="hero-sub">The only calorie tracker with an Aus & Asian food database, AI menu scanning, and a mood check-in that shows you what makes you feel your best.</p>
+      <h1>Track food.<br />Feel the pattern.<br /><span className="accent">Actually stick to it.</span></h1>
+      <p className="hero-sub">Attune connects what you log to how you actually feel — real correlations between your food, mood, and energy, on top of an Aus &amp; Asian food database that gets what a laksa is.</p>
       <div className="hero-actions">
-        <button className="btn-primary btn-lg" onClick={() => window.location.href = '/onboarding/step1'}>Start for free — no account needed</button>
+        <button className="btn-primary btn-lg" onClick={() => window.location.href = '/onboarding/step1'}>Start for free — no credit card</button>
         <span className="hero-hint">Full app for 7 days, no credit card</span>
       </div>
       <div className="hero-mockup">
@@ -103,14 +118,13 @@ function Hero() {
 
 function Features() {
   const features = [
-    { icon: '🍜', title: 'Aus & Asian Database', desc: 'Laksa, pho, biryani, dim sum, meat pie — 48k+ Asian and 12k+ Australian-specific foods with restaurant-accurate macros.', badge: 'Only on Nourish' },
-    { icon: '📸', title: 'Menu Scanning', desc: 'Point your camera at any menu — printed, screen, or Instagram post. Get instant calories and swap suggestions.', badge: 'Only on Nourish' },
-    { icon: '😊', title: 'Mood & Energy Check-in', desc: '3 taps, 5 seconds. Track how food and sleep affect your mood and energy over time.', badge: 'Only on Nourish' },
-    { icon: '🤖', title: 'AI Coach', desc: 'Personalised nudges based on your actual patterns — not generic advice. Knows your Friday habits better than you do.' },
+    { icon: '🔗', title: 'Pattern Engine', desc: 'Attune correlates your logged food with your mood and energy check-ins to surface real patterns — like how protein timing actually affects your afternoon energy.', badge: 'Only on Attune' },
+    { icon: '🍜', title: 'Aus & Asian Database', desc: 'Laksa, pho, biryani, dim sum, meat pie — dozens of Asian and Australian-specific foods with restaurant-accurate macros, plus live search across USDA and Open Food Facts.', badge: 'Only on Attune' },
+    { icon: '😊', title: 'Mood & Energy Check-in', desc: '3 taps, 5 seconds. Every check-in feeds the pattern engine — the more you log, the sharper your insights get.', badge: 'Only on Attune' },
     { icon: '📊', title: 'Progress Tracking', desc: "Weight trends, streak calendar, macro averages. See what's actually working over 7, 30, and 90 days." },
-    { icon: '🏋️', title: 'Trainer Dashboard', desc: 'Share your data with a trainer via invite link. You control exactly what they see and can revoke access anytime.' },
+    { icon: '📷', title: 'Barcode Scanning', desc: 'Scan any packaged food and get instant macros pulled straight from the product database.' },
+    { icon: '🏋️', title: 'Trainer Dashboard', desc: 'Share your data with a trainer via invite link. You control exactly what they see and can revoke access anytime.', badge: 'Coming soon' },
   ]
-
   return (
     <section className="features" id="features">
       <h2>Everything you need.<br />Nothing you don't.</h2>
@@ -139,12 +153,11 @@ function AusSection() {
     { emoji: '☕', title: 'Melbourne cafés', desc: 'Smashed avo, long black, acai bowl — logged from your actual local spots.' },
     { emoji: '🍱', title: 'Restaurant accurate', desc: 'Not generic estimates. Macros matched to how Melbourne and Sydney restaurants actually cook.' },
   ]
-
   return (
     <section className="aus-section" id="aus">
       <div className="aus-tag">Built for how Australians eat</div>
       <h2>Finally, a tracker that knows what a laksa is.</h2>
-      <p className="aus-sub">Every other app makes you search "Asian noodle soup" and guess. Nourish has the real thing.</p>
+      <p className="aus-sub">Every other app makes you search "Asian noodle soup" and guess. Attune has the real thing.</p>
       <div className="aus-grid">
         {cards.map((c, i) => (
           <div className="aus-card" key={i}>
@@ -162,15 +175,15 @@ function RecapCards() {
   return (
     <section className="recap">
       <div className="recap-text">
-        <div className="aus-tag">Social recap cards</div>
+        <div className="aus-tag">Coming soon</div>
         <h2>Share your week.<br />Inspire your feed.</h2>
-        <p>Every Sunday, Nourish generates a beautiful recap card with your stats, streak, and mood highlights — ready to share to Instagram Stories.</p>
+        <p>A weekly recap card with your stats, streak, and mood highlights — ready to share to Instagram Stories.</p>
         <p className="recap-hint">Your progress is the best marketing we have.</p>
       </div>
       <div className="recap-card-preview">
         <div className="recap-preview">
           <div className="rp-header">
-            <span className="rp-logo">nourish</span>
+            <span className="rp-logo">attune</span>
             <span className="rp-week">Week 12 recap</span>
           </div>
           <div className="rp-stat-row">
@@ -182,7 +195,7 @@ function RecapCards() {
             <span>Best mood day</span>
             <span className="accent">Tuesday 😊</span>
           </div>
-          <div className="rp-footer">nourish.app</div>
+          <div className="rp-footer">attune.app</div>
         </div>
       </div>
     </section>
@@ -192,10 +205,9 @@ function RecapCards() {
 function Pricing() {
   const plans = [
     { name: 'Free', price: '$0', desc: 'Perfect to get started', features: ['Basic food logging', 'Aus & Asian database', '7-day history', 'Manual mood check-in'] },
-    { name: 'Pro', price: '$9.99', period: '/mo', desc: 'For serious trackers', features: ['Everything in Free', 'AI menu scanning', 'Unlimited history', 'AI coach & insights', 'Social recap cards', 'Trainer sharing'], highlight: true },
+    { name: 'Pro', price: '$9.99', period: '/mo', desc: 'For serious trackers', features: ['Everything in Free', 'Pattern engine insights', 'Unlimited history', 'Barcode scanning', 'Priority support'], highlight: true },
     { name: 'Team', price: '$29', period: '/mo', desc: 'For trainers & coaches', features: ['Everything in Pro', 'Up to 20 clients', 'Trainer dashboard', 'Client progress reports', 'Priority support'] },
   ]
-
   return (
     <section className="pricing" id="pricing">
       <h2>Simple pricing.</h2>
@@ -229,8 +241,8 @@ function Footer() {
   return (
     <footer className="footer">
       <div className="footer-inner">
-        <div className="footer-logo">nourish</div>
-        <p>Built for Australians. Powered by AI. Designed in Melbourne.</p>
+        <div className="footer-logo">attune</div>
+        <p>Built for Australians. Understands your patterns. Designed in Melbourne.</p>
         <div className="footer-links">
           <a href="#">Privacy</a>
           <a href="#">Terms</a>

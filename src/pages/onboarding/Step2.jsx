@@ -22,8 +22,8 @@ export default function Step2() {
 
   const handleNext = () => {
     if (!isComplete) return;
-    const existing = JSON.parse(sessionStorage.getItem('nourish_onboarding') || '{}');
-    sessionStorage.setItem('nourish_onboarding', JSON.stringify({
+    const existing = JSON.parse(sessionStorage.getItem('attune_onboarding') || '{}');
+    sessionStorage.setItem('attune_onboarding', JSON.stringify({
       ...existing,
       age: parseInt(age),
       weight: parseFloat(weight),

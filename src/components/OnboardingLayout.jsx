@@ -28,7 +28,7 @@ export default function OnboardingLayout({ children, step, totalSteps = 4 }) {
           fontSize: '20px',
           color: '#8fbc8f',
           letterSpacing: '-0.5px',
-        }}>nourish</span>
+        }}>attune</span>
 
         {/* Step counter */}
         <span style={{ color: '#555', fontSize: '13px' }}>

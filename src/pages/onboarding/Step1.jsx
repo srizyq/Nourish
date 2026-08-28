@@ -35,8 +35,8 @@ export default function Step1() {
   const handleNext = () => {
     if (!selected) return;
     // Save to sessionStorage so later steps can read it
-    const existing = JSON.parse(sessionStorage.getItem('nourish_onboarding') || '{}');
-    sessionStorage.setItem('nourish_onboarding', JSON.stringify({ ...existing, goal: selected }));
+    const existing = JSON.parse(sessionStorage.getItem('attune_onboarding') || '{}');
+    sessionStorage.setItem('attune_onboarding', JSON.stringify({ ...existing, goal: selected }));
     navigate('/onboarding/step2');
   };
 

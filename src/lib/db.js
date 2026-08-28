@@ -1,0 +1,111 @@
+import { supabase } from './supabase';
+
+// ─── profiles ──────────────────────────────────────────────────────────────
+
+export async function getProfile(userId) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertProfile(userId, fields) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .upsert({ id: userId, ...fields, updated_at: new Date().toISOString() })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// ─── food_logs ─────────────────────────────────────────────────────────────
+
+export async function getFoodLogsForDate(userId, date) {
+  const { data, error } = await supabase
+    .from('food_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('logged_date', date)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+export async function getFoodLogsForRange(userId, startDate, endDate) {
+  const { data, error } = await supabase
+    .from('food_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('logged_date', startDate)
+    .lte('logged_date', endDate)
+    .order('logged_date', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+export async function addFoodLog(userId, entry) {
+  const { data, error } = await supabase
+    .from('food_logs')
+    .insert({
+      user_id: userId,
+      logged_date: entry.loggedDate,
+      meal: entry.meal,
+      food_name: entry.name,
+      calories: entry.cal || 0,
+      protein_g: entry.protein || 0,
+      carbs_g: entry.carbs || 0,
+      fat_g: entry.fat || 0,
+      source: entry.source || 'local',
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteFoodLog(id) {
+  const { error } = await supabase.from('food_logs').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ─── checkins ──────────────────────────────────────────────────────────────
+
+export async function getCheckinForDate(userId, date) {
+  const { data, error } = await supabase
+    .from('checkins')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('checkin_date', date)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function getCheckinsForRange(userId, startDate, endDate) {
+  const { data, error } = await supabase
+    .from('checkins')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('checkin_date', startDate)
+    .lte('checkin_date', endDate)
+    .order('checkin_date', { ascending: true });
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertCheckin(userId, date, fields) {
+  const { data, error } = await supabase
+    .from('checkins')
+    .upsert(
+      { user_id: userId, checkin_date: date, ...fields },
+      { onConflict: 'user_id,checkin_date' }
+    )
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}

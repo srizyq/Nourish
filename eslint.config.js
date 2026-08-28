@@ -17,5 +17,13 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // This project doesn't use the React Compiler (see README), so the
+      // compiler-purity rules bundled into "recommended" as of
+      // eslint-plugin-react-hooks v7 flag standard useEffect+setState data
+      // fetching as unsafe, which it isn't without the compiler.
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
+    },
   },
 ])

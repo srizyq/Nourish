@@ -1,27 +1,95 @@
 // src/pages/onboarding/Step4.jsx
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import OnboardingLayout from '../../components/OnboardingLayout';
+import { supabase } from '../../lib/supabase';
+import { upsertProfile } from '../../lib/db';
+
+function draftToProfileFields(draft, name) {
+  const targets = draft.targets || {};
+  return {
+    name: name || draft.name || 'there',
+    goal: draft.goal || null,
+    age: draft.age ?? null,
+    weight: draft.weight ?? null,
+    height: draft.height ?? null,
+    unit: draft.unit || 'metric',
+    activity: draft.activity || null,
+    calorie_target: targets.calories ?? null,
+    protein_g: targets.protein?.g ?? null,
+    carbs_g: targets.carbs?.g ?? null,
+    fat_g: targets.fat?.g ?? null,
+    water_target: targets.water ?? 8,
+    onboarding_completed: true,
+  };
+}
 
 export default function Step4() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [saveChoice, setSaveChoice] = useState(null); // 'save' | 'guest'
   const [hovered, setHovered] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
 
-  const handleFinish = (mode) => {
-    const existing = JSON.parse(sessionStorage.getItem('nourish_onboarding') || '{}');
-    sessionStorage.setItem('nourish_onboarding', JSON.stringify({
-      ...existing,
-      name: name || 'Guest',
-      email,
-      mode, // 'save' or 'guest'
-      guestStartDate: new Date().toISOString(),
-      guestDaysRemaining: 7,
-    }));
+  async function finishWithProfile(userId) {
+    const draft = JSON.parse(sessionStorage.getItem('attune_onboarding') || '{}');
+    await upsertProfile(userId, draftToProfileFields(draft, name));
+    sessionStorage.removeItem('attune_onboarding');
     navigate('/dashboard');
-  };
+  }
+
+  async function handleCreateAccount() {
+    if (!email || password.length < 8) return;
+    setLoading(true);
+    setError(null);
+    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
+    if (signUpError) {
+      setLoading(false);
+      setError(signUpError.message.includes('already registered')
+        ? 'That email is already registered — try logging in instead.'
+        : signUpError.message);
+      return;
+    }
+    if (!data.session) {
+      // Email confirmation required before a session exists.
+      setLoading(false);
+      setNeedsEmailConfirm(true);
+      return;
+    }
+    try {
+      await finishWithProfile(data.user.id);
+    } catch (err) {
+      console.error(err);
+      setError('Account created, but saving your profile failed. Try again from Settings.');
+      navigate('/dashboard');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGuest() {
+    setLoading(true);
+    setError(null);
+    const { data, error: anonError } = await supabase.auth.signInAnonymously();
+    if (anonError) {
+      setLoading(false);
+      setError('Could not start a guest session. Try again, or create a real account.');
+      return;
+    }
+    try {
+      await finishWithProfile(data.user.id);
+    } catch (err) {
+      console.error(err);
+      setError('Guest session started, but saving your profile failed.');
+      navigate('/dashboard');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const inputStyle = (filled) => ({
     background: '#141414',
@@ -36,6 +104,31 @@ export default function Step4() {
     outline: 'none',
     transition: 'border-color 0.2s',
   });
+
+  if (needsEmailConfirm) {
+    return (
+      <OnboardingLayout step={4}>
+        <div style={{ width: '100%', maxWidth: '480px', textAlign: 'center' }}>
+          <div style={{
+            width: '64px', height: '64px', borderRadius: '16px', background: '#0f1a0f',
+            border: '1px solid #1e3a1e', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: '28px', margin: '0 auto 24px',
+          }}>✉️</div>
+          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: 700, color: '#e8e8e8', marginBottom: '8px' }}>
+            Check your email
+          </h1>
+          <p style={{ color: '#666', fontSize: '15px', marginBottom: '24px' }}>
+            We sent a confirmation link to <span style={{ color: '#ccc' }}>{email}</span>. Confirm it, then log in to pick up where you left off.
+          </p>
+          <Link to="/login" style={{
+            display: 'inline-block', padding: '14px 28px', background: '#8fbc8f',
+            border: '1px solid #8fbc8f', borderRadius: '10px', color: '#0f0f0f',
+            fontSize: '15px', fontWeight: 600, textDecoration: 'none',
+          }}>Go to login →</Link>
+        </div>
+      </OnboardingLayout>
+    );
+  }
 
   return (
     <OnboardingLayout step={4}>
@@ -71,7 +164,7 @@ export default function Step4() {
           Ready to start tracking
         </h1>
         <p style={{ color: '#666', fontSize: '15px', marginBottom: '36px' }}>
-          Save your progress to pick up where you left off, or dive in as a guest for 7 days free.
+          Create an account to keep your data across devices, or dive in as a guest for 7 days free.
         </p>
 
         {/* Save progress option */}
@@ -95,9 +188,9 @@ export default function Step4() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: saveChoice === 'save' ? '16px' : '0' }}>
               <div>
                 <div style={{ color: '#e8e8e8', fontWeight: 600, fontSize: '15px', fontFamily: "'Syne', sans-serif", marginBottom: '3px' }}>
-                  Save my progress
+                  Create my account
                 </div>
-                <div style={{ color: '#555', fontSize: '13px' }}>Create a free account — takes 30 seconds</div>
+                <div style={{ color: '#555', fontSize: '13px' }}>Takes 30 seconds</div>
               </div>
               <div style={{
                 width: '20px',
@@ -115,7 +208,7 @@ export default function Step4() {
               </div>
             </div>
 
-            {/* Inline email fields — expand when selected */}
+            {/* Inline fields — expand when selected */}
             {saveChoice === 'save' && (
               <div
                 style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
@@ -138,24 +231,41 @@ export default function Step4() {
                   onFocus={e => e.target.style.borderColor = '#4a7a4a'}
                   onBlur={e => e.target.style.borderColor = email ? '#3a5a3a' : '#1e1e1e'}
                   style={inputStyle(email)}
+                  autoComplete="email"
                 />
+                <input
+                  type="password"
+                  placeholder="Password (min. 8 characters)"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onFocus={e => e.target.style.borderColor = '#4a7a4a'}
+                  onBlur={e => e.target.style.borderColor = password ? '#3a5a3a' : '#1e1e1e'}
+                  style={inputStyle(password)}
+                  autoComplete="new-password"
+                />
+                {error && (
+                  <div style={{
+                    background: '#1a0f0f', border: '1px solid #c0707040', borderRadius: '8px',
+                    padding: '10px 14px', fontSize: '13px', color: '#c07070',
+                  }}>{error}</div>
+                )}
                 <button
-                  disabled={!email}
-                  onClick={(e) => { e.stopPropagation(); if (email) handleFinish('save'); }}
+                  disabled={!email || password.length < 8 || loading}
+                  onClick={(e) => { e.stopPropagation(); handleCreateAccount(); }}
                   style={{
                     padding: '14px',
-                    background: email ? '#8fbc8f' : '#181818',
-                    border: `1px solid ${email ? '#8fbc8f' : '#2a2a2a'}`,
+                    background: email && password.length >= 8 ? '#8fbc8f' : '#181818',
+                    border: `1px solid ${email && password.length >= 8 ? '#8fbc8f' : '#2a2a2a'}`,
                     borderRadius: '10px',
-                    color: email ? '#0f0f0f' : '#333',
+                    color: email && password.length >= 8 ? '#0f0f0f' : '#333',
                     fontSize: '15px',
                     fontWeight: 600,
-                    cursor: email ? 'pointer' : 'not-allowed',
+                    cursor: email && password.length >= 8 && !loading ? 'pointer' : 'not-allowed',
                     fontFamily: "'DM Sans', sans-serif",
                     transition: 'all 0.2s',
                   }}
                 >
-                  Create account & continue →
+                  {loading ? 'Creating account…' : 'Create account & continue →'}
                 </button>
               </div>
             )}
@@ -164,7 +274,8 @@ export default function Step4() {
 
         {/* Guest option */}
         <button
-          onClick={() => handleFinish('guest')}
+          onClick={handleGuest}
+          disabled={loading}
           onMouseEnter={() => setHovered('guest')}
           onMouseLeave={() => setHovered(null)}
           style={{
@@ -173,7 +284,7 @@ export default function Step4() {
             border: `1px solid ${hovered === 'guest' ? '#2a2a2a' : '#1e1e1e'}`,
             borderRadius: '12px',
             padding: '18px 20px',
-            cursor: 'pointer',
+            cursor: loading ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -186,14 +297,14 @@ export default function Step4() {
             <div style={{ color: '#ccc', fontWeight: 500, fontSize: '15px', marginBottom: '3px' }}>
               Continue as guest
             </div>
-            <div style={{ color: '#444', fontSize: '13px' }}>Full access for 7 days, no account needed</div>
+            <div style={{ color: '#444', fontSize: '13px' }}>Full access for 7 days, no password needed</div>
           </div>
           <span style={{ color: '#444', fontSize: '18px' }}>→</span>
         </button>
 
         {/* Fine print */}
         <p style={{ color: '#333', fontSize: '12px', lineHeight: 1.6 }}>
-          No credit card. No spam. Your data stays on your device in guest mode.
+          No credit card, ever. Guest data is saved to a temporary account you can upgrade any time from Settings.
         </p>
       </div>
     </OnboardingLayout>
