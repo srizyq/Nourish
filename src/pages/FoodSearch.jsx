@@ -46,6 +46,32 @@ const FOODS = [
   { id: 19, emoji: "🍜", name: "Tonkotsu ramen", meta: "1 bowl", cuisine: "japanese", cal: 550, protein: 26, carbs: 68, fat: 18, fibre: 2, sodium: 1350, sugar: 4, servingGrams: 500 },
   { id: 20, emoji: "🥘", name: "Laksa lemak", meta: "1 bowl", cuisine: "malaysian", cal: 520, protein: 18, carbs: 55, fat: 26, fibre: 3, sodium: 980, sugar: 5, servingGrams: 450 },
   { id: 21, emoji: "🍚", name: "Nasi lemak", meta: "1 serve", cuisine: "malaysian", cal: 440, protein: 14, carbs: 58, fat: 18, fibre: 3, sodium: 620, sugar: 4, servingGrams: 350 },
+
+  // Generic whole-food staples — Open Food Facts is a barcode/packaged-
+  // product database, so searching plain terms like "chicken thigh" or
+  // "honey" there returns a wall of random branded products with
+  // inconsistent data instead of the food itself. These give accurate,
+  // brand-free answers for the most commonly searched staples.
+  { id: 22, emoji: "🍗", name: "Chicken thigh, cooked (skinless)", meta: "100g", cuisine: "all", cal: 209, protein: 26, carbs: 0, fat: 10.9, fibre: 0, sodium: 90, sugar: 0, servingGrams: 100 },
+  { id: 23, emoji: "🍯", name: "Honey", meta: "1 tbsp · 21g", cuisine: "all", cal: 64, protein: 0.1, carbs: 17.3, fat: 0, fibre: 0, sodium: 1, sugar: 17.2, servingGrams: 21 },
+  { id: 24, emoji: "🍌", name: "Banana", meta: "1 medium · 118g", cuisine: "all", cal: 105, protein: 1.3, carbs: 27, fat: 0.4, fibre: 3.1, sodium: 1, sugar: 14.4, servingGrams: 118 },
+  { id: 25, emoji: "🍎", name: "Apple", meta: "1 medium · 182g", cuisine: "all", cal: 95, protein: 0.5, carbs: 25, fat: 0.3, fibre: 4.4, sodium: 2, sugar: 19, servingGrams: 182 },
+  { id: 26, emoji: "🥚", name: "Egg, boiled", meta: "1 large · 50g", cuisine: "all", cal: 78, protein: 6.3, carbs: 0.6, fat: 5.3, fibre: 0, sodium: 62, sugar: 0.6, servingGrams: 50 },
+  { id: 27, emoji: "🍚", name: "White rice, cooked", meta: "1 cup · 158g", cuisine: "all", cal: 205, protein: 4.3, carbs: 45, fat: 0.4, fibre: 0.6, sodium: 2, sugar: 0.1, servingGrams: 158 },
+  { id: 28, emoji: "🌾", name: "Rolled oats, dry", meta: "1/2 cup · 40g", cuisine: "all", cal: 150, protein: 5, carbs: 27, fat: 3, fibre: 4, sodium: 0, sugar: 1, servingGrams: 40 },
+  { id: 29, emoji: "🥛", name: "Milk, full cream", meta: "1 cup · 250ml", cuisine: "all", cal: 150, protein: 8, carbs: 12, fat: 8, fibre: 0, sodium: 105, sugar: 12, servingGrams: 250 },
+  { id: 30, emoji: "🍞", name: "Wholemeal bread", meta: "1 slice · 40g", cuisine: "all", cal: 95, protein: 4, carbs: 16, fat: 1.2, fibre: 2.5, sodium: 170, sugar: 1.5, servingGrams: 40 },
+  { id: 31, emoji: "🥑", name: "Avocado", meta: "1/2 medium · 100g", cuisine: "all", cal: 160, protein: 2, carbs: 8.5, fat: 14.7, fibre: 6.7, sodium: 7, sugar: 0.7, servingGrams: 100 },
+  { id: 32, emoji: "🌰", name: "Almonds", meta: "small handful · 28g", cuisine: "all", cal: 164, protein: 6, carbs: 6, fat: 14, fibre: 3.5, sodium: 0, sugar: 1.2, servingGrams: 28 },
+  { id: 33, emoji: "🐟", name: "Salmon, grilled", meta: "1 fillet · 150g", cuisine: "all", cal: 280, protein: 39, carbs: 0, fat: 13, fibre: 0, sodium: 75, sugar: 0, servingGrams: 150 },
+  { id: 34, emoji: "🥩", name: "Beef mince, cooked (lean)", meta: "100g", cuisine: "all", cal: 217, protein: 26, carbs: 0, fat: 12, fibre: 0, sodium: 75, sugar: 0, servingGrams: 100 },
+  { id: 35, emoji: "🥔", name: "Potato, baked", meta: "1 medium · 173g", cuisine: "all", cal: 161, protein: 4.3, carbs: 37, fat: 0.2, fibre: 3.8, sodium: 17, sugar: 2, servingGrams: 173 },
+  { id: 36, emoji: "🥣", name: "Greek yoghurt, plain", meta: "1 tub · 170g", cuisine: "all", cal: 100, protein: 17, carbs: 6, fat: 0.7, fibre: 0, sodium: 60, sugar: 6, servingGrams: 170 },
+  { id: 37, emoji: "🧀", name: "Cheddar cheese", meta: "1 slice · 30g", cuisine: "all", cal: 120, protein: 7, carbs: 0.4, fat: 10, fibre: 0, sodium: 180, sugar: 0.1, servingGrams: 30 },
+  { id: 38, emoji: "🥜", name: "Peanut butter", meta: "1 tbsp · 16g", cuisine: "all", cal: 95, protein: 4, carbs: 3, fat: 8, fibre: 1, sodium: 70, sugar: 1.5, servingGrams: 16 },
+  { id: 39, emoji: "🥦", name: "Broccoli, steamed", meta: "1 cup · 156g", cuisine: "all", cal: 55, protein: 3.7, carbs: 11, fat: 0.6, fibre: 5.1, sodium: 33, sugar: 2.2, servingGrams: 156 },
+  { id: 40, emoji: "🥬", name: "Spinach, raw", meta: "1 cup · 30g", cuisine: "all", cal: 7, protein: 0.9, carbs: 1.1, fat: 0.1, fibre: 0.7, sodium: 24, sugar: 0.1, servingGrams: 30 },
+  { id: 41, emoji: "🍊", name: "Orange", meta: "1 medium · 131g", cuisine: "all", cal: 62, protein: 1.2, carbs: 15.4, fat: 0.2, fibre: 3.1, sodium: 0, sugar: 12.2, servingGrams: 131 },
 ];
 
 // ─── Unit conversion ───────────────────────────────────────────────────────
@@ -87,7 +113,7 @@ function scaleFood(food, servings) {
 // the curated FOODS list above).
 async function searchOpenFoodFacts(q) {
   const res = await fetch(
-    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&fields=product_name,generic_name,brands,nutriments,code`
+    `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&sort_by=unique_scans_n&fields=product_name,generic_name,brands,nutriments,code`
   );
   if (!res.ok) throw new Error(`Open Food Facts search failed: ${res.status}`);
   const data = await res.json();
@@ -407,15 +433,16 @@ export default function FoodSearch() {
 
   const inputRef = useRef(null);
 
-  // Local filtered results
+  // Local filtered results — the cuisine chips only apply when browsing
+  // (no active search), so a stale cuisine filter can't hide a real match
+  // once you start typing (e.g. "Australian" selected, then searching
+  // "honey" would otherwise hide the generic honey entry).
   const localFiltered = useMemo(() => {
     const q = query.toLowerCase().trim();
-    if (!q) return FOODS;
-    return FOODS.filter(f => {
-      const matchesCuisine = activeCuisine === "all" || f.cuisine === activeCuisine;
-      const matchesQuery = f.name.toLowerCase().includes(q) || f.meta.toLowerCase().includes(q);
-      return matchesCuisine && matchesQuery;
-    });
+    if (!q) {
+      return activeCuisine === "all" ? FOODS : FOODS.filter(f => f.cuisine === activeCuisine);
+    }
+    return FOODS.filter(f => f.name.toLowerCase().includes(q) || f.meta.toLowerCase().includes(q));
   }, [query, activeCuisine]);
 
   const runLiveSearch = useCallback(async (q) => {
@@ -449,13 +476,17 @@ export default function FoodSearch() {
     return () => clearTimeout(searchTimer.current);
   }, [query, runLiveSearch]);
 
-  // Combine local + live results, deduplicating by name
-  const allResults = useMemo(() => {
-    if (!query.trim()) return localFiltered;
+  // Packaged/branded results (Open Food Facts + USDA) shown in their own
+  // demoted section below the curated foods — this is what stops a search
+  // like "chicken thigh" from being drowned out by 18 random supermarket
+  // SKUs before you ever see the actual food.
+  const packagedResults = useMemo(() => {
+    if (!query.trim()) return [];
     const localNames = new Set(localFiltered.map(f => f.name.toLowerCase()));
-    const deduped = liveResults.filter(f => !localNames.has(f.name.toLowerCase()));
-    return [...localFiltered, ...deduped];
+    return liveResults.filter(f => !localNames.has(f.name.toLowerCase())).slice(0, 8);
   }, [localFiltered, liveResults, query]);
+
+  const allResults = useMemo(() => [...localFiltered, ...packagedResults], [localFiltered, packagedResults]);
 
   const showRecent = query === "" && activeCuisine === "all";
 
@@ -577,28 +608,19 @@ export default function FoodSearch() {
             <span style={{ fontSize: 12, color: "#555" }}>
               {showRecent ? "Popular foods" : liveLoading ? "Searching…" : `${allResults.length} result${allResults.length !== 1 ? "s" : ""}`}
             </span>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              {query && liveResults.length > 0 && (
-                <div style={{ background: "#0a1520", border: "1px solid #2a4a6a", borderRadius: 6, padding: "3px 10px", fontSize: 11, color: "#6aabcf", display: "flex", alignItems: "center", gap: 5 }}>
-                🌐 Live search
-              </div>
-              )}
-              <div style={{ background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 6, padding: "3px 10px", fontSize: 11, color: "#8fbc8f", display: "flex", alignItems: "center", gap: 5 }}>📍 Aus/Asian DB</div>
-            </div>
+            <div style={{ background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 6, padding: "3px 10px", fontSize: 11, color: "#8fbc8f", display: "flex", alignItems: "center", gap: 5 }}>📍 Aus/Asian DB</div>
           </div>
 
-          {/* Food list */}
-          {allResults.length === 0 && !liveLoading ? (
+          {/* Curated foods (local database + generic staples) */}
+          {localFiltered.length === 0 && !liveLoading && packagedResults.length === 0 && !liveError ? (
             <div style={{ textAlign: "center", padding: "48px 20px", color: "#444", fontSize: 14 }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>{liveError ? "⚠️" : "🔍"}</div>
-              {liveError || `No foods found for "${query}"`}
+              <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
+              No foods found for "{query}"
               <br />
-              <span style={{ fontSize: 12, color: "#333", marginTop: 8, display: "block" }}>
-                {liveError ? "Your Aus/Asian database and barcode scanning still work fine." : "Try a different search term or use the scan button"}
-              </span>
+              <span style={{ fontSize: 12, color: "#333", marginTop: 8, display: "block" }}>Try a different search term or use the scan button</span>
             </div>
           ) : (
-            allResults.map(food => (
+            localFiltered.map(food => (
               <FoodCard
                 key={food.id}
                 food={food}
@@ -608,6 +630,33 @@ export default function FoodSearch() {
                 onAdd={handleAdd}
               />
             ))
+          )}
+
+          {/* Packaged/branded products — Open Food Facts + USDA, kept
+              separate so brand noise never crowds out the actual food */}
+          {query && (liveLoading || packagedResults.length > 0 || liveError) && (
+            <div style={{ marginTop: localFiltered.length > 0 ? 20 : 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase" }}>Packaged products</span>
+                <span style={{ background: "#0a1520", border: "1px solid #2a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, color: "#6aabcf" }}>🌐 Live search</span>
+              </div>
+              {liveLoading ? (
+                <div style={{ fontSize: 13, color: "#555", padding: "8px 0" }}>Searching…</div>
+              ) : liveError ? (
+                <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070" }}>{liveError}</div>
+              ) : (
+                packagedResults.map(food => (
+                  <FoodCard
+                    key={food.id}
+                    food={food}
+                    isExpanded={expandedId === food.id}
+                    onToggle={() => handleToggle(food.id)}
+                    defaultMeal={activeMeal}
+                    onAdd={handleAdd}
+                  />
+                ))
+              )}
+            </div>
           )}
         </div>
       </div>
