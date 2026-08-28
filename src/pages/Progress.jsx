@@ -8,6 +8,7 @@ import { Line, Bar } from "react-chartjs-2";
 import { useProfile } from "../hooks/useProfile";
 import { useHistory } from "../hooks/useHistory";
 import { todayLocalDate, dateNDaysAgo, streakFor, computeStreak } from "../lib/patterns";
+import LogoMark from "../components/LogoMark";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, Filler);
 
@@ -228,11 +229,7 @@ export default function Progress() {
 
       {/* ── sidebar ── */}
       <div style={sidebarStyle}>
-        <div style={{ width: 28, height: 28, background: C.green, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill={C.bg}>
-            <path d="M8 2C5.5 2 4 4 4 6c0 3 4 8 4 8s4-5 4-8c0-2-1.5-4-4-4zm0 5.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
-          </svg>
-        </div>
+        <LogoMark size={28} />
         <div style={sbIconBase}   title="Dashboard"   onClick={() => navigate("/dashboard")}><i className="ti ti-layout-dashboard" /></div>
         <div style={sbIconBase}   title="Food search"  onClick={() => navigate("/food")}><i className="ti ti-search" /></div>
         <div style={sbIconActive} title="Progress"><i className="ti ti-chart-line" /></div>

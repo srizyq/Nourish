@@ -1,6 +1,7 @@
 // src/pages/MealPlans.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import LogoMark from "../components/LogoMark";
 
 const C = {
   bg:        "#0f0f0f",
@@ -37,11 +38,7 @@ function Sidebar({ navigate }) {
       display: "flex", flexDirection: "column", alignItems: "center",
       padding: "20px 0", gap: 28, flexShrink: 0,
     }}>
-      <div style={{ width: 28, height: 28, background: C.green, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill={C.bg}>
-          <path d="M8 2C5.5 2 4 4 4 6c0 3 4 8 4 8s4-5 4-8c0-2-1.5-4-4-4zm0 5.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
-        </svg>
-      </div>
+      <LogoMark size={28} />
       <div style={sbIconBase}   title="Dashboard"  onClick={() => navigate("/dashboard")}><i className="ti ti-layout-dashboard" /></div>
       <div style={sbIconBase}   title="Food search" onClick={() => navigate("/food")}><i className="ti ti-search" /></div>
       <div style={sbIconBase}   title="Progress"    onClick={() => navigate("/progress")}><i className="ti ti-chart-line" /></div>

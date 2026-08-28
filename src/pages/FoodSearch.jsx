@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from 'react-router-dom';
 import { useFoodLogs } from '../hooks/useFoodLogs';
 import { todayLocalDate } from '../lib/patterns';
+import LogoMark from '../components/LogoMark';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -352,9 +353,7 @@ export default function FoodSearch() {
 
       {/* ── Sidebar ── */}
       <div style={{ width: 52, background: "#0f0f0f", borderRight: "1px solid #1e1e1e", display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 0", gap: 28, flexShrink: 0, position: "sticky", top: 0, height: "100vh" }}>
-        <div style={{ width: 28, height: 28, background: "#8fbc8f", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="#0f0f0f"><path d="M8 2C5.5 2 4 4 4 6c0 3 4 8 4 8s4-5 4-8c0-2-1.5-4-4-4zm0 5.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" /></svg>
-        </div>
+        <LogoMark size={28} />
         <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, cursor: "pointer", color: "#666", fontSize: 18 }} title="Dashboard" onClick={() => navigate("/dashboard")}><i className="ti ti-layout-dashboard" /></div>
         <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, cursor: "pointer", color: "#8fbc8f", background: "#0f1a0f", fontSize: 18 }} title="Food search"><i className="ti ti-search" /></div>
         <div style={{ width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, cursor: "pointer", color: "#666", fontSize: 18 }} title="Progress" onClick={() => navigate("/progress")}><i className="ti ti-chart-line" /></div>
