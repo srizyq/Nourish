@@ -105,7 +105,7 @@ export default function Profile() {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0f0f0f', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0f0f0f', fontFamily: "'DM Sans', sans-serif" }}>
       <AppNav active="profile" initials={initials} />
 
       <div className="app-content-pad" style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>

@@ -195,6 +195,37 @@ async function searchOpenFoodFacts(q) {
 // food and its variations, then other food" (not excluded) is what renders.
 const USDA_ENCODE_PARAM = (s) => encodeURIComponent(s).replace(/[()]/g, c => c === "(" ? "%28" : "%29");
 
+// USDA's corpus is American English and doesn't contain plenty of everyday
+// Australian grocery terms at all (e.g. "wholemeal" — confirmed by direct
+// API testing, zero relevant matches — while "whole wheat" finds "Bread,
+// whole-wheat, commercially prepared" immediately). Translate the query
+// sent to USDA only; Open Food Facts (AU-scoped) and the local Aus/Asian
+// list already understand the original AU wording, so they're untouched.
+const AU_TO_US_FOOD_TERMS = [
+  [/\bwholemeal\b/g, "whole wheat"],
+  [/\bcapsicum(s)?\b/g, "bell pepper"],
+  [/\bminced?\b/g, "ground"],
+  [/\bprawns?\b/g, "shrimp"],
+  [/\bcoriander\b/g, "cilantro"],
+  [/\brockmelon\b/g, "cantaloupe"],
+  [/\bicing sugar\b/g, "powdered sugar"],
+  [/\bcaster sugar\b/g, "superfine sugar"],
+  [/\brocket\b/g, "arugula"],
+  [/\bspring onions?\b/g, "scallion"],
+  [/\bsilverbeet\b/g, "chard"],
+  [/\bwitlof\b/g, "endive"],
+  [/\bcos lettuce\b/g, "romaine lettuce"],
+  [/\bbicarb(onate)? soda\b/g, "baking soda"],
+  [/\blollies\b/g, "candy"],
+  [/\blolly\b/g, "candy"],
+];
+
+function toUSFoodTerms(q) {
+  let out = q.toLowerCase();
+  for (const [pattern, replacement] of AU_TO_US_FOOD_TERMS) out = out.replace(pattern, replacement);
+  return out;
+}
+
 async function fetchUSDADataType(q, dataType, pageSize, apiKey) {
   const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=${pageSize}&dataType=${USDA_ENCODE_PARAM(dataType)}&api_key=${apiKey}`;
   // USDA's API gateway has occasional one-off 400s unrelated to the query
@@ -208,27 +239,54 @@ async function fetchUSDADataType(q, dataType, pageSize, apiKey) {
 }
 
 function usdaLeadingWordsMatch(description, queryWords) {
-  const words = description.toLowerCase().replace(/[,()]/g, " ").split(/\s+/).filter(Boolean);
-  return queryWords.every((w, i) => words[i] === w);
+  const words = description.toLowerCase().replace(/[,()-]/g, " ").split(/\s+/).filter(Boolean);
+  // Forward: the description literally starts with the query words in
+  // order — covers single-word queries ("chicken" vs "Chicken, ground,
+  // raw") and queries already in USDA's noun-first convention ("chicken
+  // breast" vs "Chicken, breast, boneless, ...").
+  if (queryWords.every((w, i) => words[i] === w)) return true;
+  // Noun-last: everyday queries are written adjective-first ("whole wheat
+  // bread"), but USDA's convention is noun-first ("Bread, whole-wheat,
+  // ...") — match if the description's leading word is the query's last
+  // word (the noun), and the remaining query words show up right after it.
+  const lastWord = queryWords[queryWords.length - 1];
+  if (queryWords.length > 1 && words[0] === lastWord) {
+    const rest = queryWords.slice(0, -1);
+    const window = words.slice(1, 1 + rest.length + 2);
+    return rest.every(w => window.includes(w));
+  }
+  return false;
 }
 
 async function searchUSDAFoods(q) {
   const apiKey = import.meta.env.VITE_USDA_API_KEY;
   if (!apiKey) return [];
+  const usdaQuery = toUSFoodTerms(q);
   const [foundation, srLegacy, fndds] = await Promise.all([
-    fetchUSDADataType(q, "Foundation", 20, apiKey).catch(() => []),
-    fetchUSDADataType(q, "SR Legacy", 25, apiKey).catch(() => []),
-    fetchUSDADataType(q, "Survey (FNDDS)", 25, apiKey).catch(() => []),
+    fetchUSDADataType(usdaQuery, "Foundation", 20, apiKey).catch(() => []),
+    fetchUSDADataType(usdaQuery, "SR Legacy", 25, apiKey).catch(() => []),
+    fetchUSDADataType(usdaQuery, "Survey (FNDDS)", 25, apiKey).catch(() => []),
   ]);
 
-  const queryWords = q.toLowerCase().trim().split(/\s+/).filter(Boolean);
-  const rankByLeadingMatch = (foods) => {
-    const matched = foods.filter(f => usdaLeadingWordsMatch(f.description, queryWords));
-    const rest = foods.filter(f => !usdaLeadingWordsMatch(f.description, queryWords));
-    return [...matched, ...rest];
-  };
+  const queryWords = usdaQuery.trim().split(/\s+/).filter(Boolean);
+  const DATA_TYPE_PRIORITY = { "Foundation": 0, "SR Legacy": 1, "Survey (FNDDS)": 2 };
 
-  const merged = [...foundation, ...rankByLeadingMatch(srLegacy), ...rankByLeadingMatch(fndds)].slice(0, 40);
+  // Rank across all three datasets together, not dataset-by-dataset then
+  // concatenated — otherwise an entire dataset's unmatched "junk" (e.g.
+  // Foundation's "Flour, whole wheat" for a "whole wheat bread" query)
+  // still outranks another dataset's genuinely matched results (SR
+  // Legacy's "Bread, whole-wheat, commercially prepared") just because its
+  // dataset came first. Matches sort first; ties fall back to preferring
+  // the cleaner datasets, but a real match always beats a non-match.
+  const scored = [...foundation, ...srLegacy, ...fndds].map(f => ({
+    food: f,
+    matched: usdaLeadingWordsMatch(f.description, queryWords),
+  }));
+  scored.sort((a, b) => {
+    if (a.matched !== b.matched) return a.matched ? -1 : 1;
+    return (DATA_TYPE_PRIORITY[a.food.dataType] ?? 3) - (DATA_TYPE_PRIORITY[b.food.dataType] ?? 3);
+  });
+  const merged = scored.map(s => s.food).slice(0, 40);
 
   return merged.map(f => {
     const nutrients = f.foodNutrients || [];
@@ -937,7 +995,7 @@ export default function FoodSearch() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0f0f0f", color: "#e8e8e8", fontFamily: "'DM Sans', sans-serif", display: "flex" }}>
+    <div style={{ height: "100vh", overflow: "hidden", background: "#0f0f0f", color: "#e8e8e8", fontFamily: "'DM Sans', sans-serif", display: "flex" }}>
 
       <AppNav active="food" />
 
