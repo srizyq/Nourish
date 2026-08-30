@@ -120,3 +120,70 @@ export async function upsertCheckin(userId, date, fields) {
   if (error) throw error;
   return data;
 }
+
+// ─── custom_foods ──────────────────────────────────────────────────────────
+
+export async function getCustomFoods(userId) {
+  const { data, error } = await supabase
+    .from('custom_foods')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function addCustomFood(userId, food) {
+  const { data, error } = await supabase
+    .from('custom_foods')
+    .insert({
+      user_id: userId,
+      name: food.name,
+      brand: food.brand || null,
+      serving_label: food.servingLabel || '1 serving',
+      serving_grams: food.servingGrams || null,
+      calories: food.cal || 0,
+      protein_g: food.protein || 0,
+      carbs_g: food.carbs || 0,
+      fat_g: food.fat || 0,
+      fibre_g: food.fibre || 0,
+      sodium_mg: food.sodium || 0,
+      sugar_g: food.sugar || 0,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteCustomFood(id) {
+  const { error } = await supabase.from('custom_foods').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ─── saved_meals ───────────────────────────────────────────────────────────
+
+export async function getSavedMeals(userId) {
+  const { data, error } = await supabase
+    .from('saved_meals')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function addSavedMeal(userId, name, items) {
+  const { data, error } = await supabase
+    .from('saved_meals')
+    .insert({ user_id: userId, name, items })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteSavedMeal(id) {
+  const { error } = await supabase.from('saved_meals').delete().eq('id', id);
+  if (error) throw error;
+}

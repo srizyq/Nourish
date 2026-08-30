@@ -1,6 +1,8 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useFoodLogs } from '../hooks/useFoodLogs';
 import { useRecentFoods } from '../hooks/useRecentFoods';
+import { useCustomFoods } from '../hooks/useCustomFoods';
+import { useSavedMeals } from '../hooks/useSavedMeals';
 import { todayLocalDate } from '../lib/patterns';
 import AppNav from '../components/AppNav';
 
@@ -37,6 +39,7 @@ const CATEGORY_STYLES = {
   sweet:     { icon: "ti-cookie",  color: "#d98fb0" },
   beverage:  { icon: "ti-cup",     color: "#6aabcf" },
   other:     { icon: "ti-package", color: "#888888" },
+  custom:    { icon: "ti-stars",   color: "#b48fd9" },
 };
 
 // Checked in order — more specific animal-protein categories first, so e.g.
@@ -177,17 +180,23 @@ async function searchOpenFoodFacts(q) {
 // Requires a free key from https://fdc.nal.usda.gov/api-key-signup — the
 // nutrition data itself is universal, not US-specific, so this works fine
 // for an Australian app.
-async function searchUSDAFoods(q) {
-  const apiKey = import.meta.env.VITE_USDA_API_KEY;
-  if (!apiKey) return [];
-  // dataType is a comma-delimited list — encode each value individually and
-  // keep the commas literal, since USDA splits on them server-side.
-  // encodeURIComponent deliberately leaves ( and ) unescaped (an old spec
-  // quirk), but USDA's API gateway 400s on literal parens in the query
-  // string, so they need escaping by hand.
-  const encodeParam = (s) => encodeURIComponent(s).replace(/[()]/g, c => c === "(" ? "%28" : "%29");
-  const dataTypes = ["Foundation", "SR Legacy", "Survey (FNDDS)"].map(encodeParam).join(",");
-  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=25&dataType=${dataTypes}&api_key=${apiKey}`;
+//
+// USDA's own relevance ranking is unusable for a single broad word: querying
+// all three data types together for "chicken" buries "Chicken, breast,
+// boneless, skinless, raw" ~200 results deep behind things like "Orange
+// chicken" and "Biryani with chicken" — confirmed by direct API testing.
+// Querying each data type separately fixes this: Foundation alone is a
+// small, clean "plain ingredient" dataset with no dish/brand noise, so it's
+// always trustworthy in full. SR Legacy and Survey (FNDDS) mix in branded
+// items ("KFC, Popcorn Chicken") and stylised dish names ("Kung pao
+// chicken") — for those, only entries where the query is literally the
+// food's leading word(s) (e.g. "Chicken, ground, raw") are promoted to the
+// top; everything else is demoted below rather than dropped, so "the actual
+// food and its variations, then other food" (not excluded) is what renders.
+const USDA_ENCODE_PARAM = (s) => encodeURIComponent(s).replace(/[()]/g, c => c === "(" ? "%28" : "%29");
+
+async function fetchUSDADataType(q, dataType, pageSize, apiKey) {
+  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=${pageSize}&dataType=${USDA_ENCODE_PARAM(dataType)}&api_key=${apiKey}`;
   // USDA's API gateway has occasional one-off 400s unrelated to the query
   // itself (confirmed by retrying the exact same request) — one retry
   // absorbs that.
@@ -195,7 +204,33 @@ async function searchUSDAFoods(q) {
   if (!res.ok) res = await fetch(url);
   if (!res.ok) throw new Error(`USDA search failed: ${res.status}`);
   const data = await res.json();
-  return (data.foods || []).map(f => {
+  return data.foods || [];
+}
+
+function usdaLeadingWordsMatch(description, queryWords) {
+  const words = description.toLowerCase().replace(/[,()]/g, " ").split(/\s+/).filter(Boolean);
+  return queryWords.every((w, i) => words[i] === w);
+}
+
+async function searchUSDAFoods(q) {
+  const apiKey = import.meta.env.VITE_USDA_API_KEY;
+  if (!apiKey) return [];
+  const [foundation, srLegacy, fndds] = await Promise.all([
+    fetchUSDADataType(q, "Foundation", 20, apiKey).catch(() => []),
+    fetchUSDADataType(q, "SR Legacy", 25, apiKey).catch(() => []),
+    fetchUSDADataType(q, "Survey (FNDDS)", 25, apiKey).catch(() => []),
+  ]);
+
+  const queryWords = q.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  const rankByLeadingMatch = (foods) => {
+    const matched = foods.filter(f => usdaLeadingWordsMatch(f.description, queryWords));
+    const rest = foods.filter(f => !usdaLeadingWordsMatch(f.description, queryWords));
+    return [...matched, ...rest];
+  };
+
+  const merged = [...foundation, ...rankByLeadingMatch(srLegacy), ...rankByLeadingMatch(fndds)].slice(0, 40);
+
+  return merged.map(f => {
     const nutrients = f.foodNutrients || [];
     const get = (name) => {
       const n = nutrients.find(n => n.nutrientName?.toLowerCase().includes(name));
@@ -354,6 +389,223 @@ function ScanModal({ onClose, onAddFood, defaultMeal }) {
   );
 }
 
+// ─── Modal shell (shared by the create-food / saved-meals / builder modals) ──
+
+function ModalShell({ title, onClose, children, maxWidth = 460 }) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#141414", border: "1px solid #2a2a2a", borderRadius: 16, width: "100%", maxWidth, maxHeight: "85vh", overflowY: "auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #1e1e1e", position: "sticky", top: 0, background: "#141414", zIndex: 10 }}>
+          <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 15, color: "#e8e8e8" }}>{title}</span>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
+        </div>
+        <div style={{ padding: 20 }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+const fieldStyle = { width: "100%", background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "9px 12px", color: "#e8e8e8", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
+const labelStyle = { fontSize: 11, color: "#777", marginBottom: 5, display: "block" };
+
+// ─── Create a custom food ───────────────────────────────────────────────────
+
+function CreateFoodModal({ onClose, onCreate, initialName }) {
+  const [name, setName] = useState(initialName || "");
+  const [brand, setBrand] = useState("");
+  const [servingLabel, setServingLabel] = useState("1 serving");
+  const [servingGrams, setServingGrams] = useState("");
+  const [cal, setCal] = useState("");
+  const [protein, setProtein] = useState("");
+  const [carbs, setCarbs] = useState("");
+  const [fat, setFat] = useState("");
+  const [fibre, setFibre] = useState("");
+  const [sodium, setSodium] = useState("");
+  const [sugar, setSugar] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const valid = name.trim() && Number(cal) >= 0 && cal !== "";
+
+  async function submit() {
+    if (!valid || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onCreate({
+        name: name.trim(),
+        brand: brand.trim() || null,
+        servingLabel: servingLabel.trim() || "1 serving",
+        servingGrams: servingGrams ? Number(servingGrams) : null,
+        cal: Number(cal) || 0,
+        protein: Number(protein) || 0,
+        carbs: Number(carbs) || 0,
+        fat: Number(fat) || 0,
+        fibre: Number(fibre) || 0,
+        sodium: Number(sodium) || 0,
+        sugar: Number(sugar) || 0,
+      });
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't save this food. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <ModalShell title="Create a custom food" onClose={onClose}>
+      <div style={{ display: "grid", gap: 12 }}>
+        <div>
+          <label style={labelStyle}>Food name *</label>
+          <input style={fieldStyle} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Mum's lasagna" />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <label style={labelStyle}>Brand (optional)</label>
+            <input style={fieldStyle} value={brand} onChange={e => setBrand(e.target.value)} />
+          </div>
+          <div>
+            <label style={labelStyle}>Serving size</label>
+            <input style={fieldStyle} value={servingLabel} onChange={e => setServingLabel(e.target.value)} placeholder="1 serving" />
+          </div>
+        </div>
+        <div>
+          <label style={labelStyle}>Serving weight in grams (optional, for unit conversion)</label>
+          <input style={fieldStyle} type="number" min="0" value={servingGrams} onChange={e => setServingGrams(e.target.value)} placeholder="e.g. 250" />
+        </div>
+        <div>
+          <label style={labelStyle}>Calories *</label>
+          <input style={fieldStyle} type="number" min="0" value={cal} onChange={e => setCal(e.target.value)} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+          <div><label style={labelStyle}>Protein (g)</label><input style={fieldStyle} type="number" min="0" value={protein} onChange={e => setProtein(e.target.value)} /></div>
+          <div><label style={labelStyle}>Carbs (g)</label><input style={fieldStyle} type="number" min="0" value={carbs} onChange={e => setCarbs(e.target.value)} /></div>
+          <div><label style={labelStyle}>Fat (g)</label><input style={fieldStyle} type="number" min="0" value={fat} onChange={e => setFat(e.target.value)} /></div>
+          <div><label style={labelStyle}>Fibre (g)</label><input style={fieldStyle} type="number" min="0" value={fibre} onChange={e => setFibre(e.target.value)} /></div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div><label style={labelStyle}>Sodium (mg)</label><input style={fieldStyle} type="number" min="0" value={sodium} onChange={e => setSodium(e.target.value)} /></div>
+          <div><label style={labelStyle}>Sugar (g)</label><input style={fieldStyle} type="number" min="0" value={sugar} onChange={e => setSugar(e.target.value)} /></div>
+        </div>
+        {error && <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070" }}>{error}</div>}
+        <button onClick={submit} disabled={!valid || saving} style={{ background: !valid || saving ? "#2a2a2a" : "#8fbc8f", border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, color: !valid || saving ? "#666" : "#0f0f0f", cursor: !valid || saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+          {saving ? "Saving…" : "Save custom food"}
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
+// ─── Saved meals (MyFitnessPal-style "Meals"/recipes) ──────────────────────
+
+function SavedMealsModal({ meals, loading, onClose, onLog, onDelete, onStartBuilder }) {
+  return (
+    <ModalShell title="Saved meals" onClose={onClose}>
+      <button onClick={onStartBuilder} style={{ width: "100%", background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "10px", fontSize: 13, fontWeight: 600, color: "#8fbc8f", cursor: "pointer", fontFamily: "inherit", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+        <i className="ti ti-plus" /> Build a new meal
+      </button>
+      {loading ? null : meals.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "24px", color: "#444", fontSize: 13, background: "#181818", border: "1px dashed #2a2a2a", borderRadius: 10 }}>
+          No saved meals yet. Build one from foods you log often.
+        </div>
+      ) : (
+        meals.map(meal => {
+          const items = meal.items || [];
+          const totalCal = items.reduce((s, it) => s + (Number(it.cal) || 0), 0);
+          return (
+            <div key={meal.id} style={{ background: "#181818", border: "1px solid #1e1e1e", borderRadius: 10, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, color: "#e8e8e8" }}>{meal.name}</div>
+                <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{items.length} item{items.length !== 1 ? "s" : ""} · {Math.round(totalCal)} kcal</div>
+              </div>
+              <button onClick={() => onLog(meal)} style={{ background: "#8fbc8f", border: "none", borderRadius: 7, padding: "7px 12px", fontSize: 12, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Log all</button>
+              <button onClick={() => onDelete(meal.id)} style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 9px", color: "#c07070", cursor: "pointer" }}><i className="ti ti-trash" /></button>
+            </div>
+          );
+        })
+      )}
+    </ModalShell>
+  );
+}
+
+// ─── Meal builder review — save what's been added to the builder cart as a
+//    named saved meal, and optionally log it right away ──────────────────
+
+function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal }) {
+  const [name, setName] = useState("");
+  const [logNow, setLogNow] = useState(true);
+  const [meal, setMeal] = useState(defaultMeal);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const totals = items.reduce((t, it) => ({
+    cal: t.cal + (Number(it.cal) || 0),
+    protein: t.protein + (Number(it.protein) || 0),
+    carbs: t.carbs + (Number(it.carbs) || 0),
+    fat: t.fat + (Number(it.fat) || 0),
+  }), { cal: 0, protein: 0, carbs: 0, fat: 0 });
+
+  async function submit() {
+    if (!name.trim() || items.length === 0 || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(name.trim(), items, logNow ? meal : null);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't save this meal. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <ModalShell title={`Meal builder (${items.length})`} onClose={onClose}>
+      {items.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "20px", color: "#444", fontSize: 13 }}>
+          No items yet — close this, then tap "+ Add to meal" on any food.
+        </div>
+      ) : (
+        <>
+          <div style={{ marginBottom: 14 }}>
+            {items.map((it, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < items.length - 1 ? "1px solid #1e1e1e" : "none" }}>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: "#ccc", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</div>
+                <div style={{ fontSize: 12, color: "#8fbc8f", flexShrink: 0 }}>{Math.round(it.cal)} kcal</div>
+                <button onClick={() => onRemove(i)} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 15, padding: 0 }}>✕</button>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 16, marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid #1e1e1e", fontSize: 12, color: "#555" }}>
+            <span><span style={{ color: "#8fbc8f", fontWeight: 600 }}>{Math.round(totals.cal)}</span> kcal</span>
+            <span>P <span style={{ color: "#888" }}>{Math.round(totals.protein)}g</span></span>
+            <span>C <span style={{ color: "#888" }}>{Math.round(totals.carbs)}g</span></span>
+            <span>F <span style={{ color: "#888" }}>{Math.round(totals.fat)}g</span></span>
+          </div>
+          <label style={labelStyle}>Meal name *</label>
+          <input style={{ ...fieldStyle, marginBottom: 12 }} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. My usual breakfast" />
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#ccc", marginBottom: logNow ? 12 : 16, cursor: "pointer" }}>
+            <input type="checkbox" checked={logNow} onChange={e => setLogNow(e.target.checked)} />
+            Also log to today
+          </label>
+          {logNow && (
+            <select value={meal} onChange={e => setMeal(e.target.value)} style={{ ...fieldStyle, marginBottom: 16, cursor: "pointer" }}>
+              {MEALS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          )}
+          {error && <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070", marginBottom: 12 }}>{error}</div>}
+          <button onClick={submit} disabled={!name.trim() || saving} style={{ width: "100%", background: !name.trim() || saving ? "#2a2a2a" : "#8fbc8f", border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, color: !name.trim() || saving ? "#666" : "#0f0f0f", cursor: !name.trim() || saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+            {saving ? "Saving…" : logNow ? `Save meal & log to ${meal}` : "Save meal"}
+          </button>
+        </>
+      )}
+    </ModalShell>
+  );
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function MacroPill({ value, unit = "g", label, color }) {
@@ -365,7 +617,7 @@ function MacroPill({ value, unit = "g", label, color }) {
   );
 }
 
-function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd }) {
+function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd, addLabel, onDelete }) {
   const [amount, setAmount] = useState(1);
   const [unit, setUnit] = useState("serving");
   const [meal, setMeal] = useState(defaultMeal);
@@ -383,7 +635,10 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd }) {
       <div onClick={onToggle} style={{ display: "flex", alignItems: "center", padding: "11px 14px", gap: 12 }}>
         <div style={{ width: 40, height: 40, background: catStyle.color + "22", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, color: catStyle.color }}><i className={`ti ${catStyle.icon}`} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, color: "#e8e8e8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{food.name}</div>
+          <div style={{ fontSize: 14, color: "#e8e8e8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {food.name}
+            {food.source === "custom" && <span style={{ marginLeft: 8, fontSize: 10, color: "#b48fd9", border: "1px solid #b48fd950", borderRadius: 5, padding: "1px 6px", verticalAlign: "middle" }}>Custom</span>}
+          </div>
           <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{food.meta}</div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -413,14 +668,20 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd }) {
             meal={meal} setMeal={setMeal}
             onAdd={() => onAdd(scaled, meal)}
             disabled={!servings}
+            addLabel={addLabel}
           />
+          {onDelete && (
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ marginTop: 10, width: "100%", background: "none", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px", fontSize: 12, color: "#c07070", cursor: "pointer", fontFamily: "inherit" }}>
+                <i className="ti ti-trash" style={{ marginRight: 5 }} />Delete custom food
+              </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function AddControls({ amount, setAmount, unit, setUnit, meal, setMeal, onAdd, disabled }) {
+function AddControls({ amount, setAmount, unit, setUnit, meal, setMeal, onAdd, disabled, addLabel }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", gap: 8 }}>
@@ -441,7 +702,7 @@ function AddControls({ amount, setAmount, unit, setUnit, meal, setMeal, onAdd, d
         disabled={disabled}
         style={{ background: disabled ? "#2a2a2a" : "#8fbc8f", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, color: disabled ? "#666" : "#0f0f0f", cursor: disabled ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}
       >
-        + Add to {meal}
+        {addLabel ? addLabel : `+ Add to ${meal}`}
       </button>
     </div>
   );
@@ -461,6 +722,8 @@ function Toast({ message, onDone }) {
 export default function FoodSearch() {
   const { addFood: addFoodLog } = useFoodLogs(todayLocalDate());
   const { rows: recentRows, loading: recentLoading, refetch: refetchRecent } = useRecentFoods(6);
+  const customFoods = useCustomFoods();
+  const savedMeals = useSavedMeals();
   const [query, setQuery] = useState("");
   const [activeCuisine, setActiveCuisine] = useState("all");
   const [activeMeal, setActiveMeal] = useState("Lunch");
@@ -468,6 +731,11 @@ export default function FoodSearch() {
   const [mealDropdownOpen, setMealDropdownOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [scanOpen, setScanOpen] = useState(false);
+  const [createFoodOpen, setCreateFoodOpen] = useState(false);
+  const [savedMealsOpen, setSavedMealsOpen] = useState(false);
+  const [builderMode, setBuilderMode] = useState(false);
+  const [builderItems, setBuilderItems] = useState([]);
+  const [builderReviewOpen, setBuilderReviewOpen] = useState(false);
 
   // Live external search state — USDA (generic foods, comprehensive across
   // every category) and Open Food Facts (packaged/branded products, AU-
@@ -491,6 +759,36 @@ export default function FoodSearch() {
     }
     return FOODS.filter(f => f.name.toLowerCase().includes(q) || f.meta.toLowerCase().includes(q));
   }, [query, activeCuisine]);
+
+  // Foods the user has created themselves — shown alongside everything
+  // else, matched by name when searching.
+  const customAsFoods = useMemo(() => customFoods.rows.map(row => ({
+    id: "custom_" + row.id,
+    customId: row.id,
+    category: "custom",
+    name: row.name,
+    meta: (row.brand ? row.brand + " · " : "") + (row.serving_label || "1 serving"),
+    cuisine: "all",
+    cal: Number(row.calories) || 0,
+    protein: Number(row.protein_g) || 0,
+    carbs: Number(row.carbs_g) || 0,
+    fat: Number(row.fat_g) || 0,
+    fibre: Number(row.fibre_g) || 0,
+    sodium: Number(row.sodium_mg) || 0,
+    sugar: Number(row.sugar_g) || 0,
+    servingGrams: row.serving_grams || 100,
+    source: "custom",
+  })), [customFoods.rows]);
+
+  const customFiltered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    // Only fold custom foods into a specific cuisine browse if actively
+    // searching — they don't have real cuisines, so "all"/no-query is the
+    // only browsing state they belong in.
+    if (!q && activeCuisine !== "all") return [];
+    if (!q) return customAsFoods;
+    return customAsFoods.filter(f => f.name.toLowerCase().includes(q));
+  }, [customAsFoods, query, activeCuisine]);
 
   const runLiveSearch = useCallback(async (q) => {
     setLiveLoading(true);
@@ -532,7 +830,9 @@ export default function FoodSearch() {
   }, [localFiltered, genericResults, query]);
 
   const foodsResults = useMemo(() => {
-    const combined = [...localFiltered, ...genericFiltered];
+    // Custom foods first — they're the user's own data, so the most
+    // relevant match for their own search.
+    const combined = [...customFiltered, ...localFiltered, ...genericFiltered];
     const seen = new Set();
     return combined.filter(f => {
       const key = f.name.toLowerCase();
@@ -540,7 +840,7 @@ export default function FoodSearch() {
       seen.add(key);
       return true;
     });
-  }, [localFiltered, genericFiltered]);
+  }, [customFiltered, localFiltered, genericFiltered]);
 
   // Packaged/branded results (Open Food Facts, AU-scoped) shown in their
   // own demoted section below — this is what stops a search like "chicken
@@ -576,15 +876,64 @@ export default function FoodSearch() {
     };
   }), [recentRows]);
 
-  async function handleAdd(food, meal) {
+  async function logFood(food, meal) {
     await addFoodLog(food, meal);
     refetchRecent();
     setToast(`${food.name} added to ${meal}`);
     setExpandedId(null);
   }
 
+  function addToBuilder(food) {
+    setBuilderItems(prev => [...prev, food]);
+    setToast(`${food.name} added to meal builder`);
+    setExpandedId(null);
+  }
+
+  function handleAdd(food, meal) {
+    if (builderMode) return addToBuilder(food);
+    return logFood(food, meal);
+  }
+
+  async function handleDeleteCustom(food) {
+    await customFoods.remove(food.customId);
+    setToast(`${food.name} removed`);
+    setExpandedId(null);
+  }
+
   function handleToggle(id) {
     setExpandedId(prev => (prev === id ? null : id));
+  }
+
+  function cancelBuilder() {
+    setBuilderMode(false);
+    setBuilderItems([]);
+    setBuilderReviewOpen(false);
+  }
+
+  async function handleSaveBuilderMeal(name, items, mealToLog) {
+    const snapshot = items.map(it => ({
+      name: it.name, cal: it.cal, protein: it.protein, carbs: it.carbs,
+      fat: it.fat, fibre: it.fibre || 0, sodium: it.sodium || 0, sugar: it.sugar || 0,
+    }));
+    await savedMeals.create(name, snapshot);
+    if (mealToLog) {
+      for (const it of items) {
+        await addFoodLog(it, mealToLog);
+      }
+      refetchRecent();
+    }
+    setToast(`Saved "${name}"${mealToLog ? ` and logged to ${mealToLog}` : ""}`);
+    cancelBuilder();
+  }
+
+  async function handleLogSavedMeal(savedMeal) {
+    const items = savedMeal.items || [];
+    for (const it of items) {
+      await addFoodLog(it, activeMeal);
+    }
+    refetchRecent();
+    setToast(`${savedMeal.name} logged to ${activeMeal}`);
+    setSavedMealsOpen(false);
   }
 
   return (
@@ -611,7 +960,8 @@ export default function FoodSearch() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            {["⟳", "🔖"].map(icon => <div key={icon} style={{ width: 32, height: 32, background: "#181818", border: "1px solid #1e1e1e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, color: "#666" }}>{icon}</div>)}
+            <div onClick={() => setCreateFoodOpen(true)} title="Create a custom food" style={{ width: 32, height: 32, background: "#181818", border: "1px solid #1e1e1e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, color: "#888" }}><i className="ti ti-plus" /></div>
+            <div onClick={() => setSavedMealsOpen(true)} title="Saved meals" style={{ width: 32, height: 32, background: "#181818", border: "1px solid #1e1e1e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, color: "#888" }}><i className="ti ti-bookmark" /></div>
           </div>
         </div>
 
@@ -663,6 +1013,7 @@ export default function FoodSearch() {
                     onToggle={() => handleToggle(food.id)}
                     defaultMeal={activeMeal}
                     onAdd={handleAdd}
+                    addLabel={builderMode ? "+ Add to meal" : undefined}
                   />
                 ))
               )}
@@ -685,7 +1036,12 @@ export default function FoodSearch() {
               <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
               No foods found for "{query}"
               <br />
-              <span style={{ fontSize: 12, color: "#333", marginTop: 8, display: "block" }}>Try a different search term or use the scan button</span>
+              <span style={{ fontSize: 12, color: "#333", marginTop: 8, display: "block" }}>Try a different search term, use the scan button, or create it yourself</span>
+              {query && (
+                <button onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 16, background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "9px 16px", fontSize: 13, color: "#8fbc8f", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <i className="ti ti-plus" /> Create "{query}" as a custom food
+                </button>
+              )}
             </div>
           ) : (
             foodsResults.map(food => (
@@ -696,8 +1052,19 @@ export default function FoodSearch() {
                 onToggle={() => handleToggle(food.id)}
                 defaultMeal={activeMeal}
                 onAdd={handleAdd}
+                addLabel={builderMode ? "+ Add to meal" : undefined}
+                onDelete={food.source === "custom" ? () => handleDeleteCustom(food) : undefined}
               />
             ))
+          )}
+
+          {/* Can't find it — always available while searching, not just on
+              a dead-end, matching MyFitnessPal's "Can't find it? Add a food"
+              pattern */}
+          {query && !liveLoading && foodsResults.length > 0 && (
+            <div onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 14, textAlign: "center", padding: "10px", color: "#666", fontSize: 12, cursor: "pointer", border: "1px dashed #2a2a2a", borderRadius: 8 }}>
+              <i className="ti ti-plus" style={{ marginRight: 5 }} />Can't find "{query}"? Create a custom food
+            </div>
           )}
 
           {/* Packaged/branded products — Open Food Facts, AU-scoped, kept
@@ -721,6 +1088,7 @@ export default function FoodSearch() {
                     onToggle={() => handleToggle(food.id)}
                     defaultMeal={activeMeal}
                     onAdd={handleAdd}
+                    addLabel={builderMode ? "+ Add to meal" : undefined}
                   />
                 ))
               )}
@@ -733,12 +1101,56 @@ export default function FoodSearch() {
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
+      {/* Meal builder floating bar */}
+      {builderMode && (
+        <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", background: "#141414", border: "1px solid #4a7a4a", borderRadius: 12, padding: "10px 12px 10px 18px", display: "flex", alignItems: "center", gap: 12, zIndex: 90, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+          <span style={{ fontSize: 13, color: "#8fbc8f" }}>Building meal · {builderItems.length} item{builderItems.length !== 1 ? "s" : ""}</span>
+          <button onClick={() => setBuilderReviewOpen(true)} style={{ background: "#8fbc8f", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "inherit" }}>Review & save</button>
+          <button onClick={cancelBuilder} style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "#888", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+        </div>
+      )}
+
       {/* Scan modal */}
       {scanOpen && (
         <ScanModal
           onClose={() => setScanOpen(false)}
           defaultMeal={activeMeal}
           onAddFood={async (food, meal) => { await addFoodLog(food, meal); refetchRecent(); setToast(`${food.name} added to ${meal}`); }}
+        />
+      )}
+
+      {/* Create a custom food */}
+      {createFoodOpen && (
+        <CreateFoodModal
+          onClose={() => setCreateFoodOpen(false)}
+          initialName={query}
+          onCreate={async (food) => {
+            await customFoods.create(food);
+            setToast(`"${food.name}" saved as a custom food`);
+          }}
+        />
+      )}
+
+      {/* Saved meals */}
+      {savedMealsOpen && (
+        <SavedMealsModal
+          meals={savedMeals.rows}
+          loading={savedMeals.loading}
+          onClose={() => setSavedMealsOpen(false)}
+          onLog={handleLogSavedMeal}
+          onDelete={(id) => savedMeals.remove(id)}
+          onStartBuilder={() => { setSavedMealsOpen(false); setBuilderMode(true); setBuilderItems([]); }}
+        />
+      )}
+
+      {/* Meal builder review */}
+      {builderReviewOpen && (
+        <BuilderReviewModal
+          items={builderItems}
+          defaultMeal={activeMeal}
+          onClose={() => setBuilderReviewOpen(false)}
+          onRemove={(i) => setBuilderItems(prev => prev.filter((_, idx) => idx !== i))}
+          onSave={handleSaveBuilderMeal}
         />
       )}
     </div>

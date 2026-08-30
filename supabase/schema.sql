@@ -77,6 +77,57 @@ create policy "checkins: insert own" on public.checkins
 create policy "checkins: update own" on public.checkins
   for update using (auth.uid() = user_id);
 
+-- ── custom_foods ────────────────────────────────────────────────────────────
+-- User-created foods that aren't in the USDA/Open Food Facts/curated
+-- databases (MyFitnessPal-style "Create a Food"). Once created, these show
+-- up in that user's own search results and quick-add going forward.
+create table if not exists public.custom_foods (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  brand text,
+  serving_label text not null default '1 serving',
+  serving_grams numeric,
+  calories numeric not null default 0,
+  protein_g numeric default 0,
+  carbs_g numeric default 0,
+  fat_g numeric default 0,
+  fibre_g numeric default 0,
+  sodium_mg numeric default 0,
+  sugar_g numeric default 0,
+  created_at timestamptz default now()
+);
+
+alter table public.custom_foods enable row level security;
+
+create policy "custom_foods: select own" on public.custom_foods
+  for select using (auth.uid() = user_id);
+create policy "custom_foods: insert own" on public.custom_foods
+  for insert with check (auth.uid() = user_id);
+create policy "custom_foods: delete own" on public.custom_foods
+  for delete using (auth.uid() = user_id);
+
+-- ── saved_meals ─────────────────────────────────────────────────────────────
+-- A named bundle of foods (MyFitnessPal-style "Meals"/recipes) that logs as
+-- one action. `items` is a snapshot of each food's macros at save time, so a
+-- saved meal still logs correctly even if the source food later changes.
+create table if not exists public.saved_meals (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  items jsonb not null default '[]',
+  created_at timestamptz default now()
+);
+
+alter table public.saved_meals enable row level security;
+
+create policy "saved_meals: select own" on public.saved_meals
+  for select using (auth.uid() = user_id);
+create policy "saved_meals: insert own" on public.saved_meals
+  for insert with check (auth.uid() = user_id);
+create policy "saved_meals: delete own" on public.saved_meals
+  for delete using (auth.uid() = user_id);
+
 -- ── anonymous (guest) sign-ins ─────────────────────────────────────────────
 -- In the Supabase dashboard: Authentication → Sign In / Providers →
 -- enable "Allow anonymous sign-ins". Required for the app's guest mode.
