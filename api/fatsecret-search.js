@@ -32,10 +32,7 @@ async function getAccessToken() {
     // on a Premier account, confirmed via direct API testing.
     body: "grant_type=client_credentials&scope=basic%20premier",
   });
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`FatSecret token request failed: ${res.status} — ${body} — idLen=${clientId.length} secretLen=${clientSecret.length}`);
-  }
+  if (!res.ok) throw new Error(`FatSecret token request failed: ${res.status}`);
   const data = await res.json();
 
   cachedToken = data.access_token;
@@ -74,8 +71,6 @@ export default async function handler(req, res) {
     res.status(200).json(data);
   } catch (err) {
     console.error("FatSecret proxy error:", err);
-    // TEMPORARY: surfacing err.message for live debugging — revert once
-    // the root cause is confirmed.
-    res.status(502).json({ error: "FatSecret search is temporarily unavailable", debug: err.message });
+    res.status(502).json({ error: "FatSecret search is temporarily unavailable" });
   }
 }
