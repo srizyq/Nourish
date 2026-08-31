@@ -248,6 +248,7 @@ function Footer() {
           <a href="#">Terms</a>
           <a href="#">Contact</a>
         </div>
+        <a href="https://platform.fatsecret.com" target="_blank" rel="noreferrer" style={{ display: 'block', marginTop: 12, fontSize: 11, opacity: 0.5 }}>Powered by fatsecret Platform API</a>
       </div>
     </footer>
   )

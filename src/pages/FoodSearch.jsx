@@ -172,144 +172,60 @@ async function searchOpenFoodFacts(q) {
   }).filter(Boolean);
 }
 
-// USDA FoodData Central — the comprehensive generic-food source (fruits,
-// meats in every cut/cooking method, dairy, bakery, grains, sweets — every
-// category, not a hand-picked subset). Restricted to Foundation/SR
-// Legacy/Survey data types, which are lab-measured generic foods, NOT the
-// "Branded" data type (which is just as brand-noisy as Open Food Facts).
-// Requires a free key from https://fdc.nal.usda.gov/api-key-signup — the
-// nutrition data itself is universal, not US-specific, so this works fine
-// for an Australian app.
-//
-// USDA's own relevance ranking is unusable for a single broad word: querying
-// all three data types together for "chicken" buries "Chicken, breast,
-// boneless, skinless, raw" ~200 results deep behind things like "Orange
-// chicken" and "Biryani with chicken" — confirmed by direct API testing.
-// Querying each data type separately fixes this: Foundation alone is a
-// small, clean "plain ingredient" dataset with no dish/brand noise, so it's
-// always trustworthy in full. SR Legacy and Survey (FNDDS) mix in branded
-// items ("KFC, Popcorn Chicken") and stylised dish names ("Kung pao
-// chicken") — for those, only entries where the query is literally the
-// food's leading word(s) (e.g. "Chicken, ground, raw") are promoted to the
-// top; everything else is demoted below rather than dropped, so "the actual
-// food and its variations, then other food" (not excluded) is what renders.
-const USDA_ENCODE_PARAM = (s) => encodeURIComponent(s).replace(/[()]/g, c => c === "(" ? "%28" : "%29");
-
-// USDA's corpus is American English and doesn't contain plenty of everyday
-// Australian grocery terms at all (e.g. "wholemeal" — confirmed by direct
-// API testing, zero relevant matches — while "whole wheat" finds "Bread,
-// whole-wheat, commercially prepared" immediately). Translate the query
-// sent to USDA only; Open Food Facts (AU-scoped) and the local Aus/Asian
-// list already understand the original AU wording, so they're untouched.
-const AU_TO_US_FOOD_TERMS = [
-  [/\bwholemeal\b/g, "whole wheat"],
-  [/\bcapsicum(s)?\b/g, "bell pepper"],
-  [/\bminced?\b/g, "ground"],
-  [/\bprawns?\b/g, "shrimp"],
-  [/\bcoriander\b/g, "cilantro"],
-  [/\brockmelon\b/g, "cantaloupe"],
-  [/\bicing sugar\b/g, "powdered sugar"],
-  [/\bcaster sugar\b/g, "superfine sugar"],
-  [/\brocket\b/g, "arugula"],
-  [/\bspring onions?\b/g, "scallion"],
-  [/\bsilverbeet\b/g, "chard"],
-  [/\bwitlof\b/g, "endive"],
-  [/\bcos lettuce\b/g, "romaine lettuce"],
-  [/\bbicarb(onate)? soda\b/g, "baking soda"],
-  [/\blollies\b/g, "candy"],
-  [/\blolly\b/g, "candy"],
-];
-
-function toUSFoodTerms(q) {
-  let out = q.toLowerCase();
-  for (const [pattern, replacement] of AU_TO_US_FOOD_TERMS) out = out.replace(pattern, replacement);
-  return out;
+// FatSecret Platform API — a purpose-built consumer food search database
+// (the same one MacroFactor licenses), routed through our own serverless
+// proxy at /api/fatsecret-search since FatSecret's OAuth Client Secret
+// can't safely be exposed in browser code. Unlike USDA's research-database
+// search — built for scientists, not food-logging apps, and needing a pile
+// of client-side re-ranking heuristics to be usable — FatSecret's own
+// relevance ranking is tuned on real consumer search behaviour, so no
+// re-ranking is needed here.
+function fatSecretServings(food) {
+  const raw = food.servings?.serving;
+  if (!raw) return [];
+  return Array.isArray(raw) ? raw : [raw];
 }
 
-async function fetchUSDADataType(q, dataType, pageSize, apiKey) {
-  const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=${pageSize}&dataType=${USDA_ENCODE_PARAM(dataType)}&api_key=${apiKey}`;
-  // USDA's API gateway has occasional one-off 400s unrelated to the query
-  // itself (confirmed by retrying the exact same request) — one retry
-  // absorbs that.
+// Most servings describe themselves in grams ("100 g", "150g slice") — pull
+// that out for unit conversion. Servings described in non-gram units
+// ("1 cup", "1 medium") fall back to 100; the default "serving" unit in the
+// add-to-log UI is unaffected either way since it uses the API's own
+// serving values directly rather than converting through grams.
+function parseGramsFromServing(serving) {
+  const match = (serving.serving_description || "").match(/([\d.]+)\s*g\b/i);
+  return match ? parseFloat(match[1]) : 100;
+}
+
+async function searchFatSecret(q) {
+  const url = `/api/fatsecret-search?q=${encodeURIComponent(q)}`;
   let res = await fetch(url);
   if (!res.ok) res = await fetch(url);
-  if (!res.ok) throw new Error(`USDA search failed: ${res.status}`);
+  if (!res.ok) throw new Error(`FatSecret search failed: ${res.status}`);
   const data = await res.json();
-  return data.foods || [];
-}
+  if (data.error) throw new Error(data.error.message || "FatSecret search failed");
 
-function usdaLeadingWordsMatch(description, queryWords) {
-  const words = description.toLowerCase().replace(/[,()-]/g, " ").split(/\s+/).filter(Boolean);
-  // Forward: the description literally starts with the query words in
-  // order — covers single-word queries ("chicken" vs "Chicken, ground,
-  // raw") and queries already in USDA's noun-first convention ("chicken
-  // breast" vs "Chicken, breast, boneless, ...").
-  if (queryWords.every((w, i) => words[i] === w)) return true;
-  // Noun-last: everyday queries are written adjective-first ("whole wheat
-  // bread"), but USDA's convention is noun-first ("Bread, whole-wheat,
-  // ...") — match if the description's leading word is the query's last
-  // word (the noun), and the remaining query words show up right after it.
-  const lastWord = queryWords[queryWords.length - 1];
-  if (queryWords.length > 1 && words[0] === lastWord) {
-    const rest = queryWords.slice(0, -1);
-    const window = words.slice(1, 1 + rest.length + 2);
-    return rest.every(w => window.includes(w));
-  }
-  return false;
-}
+  const rawFoods = data.foods_search?.results?.food;
+  const foods = Array.isArray(rawFoods) ? rawFoods : rawFoods ? [rawFoods] : [];
 
-async function searchUSDAFoods(q) {
-  const apiKey = import.meta.env.VITE_USDA_API_KEY;
-  if (!apiKey) return [];
-  const usdaQuery = toUSFoodTerms(q);
-  const [foundation, srLegacy, fndds] = await Promise.all([
-    fetchUSDADataType(usdaQuery, "Foundation", 20, apiKey).catch(() => []),
-    fetchUSDADataType(usdaQuery, "SR Legacy", 25, apiKey).catch(() => []),
-    fetchUSDADataType(usdaQuery, "Survey (FNDDS)", 25, apiKey).catch(() => []),
-  ]);
-
-  const queryWords = usdaQuery.trim().split(/\s+/).filter(Boolean);
-  const DATA_TYPE_PRIORITY = { "Foundation": 0, "SR Legacy": 1, "Survey (FNDDS)": 2 };
-
-  // Rank across all three datasets together, not dataset-by-dataset then
-  // concatenated — otherwise an entire dataset's unmatched "junk" (e.g.
-  // Foundation's "Flour, whole wheat" for a "whole wheat bread" query)
-  // still outranks another dataset's genuinely matched results (SR
-  // Legacy's "Bread, whole-wheat, commercially prepared") just because its
-  // dataset came first. Matches sort first; ties fall back to preferring
-  // the cleaner datasets, but a real match always beats a non-match.
-  const scored = [...foundation, ...srLegacy, ...fndds].map(f => ({
-    food: f,
-    matched: usdaLeadingWordsMatch(f.description, queryWords),
-  }));
-  scored.sort((a, b) => {
-    if (a.matched !== b.matched) return a.matched ? -1 : 1;
-    return (DATA_TYPE_PRIORITY[a.food.dataType] ?? 3) - (DATA_TYPE_PRIORITY[b.food.dataType] ?? 3);
-  });
-  const merged = scored.map(s => s.food).slice(0, 40);
-
-  return merged.map(f => {
-    const nutrients = f.foodNutrients || [];
-    const get = (name) => {
-      const n = nutrients.find(n => n.nutrientName?.toLowerCase().includes(name));
-      return n ? Math.round(n.value * 10) / 10 : 0;
-    };
-    const cal = get("energy") || 0;
+  return foods.map(food => {
+    const serving = fatSecretServings(food)[0];
+    if (!serving) return null;
+    const cal = Math.round(parseFloat(serving.calories) || 0);
     if (!cal) return null;
     return {
-      id: "usda_" + f.fdcId,
-      name: f.description,
-      meta: (f.brandOwner ? f.brandOwner + " · " : "") + "100g",
+      id: "fs_" + food.food_id,
+      name: food.food_type === "Brand" && food.brand_name ? `${food.food_name} (${food.brand_name})` : food.food_name,
+      meta: serving.serving_description || "1 serving",
       cuisine: "all",
-      cal: Math.round(cal),
-      protein: get("protein"),
-      carbs: get("carbohydrate"),
-      fat: get("total lipid"),
-      fibre: get("fiber"),
-      sodium: Math.round(get("sodium")),
-      sugar: get("sugars"),
-      source: "usda",
-      servingGrams: 100,
+      cal,
+      protein: Math.round((parseFloat(serving.protein) || 0) * 10) / 10,
+      carbs: Math.round((parseFloat(serving.carbohydrate) || 0) * 10) / 10,
+      fat: Math.round((parseFloat(serving.fat) || 0) * 10) / 10,
+      fibre: Math.round((parseFloat(serving.fiber) || 0) * 10) / 10,
+      sodium: Math.round(parseFloat(serving.sodium) || 0),
+      sugar: Math.round((parseFloat(serving.sugar) || 0) * 10) / 10,
+      source: "fatsecret",
+      servingGrams: parseGramsFromServing(serving),
     };
   }).filter(Boolean);
 }
@@ -795,9 +711,9 @@ export default function FoodSearch() {
   const [builderItems, setBuilderItems] = useState([]);
   const [builderReviewOpen, setBuilderReviewOpen] = useState(false);
 
-  // Live external search state — USDA (generic foods, comprehensive across
-  // every category) and Open Food Facts (packaged/branded products, AU-
-  // scoped) are kept separate so they can render in different sections.
+  // Live external search state — FatSecret (generic foods, comprehensive
+  // across every category) and Open Food Facts (packaged/branded products,
+  // AU-scoped) are kept separate so they can render in different sections.
   const [genericResults, setGenericResults] = useState([]);
   const [packagedLive, setPackagedLive] = useState([]);
   const [liveLoading, setLiveLoading] = useState(false);
@@ -852,7 +768,7 @@ export default function FoodSearch() {
     setLiveLoading(true);
     setLiveError(null);
     let off = [];
-    let usda = [];
+    let fatSecretResults = [];
     try {
       off = await searchOpenFoodFacts(q);
     } catch (err) {
@@ -860,11 +776,11 @@ export default function FoodSearch() {
       setLiveError("Packaged product search is temporarily unavailable — try again in a moment.");
     }
     try {
-      usda = await searchUSDAFoods(q);
+      fatSecretResults = await searchFatSecret(q);
     } catch (err) {
-      console.error("USDA search error:", err);
+      console.error("FatSecret search error:", err);
     }
-    setGenericResults(usda);
+    setGenericResults(fatSecretResults);
     setPackagedLive(off);
     setLiveLoading(false);
   }, []);
@@ -878,9 +794,10 @@ export default function FoodSearch() {
     return () => clearTimeout(searchTimer.current);
   }, [query, runLiveSearch]);
 
-  // USDA's generic results (raw/cooked/every-cut variants, across every
-  // food category) belong with the curated foods — they're real food, not
-  // brands, so a search naturally returns multiple accurate results.
+  // FatSecret's generic results (raw/cooked/every-cut variants, across
+  // every food category) belong with the curated foods — they're real
+  // food, not brands, so a search naturally returns multiple accurate
+  // results.
   const genericFiltered = useMemo(() => {
     if (!query.trim()) return [];
     const localNames = new Set(localFiltered.map(f => f.name.toLowerCase()));
@@ -1086,7 +1003,7 @@ export default function FoodSearch() {
             <div style={{ background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 6, padding: "3px 10px", fontSize: 11, color: "#8fbc8f", display: "flex", alignItems: "center", gap: 5 }}>📍 Aus/Asian DB</div>
           </div>
 
-          {/* Foods — curated Aus/Asian dishes + USDA generic results
+          {/* Foods — curated Aus/Asian dishes + FatSecret generic results
               (raw/cooked/every-cut variants across every food category,
               not brands) */}
           {foodsResults.length === 0 && !liveLoading && packagedResults.length === 0 && !liveError ? (
@@ -1152,6 +1069,12 @@ export default function FoodSearch() {
               )}
             </div>
           )}
+
+          {/* Required FatSecret Platform API attribution — must not be
+              reworded per their attribution policy. */}
+          <div style={{ marginTop: 24, textAlign: "center" }}>
+            <a href="https://platform.fatsecret.com" target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#444" }}>Powered by fatsecret Platform API</a>
+          </div>
         </div>
       </div>
 
