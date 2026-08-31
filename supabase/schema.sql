@@ -63,6 +63,7 @@ create table if not exists public.checkins (
   checkin_date date not null,
   mood text check (mood in ('great', 'good', 'okay', 'low', 'tired')),
   energy int check (energy between 1 and 10),
+  water_glasses int default 0,
   note text,
   created_at timestamptz default now(),
   unique (user_id, checkin_date)

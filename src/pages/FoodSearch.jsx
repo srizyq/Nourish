@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { useFoodLogs } from '../hooks/useFoodLogs';
 import { useRecentFoods } from '../hooks/useRecentFoods';
 import { useCustomFoods } from '../hooks/useCustomFoods';
@@ -694,17 +695,28 @@ function Toast({ message, onDone }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function FoodSearch() {
+  const location = useLocation();
   const { addFood: addFoodLog } = useFoodLogs(todayLocalDate());
   const { rows: recentRows, loading: recentLoading, refetch: refetchRecent } = useRecentFoods(6);
   const customFoods = useCustomFoods();
   const savedMeals = useSavedMeals();
   const [query, setQuery] = useState("");
   const [activeCuisine, setActiveCuisine] = useState("all");
-  const [activeMeal, setActiveMeal] = useState("Lunch");
+  // Dashboard's per-meal "+ Add food" links here with the meal it was
+  // clicked from (e.g. { openMeal: "breakfast" }) so this page lands on
+  // the right meal instead of always defaulting to Lunch.
+  const [activeMeal, setActiveMeal] = useState(() => {
+    const requested = location.state?.openMeal;
+    if (!requested) return "Lunch";
+    const capitalized = requested.charAt(0).toUpperCase() + requested.slice(1);
+    return MEALS.includes(capitalized) ? capitalized : "Lunch";
+  });
   const [expandedId, setExpandedId] = useState(null);
   const [mealDropdownOpen, setMealDropdownOpen] = useState(false);
   const [toast, setToast] = useState(null);
-  const [scanOpen, setScanOpen] = useState(false);
+  // Dashboard's "Scan barcode" shortcut links here with { openScan: true }
+  // to jump straight into the scanner instead of landing on plain search.
+  const [scanOpen, setScanOpen] = useState(!!location.state?.openScan);
   const [createFoodOpen, setCreateFoodOpen] = useState(false);
   const [savedMealsOpen, setSavedMealsOpen] = useState(false);
   const [builderMode, setBuilderMode] = useState(false);

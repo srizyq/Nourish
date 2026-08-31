@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
@@ -165,11 +165,11 @@ function GuestBanner({ daysRemaining, onSave }) {
 }
 
 // ─── Shortcut Cards ───────────────────────────────────────────────────────────
-function ShortcutRow({ navigate }) {
+function ShortcutRow({ navigate, onWaterClick }) {
   const shortcuts = [
     { label: 'Log food',  icon: '＋', action: () => navigate('/food') },
-    { label: 'Scan barcode', icon: '📷', action: () => navigate('/food') },
-    { label: 'Water',     icon: '💧', action: null },
+    { label: 'Scan barcode', icon: '📷', action: () => navigate('/food', { state: { openScan: true } }) },
+    { label: 'Water',     icon: '💧', action: onWaterClick },
     { label: 'Patterns',  icon: '✦',  action: () => navigate('/insights') },
     { label: 'Progress',  icon: '📈', action: () => navigate('/progress') },
   ];
@@ -189,7 +189,8 @@ function ShortcutRow({ navigate }) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [glasses, setGlasses] = useState(0);
+  const waterCardRef = useRef(null);
+  const [waterHighlight, setWaterHighlight] = useState(false);
 
   const today = todayLocalDate();
   const { profile } = useProfile();
@@ -216,8 +217,16 @@ export default function Dashboard() {
 
   const mood = checkin?.mood ?? null;
   const energy = checkin?.energy ?? 6;
+  const glasses = checkin?.water_glasses ?? 0;
   const setMood = (m) => saveCheckin({ mood: m, energy });
   const setEnergy = (e) => saveCheckin({ mood, energy: e });
+  const setGlasses = (n) => saveCheckin({ mood, energy, water_glasses: n });
+
+  function jumpToWater() {
+    waterCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setWaterHighlight(true);
+    setTimeout(() => setWaterHighlight(false), 1200);
+  }
 
   const allItems = Object.values(meals).flat();
   const consumed        = allItems.reduce((s, i) => s + i.cal,     0);
@@ -246,16 +255,13 @@ export default function Dashboard() {
               <span style={{ color: '#e8e8e8', fontSize: '13px', fontWeight: 600 }}>{streak}</span>
               <span style={{ color: '#444', fontSize: '12px' }}>day streak</span>
             </div>
-            <button style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', color: '#444', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <i className="ti ti-bell" style={{ fontSize: 17 }} />
-            </button>
           </div>
         </div>
 
         {/* Content */}
         <div className="page-pad app-content-pad" style={{ maxWidth: '1100px' }}>
           {isGuest && <GuestBanner daysRemaining={daysRemaining} onSave={() => navigate('/settings')} />}
-          <ShortcutRow navigate={navigate} />
+          <ShortcutRow navigate={navigate} onWaterClick={jumpToWater} />
 
           <div className="grid-2" style={{ marginBottom: '16px' }}>
             {/* Calorie ring */}
@@ -286,7 +292,7 @@ export default function Dashboard() {
 
             {/* Water + Mood */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '20px' }}>
+              <div ref={waterCardRef} style={{ background: '#141414', border: `1px solid ${waterHighlight ? '#4a7a9a' : '#1e1e1e'}`, borderRadius: '16px', padding: '20px', transition: 'border-color 0.3s' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                   <span style={{ color: '#666', fontSize: '13px', fontWeight: 500 }}>Water</span>
                   <span style={{ color: '#6aabcf', fontSize: '13px', fontWeight: 600 }}>{glasses}/8 glasses</span>
@@ -322,7 +328,7 @@ export default function Dashboard() {
             <MealLog
               meals={meals}
               onDelete={deleteFood}
-              onNavigateFood={() => navigate('/food')}
+              onNavigateFood={(mealName) => navigate('/food', { state: { openMeal: mealName } })}
             />
           </div>
         </div>
