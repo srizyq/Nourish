@@ -129,6 +129,41 @@ create policy "saved_meals: insert own" on public.saved_meals
 create policy "saved_meals: delete own" on public.saved_meals
   for delete using (auth.uid() = user_id);
 
+-- ── favourite_foods ─────────────────────────────────────────────────────────
+-- Foods the user has manually starred for quick access, snapshotted at the
+-- time of favouriting (like custom_foods/saved_meals) since a favourite can
+-- come from any live search source (FatSecret, Open Food Facts), not just
+-- our own tables. Unique per (user, name) so starring twice just re-saves.
+create table if not exists public.favourite_foods (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  name text not null,
+  brand text,
+  serving_label text not null default '1 serving',
+  serving_grams numeric,
+  calories numeric not null default 0,
+  protein_g numeric default 0,
+  carbs_g numeric default 0,
+  fat_g numeric default 0,
+  fibre_g numeric default 0,
+  sodium_mg numeric default 0,
+  sugar_g numeric default 0,
+  source text,
+  created_at timestamptz default now(),
+  unique (user_id, name)
+);
+
+alter table public.favourite_foods enable row level security;
+
+create policy "favourite_foods: select own" on public.favourite_foods
+  for select using (auth.uid() = user_id);
+create policy "favourite_foods: insert own" on public.favourite_foods
+  for insert with check (auth.uid() = user_id);
+create policy "favourite_foods: update own" on public.favourite_foods
+  for update using (auth.uid() = user_id);
+create policy "favourite_foods: delete own" on public.favourite_foods
+  for delete using (auth.uid() = user_id);
+
 -- ── anonymous (guest) sign-ins ─────────────────────────────────────────────
 -- In the Supabase dashboard: Authentication → Sign In / Providers →
 -- enable "Allow anonymous sign-ins". Required for the app's guest mode.

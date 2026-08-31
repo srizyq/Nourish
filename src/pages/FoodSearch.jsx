@@ -4,22 +4,12 @@ import { useFoodLogs } from '../hooks/useFoodLogs';
 import { useRecentFoods } from '../hooks/useRecentFoods';
 import { useCustomFoods } from '../hooks/useCustomFoods';
 import { useSavedMeals } from '../hooks/useSavedMeals';
+import { useFavouriteFoods } from '../hooks/useFavouriteFoods';
+import { useFrequentFoods } from '../hooks/useFrequentFoods';
 import { todayLocalDate } from '../lib/patterns';
 import AppNav from '../components/AppNav';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
-
-const CUISINES = [
-  { id: "all", label: "All" },
-  { id: "australian", label: "🇦🇺 Australian" },
-  { id: "vietnamese", label: "🍜 Vietnamese" },
-  { id: "chinese", label: "🥢 Chinese" },
-  { id: "indian", label: "🍛 Indian" },
-  { id: "thai", label: "🌶️ Thai" },
-  { id: "korean", label: "🇰🇷 Korean" },
-  { id: "japanese", label: "🍣 Japanese" },
-  { id: "malaysian", label: "🥘 Malaysian" },
-];
 
 const MEALS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
 
@@ -69,33 +59,6 @@ function getCategoryStyle(food) {
   return CATEGORY_STYLES[food.category || guessCategory(food.name)] || CATEGORY_STYLES.other;
 }
 
-// servingGrams: the approximate weight of "1 serving" (the macros above),
-// used to convert to/from g, kg, lb, oz. Exact for items with a stated
-// weight in `meta`; a reasonable estimate for dish-style items that don't
-// (e.g. "1 bowl", "2 rolls") since there's no reliable way to derive one.
-const FOODS = [
-  { id: 1, category: "meat", name: "Meat pie", meta: "1 pie · 175g", cuisine: "australian", cal: 450, protein: 12, carbs: 38, fat: 28, fibre: 2, sodium: 820, sugar: 4, servingGrams: 175 },
-  { id: 2, category: "meat", name: "Chicken breast, grilled", meta: "100g", cuisine: "australian", cal: 165, protein: 31, carbs: 0, fat: 3.6, fibre: 0, sodium: 74, sugar: 0, servingGrams: 100 },
-  { id: 3, category: "grain", name: "Vegemite on toast", meta: "2 slices", cuisine: "australian", cal: 210, protein: 7, carbs: 36, fat: 4, fibre: 3, sodium: 560, sugar: 2, servingGrams: 70 },
-  { id: 4, category: "seafood", name: "Barramundi, pan-fried", meta: "1 fillet · 180g", cuisine: "australian", cal: 220, protein: 38, carbs: 0, fat: 7, fibre: 0, sodium: 130, sugar: 0, servingGrams: 180 },
-  { id: 5, category: "meat", name: "Pho bo (beef noodle soup)", meta: "1 bowl", cuisine: "vietnamese", cal: 370, protein: 24, carbs: 42, fat: 9, fibre: 2, sodium: 950, sugar: 3, servingGrams: 500 },
-  { id: 6, category: "vegetable", name: "Goi cuon (fresh spring rolls)", meta: "2 rolls", cuisine: "vietnamese", cal: 130, protein: 7, carbs: 18, fat: 3, fibre: 1.5, sodium: 310, sugar: 2, servingGrams: 120 },
-  { id: 7, category: "meat", name: "Com tam (broken rice + pork)", meta: "1 plate", cuisine: "vietnamese", cal: 580, protein: 28, carbs: 72, fat: 16, fibre: 2, sodium: 780, sugar: 6, servingGrams: 400 },
-  { id: 8, category: "seafood", name: "Dim sum — har gow", meta: "3 pieces", cuisine: "chinese", cal: 140, protein: 8, carbs: 18, fat: 3, fibre: 1, sodium: 380, sugar: 1, servingGrams: 90 },
-  { id: 9, category: "meat", name: "Char siu pork", meta: "100g", cuisine: "chinese", cal: 280, protein: 22, carbs: 18, fat: 12, fibre: 0, sodium: 640, sugar: 14, servingGrams: 100 },
-  { id: 10, category: "meat", name: "Wonton soup", meta: "1 bowl", cuisine: "chinese", cal: 260, protein: 14, carbs: 32, fat: 8, fibre: 1, sodium: 1100, sugar: 2, servingGrams: 350 },
-  { id: 11, category: "meat", name: "Chicken tikka masala", meta: "1 serve · 350g", cuisine: "indian", cal: 420, protein: 28, carbs: 24, fat: 22, fibre: 3, sodium: 890, sugar: 8, servingGrams: 350 },
-  { id: 12, category: "grain", name: "Garlic naan", meta: "1 piece", cuisine: "indian", cal: 220, protein: 6, carbs: 38, fat: 5, fibre: 1.5, sodium: 420, sugar: 3, servingGrams: 90 },
-  { id: 13, category: "vegetable", name: "Dal tadka", meta: "1 serve · 300g", cuisine: "indian", cal: 290, protein: 16, carbs: 40, fat: 7, fibre: 8, sodium: 560, sugar: 4, servingGrams: 300 },
-  { id: 14, category: "meat", name: "Pad Thai (chicken)", meta: "1 plate", cuisine: "thai", cal: 490, protein: 22, carbs: 62, fat: 14, fibre: 3, sodium: 1050, sugar: 12, servingGrams: 350 },
-  { id: 15, category: "meat", name: "Tom kha gai (coconut soup)", meta: "1 bowl", cuisine: "thai", cal: 310, protein: 18, carbs: 14, fat: 20, fibre: 2, sodium: 720, sugar: 5, servingGrams: 350 },
-  { id: 16, category: "vegetable", name: "Bibimbap", meta: "1 bowl", cuisine: "korean", cal: 490, protein: 22, carbs: 68, fat: 12, fibre: 4, sodium: 860, sugar: 6, servingGrams: 450 },
-  { id: 17, category: "vegetable", name: "Kimchi jjigae (stew)", meta: "1 bowl", cuisine: "korean", cal: 260, protein: 15, carbs: 22, fat: 10, fibre: 4, sodium: 1200, sugar: 5, servingGrams: 400 },
-  { id: 18, category: "seafood", name: "Salmon nigiri sushi", meta: "2 pieces", cuisine: "japanese", cal: 130, protein: 9, carbs: 16, fat: 3, fibre: 0, sodium: 290, sugar: 1, servingGrams: 60 },
-  { id: 19, category: "meat", name: "Tonkotsu ramen", meta: "1 bowl", cuisine: "japanese", cal: 550, protein: 26, carbs: 68, fat: 18, fibre: 2, sodium: 1350, sugar: 4, servingGrams: 500 },
-  { id: 20, category: "meat", name: "Laksa lemak", meta: "1 bowl", cuisine: "malaysian", cal: 520, protein: 18, carbs: 55, fat: 26, fibre: 3, sodium: 980, sugar: 5, servingGrams: 450 },
-  { id: 21, category: "grain", name: "Nasi lemak", meta: "1 serve", cuisine: "malaysian", cal: 440, protein: 14, carbs: 58, fat: 18, fibre: 3, sodium: 620, sugar: 4, servingGrams: 350 },
-];
 
 // ─── Unit conversion ───────────────────────────────────────────────────────
 const UNITS = [
@@ -132,10 +95,10 @@ function scaleFood(food, servings) {
 
 // ─── Live search ─────────────────────────────────────────────────────────
 // Open Food Facts — no API key required, strong branded/packaged coverage
-// (this is what finds things like Weet-Bix, Vegemite, etc. that aren't in
-// the curated FOODS list above). Uses the Australia subdomain so results
-// are products actually sold here (Capilano, Sanitarium, Woolworths own
-// brand, etc.) instead of being dominated by UK/US supermarket SKUs.
+// (this is what finds things like Weet-Bix, Vegemite, etc.). Uses the
+// Australia subdomain so results are products actually sold here
+// (Capilano, Sanitarium, Woolworths own brand, etc.) instead of being
+// dominated by UK/US supermarket SKUs.
 async function searchOpenFoodFacts(q) {
   const url = `https://au.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&sort_by=unique_scans_n&fields=product_name,generic_name,brands,nutriments,code`;
   // Open Food Facts' shared search backend has occasional one-off blips
@@ -592,7 +555,7 @@ function MacroPill({ value, unit = "g", label, color }) {
   );
 }
 
-function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd, addLabel, onDelete }) {
+function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd, addLabel, onDelete, isFavourite, onToggleFavourite }) {
   const [amount, setAmount] = useState(1);
   const [unit, setUnit] = useState("serving");
   const [meal, setMeal] = useState(defaultMeal);
@@ -620,6 +583,11 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd, addLabel, on
           <span style={{ fontSize: 15, fontWeight: 600, color: "#8fbc8f" }}>{food.cal}</span>
           <span style={{ fontSize: 11, color: "#555" }}> kcal</span>
         </div>
+        {onToggleFavourite && (
+          <button onClick={(e) => { e.stopPropagation(); onToggleFavourite(); }} title={isFavourite ? "Remove favourite" : "Add favourite"} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0, color: isFavourite ? "#e8c468" : "#333", fontSize: 16, display: "flex" }}>
+            <i className={isFavourite ? "ti ti-star-filled" : "ti ti-star"} />
+          </button>
+        )}
         <span style={{ fontSize: 13, color: "#444", marginLeft: 4 }}>{isExpanded ? "▲" : "▼"}</span>
       </div>
       {isExpanded && (
@@ -700,8 +668,9 @@ export default function FoodSearch() {
   const { rows: recentRows, loading: recentLoading, refetch: refetchRecent } = useRecentFoods(6);
   const customFoods = useCustomFoods();
   const savedMeals = useSavedMeals();
+  const favourites = useFavouriteFoods();
+  const frequent = useFrequentFoods(6);
   const [query, setQuery] = useState("");
-  const [activeCuisine, setActiveCuisine] = useState("all");
   // Dashboard's per-meal "+ Add food" links here with the meal it was
   // clicked from (e.g. { openMeal: "breakfast" }) so this page lands on
   // the right meal instead of always defaulting to Lunch.
@@ -734,18 +703,6 @@ export default function FoodSearch() {
 
   const inputRef = useRef(null);
 
-  // Local filtered results — the cuisine chips only apply when browsing
-  // (no active search), so a stale cuisine filter can't hide a real match
-  // once you start typing (e.g. "Australian" selected, then searching
-  // "honey" would otherwise hide the generic honey entry).
-  const localFiltered = useMemo(() => {
-    const q = query.toLowerCase().trim();
-    if (!q) {
-      return activeCuisine === "all" ? FOODS : FOODS.filter(f => f.cuisine === activeCuisine);
-    }
-    return FOODS.filter(f => f.name.toLowerCase().includes(q) || f.meta.toLowerCase().includes(q));
-  }, [query, activeCuisine]);
-
   // Foods the user has created themselves — shown alongside everything
   // else, matched by name when searching.
   const customAsFoods = useMemo(() => customFoods.rows.map(row => ({
@@ -768,13 +725,9 @@ export default function FoodSearch() {
 
   const customFiltered = useMemo(() => {
     const q = query.toLowerCase().trim();
-    // Only fold custom foods into a specific cuisine browse if actively
-    // searching — they don't have real cuisines, so "all"/no-query is the
-    // only browsing state they belong in.
-    if (!q && activeCuisine !== "all") return [];
     if (!q) return customAsFoods;
     return customAsFoods.filter(f => f.name.toLowerCase().includes(q));
-  }, [customAsFoods, query, activeCuisine]);
+  }, [customAsFoods, query]);
 
   const runLiveSearch = useCallback(async (q) => {
     setLiveLoading(true);
@@ -806,20 +759,11 @@ export default function FoodSearch() {
     return () => clearTimeout(searchTimer.current);
   }, [query, runLiveSearch]);
 
-  // FatSecret's generic results (raw/cooked/every-cut variants, across
-  // every food category) belong with the curated foods — they're real
-  // food, not brands, so a search naturally returns multiple accurate
-  // results.
-  const genericFiltered = useMemo(() => {
-    if (!query.trim()) return [];
-    const localNames = new Set(localFiltered.map(f => f.name.toLowerCase()));
-    return genericResults.filter(f => !localNames.has(f.name.toLowerCase()));
-  }, [localFiltered, genericResults, query]);
-
   const foodsResults = useMemo(() => {
+    if (!query.trim()) return [];
     // Custom foods first — they're the user's own data, so the most
     // relevant match for their own search.
-    const combined = [...customFiltered, ...localFiltered, ...genericFiltered];
+    const combined = [...customFiltered, ...genericResults];
     const seen = new Set();
     return combined.filter(f => {
       const key = f.name.toLowerCase();
@@ -827,7 +771,7 @@ export default function FoodSearch() {
       seen.add(key);
       return true;
     });
-  }, [customFiltered, localFiltered, genericFiltered]);
+  }, [customFiltered, genericResults, query]);
 
   // Packaged/branded results (Open Food Facts, AU-scoped) shown in their
   // own demoted section below — this is what stops a search like "chicken
@@ -841,27 +785,56 @@ export default function FoodSearch() {
 
   const allResults = useMemo(() => [...foodsResults, ...packagedResults], [foodsResults, packagedResults]);
 
-  const showRecent = query === "" && activeCuisine === "all";
+  const browsing = query === "";
 
-  const recentFoods = useMemo(() => recentRows.map(row => {
-    const match = FOODS.find(f => f.name.toLowerCase() === row.food_name.toLowerCase());
-    return {
-      id: "recent_" + row.id,
-      category: match?.category,
-      name: row.food_name,
-      meta: "Logged before",
-      cuisine: "all",
-      cal: Number(row.calories) || 0,
-      protein: Number(row.protein_g) || 0,
-      carbs: Number(row.carbs_g) || 0,
-      fat: Number(row.fat_g) || 0,
-      fibre: 0,
-      sodium: 0,
-      sugar: 0,
-      servingGrams: 100,
-      source: row.source || "log",
-    };
-  }), [recentRows]);
+  const recentFoods = useMemo(() => recentRows.map(row => ({
+    id: "recent_" + row.id,
+    name: row.food_name,
+    meta: "Logged before",
+    cuisine: "all",
+    cal: Number(row.calories) || 0,
+    protein: Number(row.protein_g) || 0,
+    carbs: Number(row.carbs_g) || 0,
+    fat: Number(row.fat_g) || 0,
+    fibre: 0,
+    sodium: 0,
+    sugar: 0,
+    servingGrams: 100,
+    source: row.source || "log",
+  })), [recentRows]);
+
+  // Frequently logged (real log-count data) mapped to the same food-card
+  // shape as everything else.
+  const frequentFoods = useMemo(() => frequent.rows.map(row => ({
+    id: "freq_" + row.id,
+    name: row.food_name,
+    meta: "Logged often",
+    cal: Number(row.calories) || 0,
+    protein: Number(row.protein_g) || 0,
+    carbs: Number(row.carbs_g) || 0,
+    fat: Number(row.fat_g) || 0,
+    fibre: 0,
+    sodium: 0,
+    sugar: 0,
+    servingGrams: 100,
+    source: row.source || "log",
+  })), [frequent.rows]);
+
+  // Favourites the user has starred, snapshotted at favourite time.
+  const favouriteFoods = useMemo(() => favourites.rows.map(row => ({
+    id: "fav_" + row.id,
+    name: row.name,
+    meta: (row.brand ? row.brand + " · " : "") + (row.serving_label || "1 serving"),
+    cal: Number(row.calories) || 0,
+    protein: Number(row.protein_g) || 0,
+    carbs: Number(row.carbs_g) || 0,
+    fat: Number(row.fat_g) || 0,
+    fibre: Number(row.fibre_g) || 0,
+    sodium: Number(row.sodium_mg) || 0,
+    sugar: Number(row.sugar_g) || 0,
+    servingGrams: row.serving_grams || 100,
+    source: row.source || "favourite",
+  })), [favourites.rows]);
 
   async function logFood(food, meal) {
     await addFoodLog(food, meal);
@@ -972,27 +945,99 @@ export default function FoodSearch() {
             </div>
           </div>
 
-          {/* Cuisine chips — hide when actively searching */}
-          {!query && (
-            <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
-              {CUISINES.map(c => (
-                <button key={c.id} onClick={() => { setActiveCuisine(c.id); setExpandedId(null); }} style={{ background: activeCuisine === c.id ? "#0f1a0f" : "#181818", border: `1px solid ${activeCuisine === c.id ? "#4a7a4a" : "#2a2a2a"}`, borderRadius: 20, padding: "5px 13px", fontSize: 12, color: activeCuisine === c.id ? "#8fbc8f" : "#888", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, fontFamily: "inherit", transition: "all 0.15s" }}>
-                  {c.label}
-                </button>
-              ))}
-            </div>
+          {/* Browsing (no search) — your own data: favourites, frequently
+              logged, and recently logged. No curated/hardcoded content —
+              a search now finds real food via FatSecret, so a fake
+              "Popular foods" list would only get in the way. */}
+          {browsing && (
+            <>
+              {favouriteFoods.length > 0 && (
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Favourites</div>
+                  {favouriteFoods.map(food => (
+                    <FoodCard
+                      key={food.id}
+                      food={food}
+                      isExpanded={expandedId === food.id}
+                      onToggle={() => handleToggle(food.id)}
+                      defaultMeal={activeMeal}
+                      onAdd={handleAdd}
+                      addLabel={builderMode ? "+ Add to meal" : undefined}
+                      isFavourite={true}
+                      onToggleFavourite={() => favourites.toggle(food)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {frequentFoods.length > 0 && (
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Frequently logged</div>
+                  {frequentFoods.map(food => (
+                    <FoodCard
+                      key={food.id}
+                      food={food}
+                      isExpanded={expandedId === food.id}
+                      onToggle={() => handleToggle(food.id)}
+                      defaultMeal={activeMeal}
+                      onAdd={handleAdd}
+                      addLabel={builderMode ? "+ Add to meal" : undefined}
+                      isFavourite={favourites.isFavourite(food.name)}
+                      onToggleFavourite={() => favourites.toggle(food)}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Recently logged</div>
+                {recentLoading ? null : recentFoods.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "20px", color: "#444", fontSize: 13, background: "#141414", border: "1px dashed #2a2a2a", borderRadius: 10 }}>
+                    Log some food to see it here
+                  </div>
+                ) : (
+                  recentFoods.map(food => (
+                    <FoodCard
+                      key={food.id}
+                      food={food}
+                      isExpanded={expandedId === food.id}
+                      onToggle={() => handleToggle(food.id)}
+                      defaultMeal={activeMeal}
+                      onAdd={handleAdd}
+                      addLabel={builderMode ? "+ Add to meal" : undefined}
+                      isFavourite={favourites.isFavourite(food.name)}
+                      onToggleFavourite={() => favourites.toggle(food)}
+                    />
+                  ))
+                )}
+              </div>
+            </>
           )}
 
-          {/* Recently logged */}
-          {showRecent && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Recently logged</div>
-              {recentLoading ? null : recentFoods.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "20px", color: "#444", fontSize: 13, background: "#141414", border: "1px dashed #2a2a2a", borderRadius: 10 }}>
-                  Log some food to see it here
+          {/* Search results */}
+          {!browsing && (
+            <>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <span style={{ fontSize: 12, color: "#555" }}>
+                  {liveLoading ? "Searching…" : `${allResults.length} result${allResults.length !== 1 ? "s" : ""}`}
+                </span>
+              </div>
+
+              {/* Foods — custom foods + FatSecret generic results
+                  (raw/cooked/every-cut variants across every food category,
+                  not brands) */}
+              {foodsResults.length === 0 && !liveLoading && packagedResults.length === 0 && !liveError ? (
+                <div style={{ textAlign: "center", padding: "48px 20px", color: "#444", fontSize: 14 }}>
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
+                  No foods found for "{query}"
+                  <br />
+                  <span style={{ fontSize: 12, color: "#333", marginTop: 8, display: "block" }}>Try a different search term, use the scan button, or create it yourself</span>
+                  <button onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 16, background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "9px 16px", fontSize: 13, color: "#8fbc8f", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <i className="ti ti-plus" /> Create "{query}" as a custom food
+                  </button>
                 </div>
               ) : (
-                recentFoods.map(food => (
+                foodsResults.map(food => (
                   <FoodCard
                     key={food.id}
                     food={food}
@@ -1001,85 +1046,53 @@ export default function FoodSearch() {
                     defaultMeal={activeMeal}
                     onAdd={handleAdd}
                     addLabel={builderMode ? "+ Add to meal" : undefined}
+                    onDelete={food.source === "custom" ? () => handleDeleteCustom(food) : undefined}
+                    isFavourite={favourites.isFavourite(food.name)}
+                    onToggleFavourite={() => favourites.toggle(food)}
                   />
                 ))
               )}
-            </div>
-          )}
 
-          {/* Results header */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: "#555" }}>
-              {showRecent ? "Popular foods" : liveLoading ? "Searching…" : `${allResults.length} result${allResults.length !== 1 ? "s" : ""}`}
-            </span>
-            <div style={{ background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 6, padding: "3px 10px", fontSize: 11, color: "#8fbc8f", display: "flex", alignItems: "center", gap: 5 }}>📍 Aus/Asian DB</div>
-          </div>
-
-          {/* Foods — curated Aus/Asian dishes + FatSecret generic results
-              (raw/cooked/every-cut variants across every food category,
-              not brands) */}
-          {foodsResults.length === 0 && !liveLoading && packagedResults.length === 0 && !liveError ? (
-            <div style={{ textAlign: "center", padding: "48px 20px", color: "#444", fontSize: 14 }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
-              No foods found for "{query}"
-              <br />
-              <span style={{ fontSize: 12, color: "#333", marginTop: 8, display: "block" }}>Try a different search term, use the scan button, or create it yourself</span>
-              {query && (
-                <button onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 16, background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "9px 16px", fontSize: 13, color: "#8fbc8f", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <i className="ti ti-plus" /> Create "{query}" as a custom food
-                </button>
+              {/* Can't find it — always available while searching, not just
+                  on a dead-end, matching MyFitnessPal's "Can't find it? Add
+                  a food" pattern */}
+              {!liveLoading && foodsResults.length > 0 && (
+                <div onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 14, textAlign: "center", padding: "10px", color: "#666", fontSize: 12, cursor: "pointer", border: "1px dashed #2a2a2a", borderRadius: 8 }}>
+                  <i className="ti ti-plus" style={{ marginRight: 5 }} />Can't find "{query}"? Create a custom food
+                </div>
               )}
-            </div>
-          ) : (
-            foodsResults.map(food => (
-              <FoodCard
-                key={food.id}
-                food={food}
-                isExpanded={expandedId === food.id}
-                onToggle={() => handleToggle(food.id)}
-                defaultMeal={activeMeal}
-                onAdd={handleAdd}
-                addLabel={builderMode ? "+ Add to meal" : undefined}
-                onDelete={food.source === "custom" ? () => handleDeleteCustom(food) : undefined}
-              />
-            ))
-          )}
 
-          {/* Can't find it — always available while searching, not just on
-              a dead-end, matching MyFitnessPal's "Can't find it? Add a food"
-              pattern */}
-          {query && !liveLoading && foodsResults.length > 0 && (
-            <div onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 14, textAlign: "center", padding: "10px", color: "#666", fontSize: 12, cursor: "pointer", border: "1px dashed #2a2a2a", borderRadius: 8 }}>
-              <i className="ti ti-plus" style={{ marginRight: 5 }} />Can't find "{query}"? Create a custom food
-            </div>
-          )}
-
-          {/* Packaged/branded products — Open Food Facts, AU-scoped, kept
-              separate so brand noise never crowds out the actual food */}
-          {query && (liveLoading || packagedResults.length > 0 || liveError) && (
-            <div style={{ marginTop: foodsResults.length > 0 ? 20 : 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase" }}>Packaged products</span>
-                <span style={{ background: "#0a1520", border: "1px solid #2a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, color: "#6aabcf" }}>🌐 Live search</span>
-              </div>
-              {liveLoading ? (
-                <div style={{ fontSize: 13, color: "#555", padding: "8px 0" }}>Searching…</div>
-              ) : liveError ? (
-                <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070" }}>{liveError}</div>
-              ) : (
-                packagedResults.map(food => (
-                  <FoodCard
-                    key={food.id}
-                    food={food}
-                    isExpanded={expandedId === food.id}
-                    onToggle={() => handleToggle(food.id)}
-                    defaultMeal={activeMeal}
-                    onAdd={handleAdd}
-                    addLabel={builderMode ? "+ Add to meal" : undefined}
-                  />
-                ))
+              {/* Packaged/branded products — Open Food Facts, AU-scoped,
+                  kept separate so brand noise never crowds out the actual
+                  food */}
+              {(liveLoading || packagedResults.length > 0 || liveError) && (
+                <div style={{ marginTop: foodsResults.length > 0 ? 20 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <span style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase" }}>Packaged products</span>
+                    <span style={{ background: "#0a1520", border: "1px solid #2a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, color: "#6aabcf" }}>🌐 Live search</span>
+                  </div>
+                  {liveLoading ? (
+                    <div style={{ fontSize: 13, color: "#555", padding: "8px 0" }}>Searching…</div>
+                  ) : liveError ? (
+                    <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070" }}>{liveError}</div>
+                  ) : (
+                    packagedResults.map(food => (
+                      <FoodCard
+                        key={food.id}
+                        food={food}
+                        isExpanded={expandedId === food.id}
+                        onToggle={() => handleToggle(food.id)}
+                        defaultMeal={activeMeal}
+                        onAdd={handleAdd}
+                        addLabel={builderMode ? "+ Add to meal" : undefined}
+                        isFavourite={favourites.isFavourite(food.name)}
+                        onToggleFavourite={() => favourites.toggle(food)}
+                      />
+                    ))
+                  )}
+                </div>
               )}
-            </div>
+            </>
           )}
 
           {/* Required FatSecret Platform API attribution — must not be

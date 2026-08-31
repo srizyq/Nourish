@@ -187,3 +187,44 @@ export async function deleteSavedMeal(id) {
   const { error } = await supabase.from('saved_meals').delete().eq('id', id);
   if (error) throw error;
 }
+
+// ─── favourite_foods ───────────────────────────────────────────────────────
+
+export async function getFavouriteFoods(userId) {
+  const { data, error } = await supabase
+    .from('favourite_foods')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function addFavouriteFood(userId, food) {
+  const { data, error } = await supabase
+    .from('favourite_foods')
+    .upsert({
+      user_id: userId,
+      name: food.name,
+      brand: food.brand || null,
+      serving_label: food.meta || '1 serving',
+      serving_grams: food.servingGrams || null,
+      calories: food.cal || 0,
+      protein_g: food.protein || 0,
+      carbs_g: food.carbs || 0,
+      fat_g: food.fat || 0,
+      fibre_g: food.fibre || 0,
+      sodium_mg: food.sodium || 0,
+      sugar_g: food.sugar || 0,
+      source: food.source || null,
+    }, { onConflict: 'user_id,name' })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function removeFavouriteFoodByName(userId, name) {
+  const { error } = await supabase.from('favourite_foods').delete().eq('user_id', userId).eq('name', name);
+  if (error) throw error;
+}
