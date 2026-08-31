@@ -32,7 +32,10 @@ async function getAccessToken() {
     // on a Premier account, confirmed via direct API testing.
     body: "grant_type=client_credentials&scope=basic%20premier",
   });
-  if (!res.ok) throw new Error(`FatSecret token request failed: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`FatSecret token request failed: ${res.status} — ${body} — idLen=${clientId.length} secretLen=${clientSecret.length}`);
+  }
   const data = await res.json();
 
   cachedToken = data.access_token;
