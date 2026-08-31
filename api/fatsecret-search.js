@@ -71,6 +71,8 @@ export default async function handler(req, res) {
     res.status(200).json(data);
   } catch (err) {
     console.error("FatSecret proxy error:", err);
-    res.status(502).json({ error: "FatSecret search is temporarily unavailable" });
+    // TEMPORARY: surfacing err.message for live debugging — revert once
+    // the root cause is confirmed.
+    res.status(502).json({ error: "FatSecret search is temporarily unavailable", debug: err.message });
   }
 }
