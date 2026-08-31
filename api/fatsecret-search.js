@@ -27,7 +27,10 @@ async function getAccessToken() {
       Authorization: `Basic ${basic}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: "grant_type=client_credentials&scope=basic",
+    // "premier" is required once the account is upgraded — a token scoped
+    // to "basic" alone gets rejected with "Missing scope: scope 'premier'"
+    // on a Premier account, confirmed via direct API testing.
+    body: "grant_type=client_credentials&scope=basic%20premier",
   });
   if (!res.ok) throw new Error(`FatSecret token request failed: ${res.status}`);
   const data = await res.json();
