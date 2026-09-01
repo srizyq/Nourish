@@ -204,6 +204,16 @@ function toGtin13(code) {
   return digits.padStart(13, "0").slice(-13);
 }
 
+// A product with next-to-no calories AND next-to-no macros is almost never
+// a genuinely 0-calorie food — it's an incomplete/placeholder database
+// entry (confirmed by direct testing: real barcodes from both FatSecret and
+// Open Food Facts can return e.g. "1 kcal, 0.1g protein, 0.1g carbs, 0g
+// fat" for products that plainly aren't that). Reject it so the other
+// source gets a chance instead of showing meaningless zeros as fact.
+function looksLikeEmptyNutrition(f) {
+  return f.cal < 5 && f.protein < 0.5 && f.carbs < 0.5 && f.fat < 0.5;
+}
+
 // FatSecret's barcode data is far more complete than Open Food Facts' (many
 // OFF entries have missing/zeroed nutriment fields — confirmed by direct
 // testing), so it's tried first. OFF stays as a fallback for products
@@ -219,13 +229,11 @@ async function lookupFatSecretBarcode(barcode) {
   const servings = Array.isArray(rawServings) ? rawServings : rawServings ? [rawServings] : [];
   const serving = servings[0];
   if (!serving) return null;
-  const cal = Math.round(parseFloat(serving.calories) || 0);
-  if (!cal) return null;
-  return {
+  const found = {
     name: food.food_name,
     brand: food.brand_name || "",
     serving: serving.serving_description || "1 serving",
-    cal,
+    cal: Math.round(parseFloat(serving.calories) || 0),
     protein: Math.round((parseFloat(serving.protein) || 0) * 10) / 10,
     carbs: Math.round((parseFloat(serving.carbohydrate) || 0) * 10) / 10,
     fat: Math.round((parseFloat(serving.fat) || 0) * 10) / 10,
@@ -234,6 +242,7 @@ async function lookupFatSecretBarcode(barcode) {
     sugar: Math.round((parseFloat(serving.sugar) || 0) * 10) / 10,
     source: "fatsecret",
   };
+  return looksLikeEmptyNutrition(found) ? null : found;
 }
 
 async function lookupOpenFoodFactsBarcode(barcode) {
@@ -243,8 +252,7 @@ async function lookupOpenFoodFactsBarcode(barcode) {
   const p = data.product; const per100 = p.nutriments || {};
   const servingG = parseFloat(p.serving_size) || 100; const factor = servingG / 100;
   const cal = Math.round((per100["energy-kcal_100g"] || per100["energy_100g"] / 4.184 || 0) * factor);
-  if (!cal) return null;
-  return {
+  const found = {
     name: p.product_name || p.generic_name || "Unknown product",
     brand: p.brands || "", serving: p.serving_size || "100g",
     cal,
@@ -256,6 +264,7 @@ async function lookupOpenFoodFactsBarcode(barcode) {
     sugar: Math.round((per100.sugars_100g || 0) * factor * 10) / 10,
     source: "off",
   };
+  return looksLikeEmptyNutrition(found) ? null : found;
 }
 
 function BarcodeScanner({ onAddFood, onClose, defaultMeal }) {
