@@ -585,6 +585,14 @@ export default function Settings() {
                   {!isGuest && <span style={{ color: '#8fbc8f', fontSize: '13px' }}>{user?.email}</span>}
                 </FieldRow>
                 {isGuest && <UpgradeForm />}
+                {isGuest && (
+                  <p style={{ color: '#555', fontSize: '13px', margin: '16px 0 0' }}>
+                    Already have an account?{' '}
+                    <span onClick={() => navigate('/login')} style={{ color: '#8fbc8f', cursor: 'pointer', textDecoration: 'underline' }}>
+                      Log in instead
+                    </span>{' '}— this guest session's data will be left behind unless you upgrade it first.
+                  </p>
+                )}
                 <button
                   onClick={requestLogout}
                   style={{

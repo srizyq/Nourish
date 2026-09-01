@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isGuest = !!user?.is_anonymous;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -57,9 +60,15 @@ export default function Login() {
             fontFamily: "'Syne', sans-serif", fontSize: 'clamp(24px, 4vw, 30px)',
             fontWeight: 700, color: '#e8e8e8', marginBottom: '8px', textAlign: 'center',
           }}>Welcome back</h1>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '28px', textAlign: 'center' }}>
+          <p style={{ color: '#666', fontSize: '14px', marginBottom: isGuest ? '18px' : '28px', textAlign: 'center' }}>
             Log in to pick up where you left off.
           </p>
+
+          {isGuest && (
+            <div style={{ background: '#1a1410', border: '1px solid #3a2e1e', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#c09a70', marginBottom: '18px', lineHeight: 1.5 }}>
+              You're currently in a guest session. Logging in here replaces it — this guest session's data will be left behind unless you've already upgraded it from Settings.
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
             <input
