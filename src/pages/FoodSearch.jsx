@@ -196,9 +196,77 @@ async function searchFatSecret(q) {
 
 // ─── Barcode Scanner ──────────────────────────────────────────────────────────
 
+// GTIN-13 is what FatSecret's barcode endpoint expects — UPC-A (12 digits)
+// and EAN-8 zero-pad up to it cleanly, which covers the formats ZXing is
+// configured to detect below.
+function toGtin13(code) {
+  const digits = code.replace(/\D/g, "");
+  return digits.padStart(13, "0").slice(-13);
+}
+
+// FatSecret's barcode data is far more complete than Open Food Facts' (many
+// OFF entries have missing/zeroed nutriment fields — confirmed by direct
+// testing), so it's tried first. OFF stays as a fallback for products
+// FatSecret doesn't have (its "No food item detected" response), since
+// OFF's crowdsourced coverage skews better for AU-specific/regional items.
+async function lookupFatSecretBarcode(barcode) {
+  const res = await fetch(`/api/fatsecret-barcode?barcode=${encodeURIComponent(toGtin13(barcode))}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (data.error || !data.food) return null;
+  const food = data.food;
+  const rawServings = food.servings?.serving;
+  const servings = Array.isArray(rawServings) ? rawServings : rawServings ? [rawServings] : [];
+  const serving = servings[0];
+  if (!serving) return null;
+  const cal = Math.round(parseFloat(serving.calories) || 0);
+  if (!cal) return null;
+  return {
+    name: food.food_name,
+    brand: food.brand_name || "",
+    serving: serving.serving_description || "1 serving",
+    cal,
+    protein: Math.round((parseFloat(serving.protein) || 0) * 10) / 10,
+    carbs: Math.round((parseFloat(serving.carbohydrate) || 0) * 10) / 10,
+    fat: Math.round((parseFloat(serving.fat) || 0) * 10) / 10,
+    fibre: Math.round((parseFloat(serving.fiber) || 0) * 10) / 10,
+    sodium: Math.round(parseFloat(serving.sodium) || 0),
+    sugar: Math.round((parseFloat(serving.sugar) || 0) * 10) / 10,
+    source: "fatsecret",
+  };
+}
+
+async function lookupOpenFoodFactsBarcode(barcode) {
+  const res = await fetch(`https://au.openfoodfacts.org/api/v0/product/${barcode}.json`);
+  const data = await res.json();
+  if (data.status !== 1 || !data.product) return null;
+  const p = data.product; const per100 = p.nutriments || {};
+  const servingG = parseFloat(p.serving_size) || 100; const factor = servingG / 100;
+  const cal = Math.round((per100["energy-kcal_100g"] || per100["energy_100g"] / 4.184 || 0) * factor);
+  if (!cal) return null;
+  return {
+    name: p.product_name || p.generic_name || "Unknown product",
+    brand: p.brands || "", serving: p.serving_size || "100g",
+    cal,
+    protein: Math.round((per100.proteins_100g || 0) * factor * 10) / 10,
+    carbs: Math.round((per100.carbohydrates_100g || 0) * factor * 10) / 10,
+    fat: Math.round((per100.fat_100g || 0) * factor * 10) / 10,
+    fibre: Math.round((per100.fiber_100g || 0) * factor * 10) / 10,
+    sodium: Math.round((per100.sodium_100g || 0) * factor * 1000),
+    sugar: Math.round((per100.sugars_100g || 0) * factor * 10) / 10,
+    source: "off",
+  };
+}
+
 function BarcodeScanner({ onAddFood, onClose, defaultMeal }) {
   const videoRef = useRef(null);
-  const readerRef = useRef(null);
+  const controlsRef = useRef(null);
+  // Guards against the decode callback firing more than once for the same
+  // detection (ZXing can report the same barcode on consecutive frames
+  // before the stream actually stops) — without this, two concurrent
+  // lookups can land in either order and leave a stale error sitting next
+  // to a valid result, since they write to separate state.
+  const processingRef = useRef(false);
   const [scanning, setScanning] = useState(false);
   const [looking, setLooking] = useState(false);
   const [result, setResult] = useState(null);
@@ -214,16 +282,48 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal }) {
 
   async function startScanner() {
     setError(null); setResult(null); setLooking(true);
+    processingRef.current = false;
     try {
-      const { BrowserMultiFormatReader } = await import("@zxing/browser");
-      const reader = new BrowserMultiFormatReader();
-      readerRef.current = reader;
-      const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-      if (devices.length === 0) { setError("No camera found on this device."); setLooking(false); return; }
-      const device = devices.find(d => d.label.toLowerCase().includes("back")) || devices[devices.length - 1];
-      await reader.decodeFromVideoDevice(device.deviceId, videoRef.current, async (res) => {
-        if (res) { stopScanner(); setScanning(true); await lookupBarcode(res.getText()); }
-      });
+      const [{ BrowserMultiFormatReader }, { DecodeHintType, BarcodeFormat }] = await Promise.all([
+        import("@zxing/browser"),
+        import("@zxing/library"),
+      ]);
+      // Retail barcodes only — narrowing formats (instead of ZXing's full
+      // default set, which also tries QR/PDF417/Aztec/etc every frame)
+      // means less wasted work per frame and fewer false reads.
+      // TRY_HARDER spends more time per frame to tolerate the tilted/
+      // slightly-off-angle holds real handheld scanning actually looks like.
+      const hints = new Map();
+      hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+        BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E, BarcodeFormat.CODE_128,
+      ]);
+      hints.set(DecodeHintType.TRY_HARDER, true);
+      const reader = new BrowserMultiFormatReader(hints);
+      // decodeFromConstraints + facingMode (rather than enumerating devices
+      // and guessing which one is "back" from its label) both skips an
+      // extra device-listing round trip before the camera opens, and lets
+      // us request continuous autofocus, which is most of why a barcode
+      // previously needed to be held dead-still to focus.
+      const controls = await reader.decodeFromConstraints(
+        {
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            advanced: [{ focusMode: "continuous" }],
+          },
+        },
+        videoRef.current,
+        async (res) => {
+          if (res && !processingRef.current) {
+            processingRef.current = true;
+            stopScanner();
+            setScanning(true);
+            await lookupBarcode(res.getText());
+          }
+        }
+      );
+      controlsRef.current = controls;
     } catch (err) {
       console.error(err);
       setError("Couldn't access camera. Make sure you've allowed camera permission.");
@@ -232,33 +332,26 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal }) {
   }
 
   function stopScanner() {
-    if (readerRef.current) { try { readerRef.current.reset(); } catch { /* already stopped */ } readerRef.current = null; }
+    if (controlsRef.current) { try { controlsRef.current.stop(); } catch { /* already stopped */ } controlsRef.current = null; }
     setLooking(false);
   }
 
   async function lookupBarcode(barcode) {
     try {
-      const res = await fetch(`https://au.openfoodfacts.org/api/v0/product/${barcode}.json`);
-      const data = await res.json();
-      if (data.status !== 1 || !data.product) { setError(`Product not found for barcode ${barcode}. Try searching manually.`); setScanning(false); return; }
-      const p = data.product; const per100 = p.nutriments || {};
-      const servingG = parseFloat(p.serving_size) || 100; const factor = servingG / 100;
-      setResult({
-        name: p.product_name || p.generic_name || "Unknown product",
-        brand: p.brands || "", serving: p.serving_size || "100g",
-        cal: Math.round((per100["energy-kcal_100g"] || per100["energy_100g"] / 4.184 || 0) * factor),
-        protein: Math.round((per100.proteins_100g || 0) * factor * 10) / 10,
-        carbs: Math.round((per100.carbohydrates_100g || 0) * factor * 10) / 10,
-        fat: Math.round((per100.fat_100g || 0) * factor * 10) / 10,
-        fibre: Math.round((per100.fiber_100g || 0) * factor * 10) / 10,
-        sodium: Math.round((per100.sodium_100g || 0) * factor * 1000),
-        sugar: Math.round((per100.sugars_100g || 0) * factor * 10) / 10,
-      });
-    } catch (err) { console.error(err); setError("Couldn't look up this product. Check your connection and try again."); }
+      const found = (await lookupFatSecretBarcode(barcode).catch(() => null))
+        || (await lookupOpenFoodFactsBarcode(barcode).catch(() => null));
+      if (!found) {
+        setResult(null);
+        setError(`Product not found for barcode ${barcode}. Try searching manually.`);
+        return;
+      }
+      setError(null);
+      setResult(found);
+    } catch (err) { console.error(err); setResult(null); setError("Couldn't look up this product. Check your connection and try again."); }
     finally { setScanning(false); }
   }
 
-  function reset() { setResult(null); setError(null); setScanning(false); setLooking(false); }
+  function reset() { setResult(null); setError(null); setScanning(false); startScanner(); }
 
   return (
     <div>
@@ -297,7 +390,7 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal }) {
               {MEALS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
             <button onClick={reset} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
-            <button onClick={() => { onAddFood({ ...result, source: 'off' }, meal); onClose(); }} style={{ background: "#8fbc8f", border: "none", borderRadius: 8, padding: "7px 18px", fontSize: 13, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>+ Add to {meal}</button>
+            <button onClick={() => { onAddFood(result, meal); onClose(); }} style={{ background: "#8fbc8f", border: "none", borderRadius: 8, padding: "7px 18px", fontSize: 13, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>+ Add to {meal}</button>
           </div>
         </div>
       )}

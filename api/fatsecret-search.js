@@ -4,42 +4,12 @@
 // signs/authenticates every request — unlike USDA's plain query-string key,
 // this secret must never reach the browser (anyone reading it out of the
 // bundle could exhaust or abuse the account's quota). This function holds
-// the secret, exchanges it for a short-lived bearer token (cached across
-// warm invocations), and proxies the actual search so the browser only
-// ever talks to our own origin.
+// the secret via getFatSecretToken and proxies the actual search so the
+// browser only ever talks to our own origin.
 
-let cachedToken = null;
-let cachedTokenExpiresAt = 0;
+import { getFatSecretToken } from "./_fatsecretAuth.js";
 
-async function getAccessToken() {
-  if (cachedToken && Date.now() < cachedTokenExpiresAt) return cachedToken;
-
-  const clientId = process.env.FATSECRET_CLIENT_ID;
-  const clientSecret = process.env.FATSECRET_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    throw new Error("FatSecret credentials are not configured");
-  }
-
-  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  const res = await fetch("https://oauth.fatsecret.com/connect/token", {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${basic}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    // "premier" is required once the account is upgraded — a token scoped
-    // to "basic" alone gets rejected with "Missing scope: scope 'premier'"
-    // on a Premier account, confirmed via direct API testing.
-    body: "grant_type=client_credentials&scope=basic%20premier",
-  });
-  if (!res.ok) throw new Error(`FatSecret token request failed: ${res.status}`);
-  const data = await res.json();
-
-  cachedToken = data.access_token;
-  // Refresh a minute early so a request never runs on an about-to-expire token.
-  cachedTokenExpiresAt = Date.now() + (data.expires_in - 60) * 1000;
-  return cachedToken;
-}
+const SCOPE = "basic premier";
 
 async function searchFoods(query, token) {
   const url = `https://platform.fatsecret.com/rest/foods/search/v5?search_expression=${encodeURIComponent(query)}&format=json&region=AU&max_results=30`;
@@ -54,13 +24,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    let token = await getAccessToken();
+    let token = await getFatSecretToken(SCOPE);
     let res2 = await searchFoods(query, token);
     // A cached token that expired early (clock skew, revoked, etc.) fails
     // with 401 — force one fresh token + retry before giving up.
     if (res2.status === 401) {
-      cachedToken = null;
-      token = await getAccessToken();
+      token = await getFatSecretToken(SCOPE, true);
       res2 = await searchFoods(query, token);
     }
     if (!res2.ok) {
