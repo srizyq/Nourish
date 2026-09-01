@@ -31,16 +31,9 @@ export default function AppNav({ active, initials }) {
         ))}
         <div className="app-sidebar-spacer" />
         <button
-          className={`app-nav-icon${active === 'settings' ? ' is-active' : ''}`}
+          className={`app-nav-avatar${active === 'settings' || active === 'profile' ? ' is-active' : ''}`}
           title="Settings"
           onClick={() => navigate('/settings')}
-        >
-          <i className="ti ti-settings" />
-        </button>
-        <button
-          className={`app-nav-avatar${active === 'profile' ? ' is-active' : ''}`}
-          title="Profile"
-          onClick={() => navigate('/profile')}
         >
           {initials}
         </button>
@@ -58,18 +51,11 @@ export default function AppNav({ active, initials }) {
           </button>
         ))}
         <button
-          className={`app-bottom-icon${active === 'settings' ? ' is-active' : ''}`}
+          className={`app-bottom-icon${active === 'settings' || active === 'profile' ? ' is-active' : ''}`}
           title="Settings"
           onClick={() => navigate('/settings')}
         >
           <i className="ti ti-settings" />
-        </button>
-        <button
-          className={`app-bottom-icon${active === 'profile' ? ' is-active' : ''}`}
-          title="Profile"
-          onClick={() => navigate('/profile')}
-        >
-          <i className="ti ti-user" />
         </button>
       </nav>
     </>

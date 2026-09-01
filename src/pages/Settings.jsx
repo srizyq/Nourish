@@ -299,9 +299,20 @@ export default function Settings() {
     setTimeout(() => setSaved(false), 2200);
   };
 
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
   const handleLogout = async () => {
     await signOut();
     navigate('/');
+  };
+
+  // Guest sessions have no password — Supabase signs them out permanently,
+  // with no way back in, unlike a real account where "log out" is safe and
+  // reversible. Guard the button with an explicit warning instead of
+  // treating it the same as a real account's logout.
+  const requestLogout = () => {
+    if (isGuest) setShowLogoutConfirm(true);
+    else handleLogout();
   };
 
   const isGuest = !!user?.is_anonymous;
@@ -342,6 +353,38 @@ export default function Settings() {
               {saved ? '✓ Saved' : 'Save changes'}
             </button>
           )}
+        </div>
+
+        {/* Profile preview — tap through to the full Profile page */}
+        <div className="page-pad-top" style={{ paddingTop: 16 }}>
+          <button
+            onClick={() => navigate('/profile')}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: '14px',
+              padding: '14px 16px', background: '#141414', border: '1px solid #1e1e1e',
+              borderRadius: '14px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+              transition: 'border-color 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#2a2a2a'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = '#1e1e1e'}
+          >
+            <div style={{
+              width: 48, height: 48, borderRadius: '50%',
+              background: '#0f1a0f', border: '1px solid #4a7a4a',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 17, fontWeight: 700, color: '#8fbc8f', flexShrink: 0,
+              fontFamily: "'Syne', sans-serif",
+            }}>
+              {initials}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ color: '#e8e8e8', fontSize: '15px', fontWeight: 600 }}>{profile?.name || 'Your name'}</div>
+              <div style={{ color: '#555', fontSize: '13px', marginTop: '2px' }}>
+                {isGuest ? `Guest mode · ${daysRemaining} days left` : (user?.email || 'View profile')}
+              </div>
+            </div>
+            <i className="ti ti-chevron-right" style={{ color: '#444', fontSize: 16, flexShrink: 0 }} />
+          </button>
         </div>
 
         {/* Tabs */}
@@ -543,7 +586,7 @@ export default function Settings() {
                 </FieldRow>
                 {isGuest && <UpgradeForm />}
                 <button
-                  onClick={handleLogout}
+                  onClick={requestLogout}
                   style={{
                     marginTop: '16px',
                     padding: '9px 16px', background: 'transparent', border: '1px solid #2a2a2a',
@@ -551,7 +594,7 @@ export default function Settings() {
                     cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
                   }}
                 >
-                  Log out
+                  {isGuest ? 'Exit guest session' : 'Log out'}
                 </button>
               </Card>
             </div>
@@ -559,6 +602,33 @@ export default function Settings() {
 
         </div>
       </div>
+
+      {showLogoutConfirm && (
+        <div onClick={() => setShowLogoutConfirm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: 16, width: '100%', maxWidth: 420, padding: 24 }}>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 17, color: '#e8e8e8', marginBottom: 10 }}>
+              Exit guest session?
+            </div>
+            <p style={{ color: '#999', fontSize: 14, lineHeight: 1.6, margin: '0 0 20px' }}>
+              You're in guest mode. Guest accounts have no password, so once you exit there's no way to log back into this data — it's gone for good. Create a real account above first if you want to keep it.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 8, color: '#ccc', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{ flex: 1, padding: '11px', background: '#3a1414', border: '1px solid #6a2a2a', borderRadius: 8, color: '#e89f9f', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Exit anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
