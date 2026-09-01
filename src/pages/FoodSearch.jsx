@@ -245,12 +245,28 @@ async function lookupFatSecretBarcode(barcode) {
   return looksLikeEmptyNutrition(found) ? null : found;
 }
 
+// Open Food Facts' serving_size is a free-text human label, not a bare
+// number — e.g. "1 bottle (425 g)", "2 slices (60g)". A plain parseFloat()
+// on that string reads the leading "1" (from "1 bottle"), not the actual
+// weight, undershooting every scaled value by ~100x. Confirmed with a real
+// scan: "1 bottle (425 g)" parsed to 1g instead of 425g, turning a
+// legitimate 289 kcal/30g-protein serving into "1 kcal, 0.1g protein".
+function extractServingGrams(servingSizeStr) {
+  if (!servingSizeStr) return null;
+  // Only trust a number that's actually attached to a weight/volume unit
+  // (g/ml) — a bare number with no unit (e.g. "1 serving", "2 pieces") is a
+  // count, not a weight, and grabbing it the same way caused this exact
+  // bug: "1 bottle (425 g)" has to match on the "425 g", not the leading "1".
+  const withUnit = servingSizeStr.match(/([\d.]+)\s*(?:g|ml)\b/i);
+  return withUnit ? parseFloat(withUnit[1]) : null;
+}
+
 async function lookupOpenFoodFactsBarcode(barcode) {
   const res = await fetch(`https://au.openfoodfacts.org/api/v0/product/${barcode}.json`);
   const data = await res.json();
   if (data.status !== 1 || !data.product) return null;
   const p = data.product; const per100 = p.nutriments || {};
-  const servingG = parseFloat(p.serving_size) || 100; const factor = servingG / 100;
+  const servingG = extractServingGrams(p.serving_size) || 100; const factor = servingG / 100;
   const cal = Math.round((per100["energy-kcal_100g"] || per100["energy_100g"] / 4.184 || 0) * factor);
   const found = {
     name: p.product_name || p.generic_name || "Unknown product",
