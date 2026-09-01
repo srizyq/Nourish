@@ -44,6 +44,14 @@ create table if not exists public.food_logs (
   fibre_g numeric default 0,
   sodium_mg numeric default 0,
   sugar_g numeric default 0,
+  saturated_fat_g numeric default 0,
+  trans_fat_g numeric default 0,
+  cholesterol_mg numeric default 0,
+  potassium_mg numeric default 0,
+  added_sugar_g numeric default 0,
+  vitamin_d_mcg numeric default 0,
+  calcium_mg numeric default 0,
+  iron_mg numeric default 0,
   source text,
   created_at timestamptz default now()
 );
@@ -56,6 +64,8 @@ create policy "food_logs: select own" on public.food_logs
   for select using (auth.uid() = user_id);
 create policy "food_logs: insert own" on public.food_logs
   for insert with check (auth.uid() = user_id);
+create policy "food_logs: update own" on public.food_logs
+  for update using (auth.uid() = user_id);
 create policy "food_logs: delete own" on public.food_logs
   for delete using (auth.uid() = user_id);
 
@@ -175,6 +185,14 @@ create table if not exists public.favourite_foods (
   fibre_g numeric default 0,
   sodium_mg numeric default 0,
   sugar_g numeric default 0,
+  saturated_fat_g numeric default 0,
+  trans_fat_g numeric default 0,
+  cholesterol_mg numeric default 0,
+  potassium_mg numeric default 0,
+  added_sugar_g numeric default 0,
+  vitamin_d_mcg numeric default 0,
+  calcium_mg numeric default 0,
+  iron_mg numeric default 0,
   source text,
   created_at timestamptz default now(),
   unique (user_id, name)

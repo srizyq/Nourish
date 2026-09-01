@@ -62,6 +62,14 @@ export async function addFoodLog(userId, entry) {
       fibre_g: entry.fibre || 0,
       sodium_mg: entry.sodium || 0,
       sugar_g: entry.sugar || 0,
+      saturated_fat_g: entry.saturatedFat || 0,
+      trans_fat_g: entry.transFat || 0,
+      cholesterol_mg: entry.cholesterol || 0,
+      potassium_mg: entry.potassium || 0,
+      added_sugar_g: entry.addedSugar || 0,
+      vitamin_d_mcg: entry.vitaminD || 0,
+      calcium_mg: entry.calcium || 0,
+      iron_mg: entry.iron || 0,
       source: entry.source || 'local',
     })
     .select()
@@ -73,6 +81,25 @@ export async function addFoodLog(userId, entry) {
 export async function deleteFoodLog(id) {
   const { error } = await supabase.from('food_logs').delete().eq('id', id);
   if (error) throw error;
+}
+
+export async function updateFoodLog(id, entry) {
+  const { data, error } = await supabase
+    .from('food_logs')
+    .update({
+      calories: entry.cal || 0,
+      protein_g: entry.protein || 0,
+      carbs_g: entry.carbs || 0,
+      fat_g: entry.fat || 0,
+      fibre_g: entry.fibre || 0,
+      sodium_mg: entry.sodium || 0,
+      sugar_g: entry.sugar || 0,
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 export async function getRecentFoodLogs(userId, limit = 40) {
@@ -219,6 +246,14 @@ export async function addFavouriteFood(userId, food) {
       fibre_g: food.fibre || 0,
       sodium_mg: food.sodium || 0,
       sugar_g: food.sugar || 0,
+      saturated_fat_g: food.saturatedFat || 0,
+      trans_fat_g: food.transFat || 0,
+      cholesterol_mg: food.cholesterol || 0,
+      potassium_mg: food.potassium || 0,
+      added_sugar_g: food.addedSugar || 0,
+      vitamin_d_mcg: food.vitaminD || 0,
+      calcium_mg: food.calcium || 0,
+      iron_mg: food.iron || 0,
       source: food.source || null,
     }, { onConflict: 'user_id,name' })
     .select()

@@ -99,6 +99,23 @@ function scaleFood(food, servings) {
 // Australia subdomain so results are products actually sold here
 // (Capilano, Sanitarium, Woolworths own brand, etc.) instead of being
 // dominated by UK/US supermarket SKUs.
+// Open Food Facts reports everything per-100g in grams (even things like
+// cholesterol/calcium/iron that are more naturally read in mg, and vitamin D
+// which is more naturally read in micrograms) — convert each to the unit
+// food_logs actually stores, scaled by the same `factor` used for cal/protein/etc.
+function extraMicrosFromOFF(per100, factor) {
+  return {
+    saturatedFat: Math.round((per100["saturated-fat_100g"] || 0) * factor * 10) / 10,
+    transFat: Math.round((per100["trans-fat_100g"] || 0) * factor * 10) / 10,
+    cholesterol: Math.round((per100["cholesterol_100g"] || 0) * factor * 1000),
+    potassium: Math.round((per100["potassium_100g"] || 0) * factor * 1000),
+    addedSugar: Math.round((per100["added-sugars_100g"] || 0) * factor * 10) / 10,
+    vitaminD: Math.round((per100["vitamin-d_100g"] || 0) * factor * 1000000 * 10) / 10,
+    calcium: Math.round((per100["calcium_100g"] || 0) * factor * 1000),
+    iron: Math.round((per100["iron_100g"] || 0) * factor * 1000 * 10) / 10,
+  };
+}
+
 async function searchOpenFoodFacts(q) {
   const url = `https://au.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&sort_by=unique_scans_n&fields=product_name,generic_name,brands,nutriments,code`;
   // Open Food Facts' shared search backend has occasional one-off blips
@@ -130,6 +147,7 @@ async function searchOpenFoodFacts(q) {
       fibre: Math.round((n.fiber_100g || 0) * 10) / 10,
       sodium: Math.round((n.sodium_100g || 0) * 1000),
       sugar: Math.round((n.sugars_100g || 0) * 10) / 10,
+      ...extraMicrosFromOFF(n, 1),
       source: "off",
       servingGrams: 100,
     };
@@ -160,6 +178,22 @@ function parseGramsFromServing(serving) {
   return match ? parseFloat(match[1]) : 100;
 }
 
+// FatSecret reports these already in the units food_logs stores them in
+// (mg for cholesterol/potassium/calcium, mcg for vitamin D) — no unit
+// conversion needed here, unlike Open Food Facts' all-grams convention.
+function extraMicrosFromFatSecretServing(serving) {
+  return {
+    saturatedFat: Math.round((parseFloat(serving.saturated_fat) || 0) * 10) / 10,
+    transFat: Math.round((parseFloat(serving.trans_fat) || 0) * 10) / 10,
+    cholesterol: Math.round(parseFloat(serving.cholesterol) || 0),
+    potassium: Math.round(parseFloat(serving.potassium) || 0),
+    addedSugar: Math.round((parseFloat(serving.added_sugars) || 0) * 10) / 10,
+    vitaminD: Math.round((parseFloat(serving.vitamin_d) || 0) * 10) / 10,
+    calcium: Math.round(parseFloat(serving.calcium) || 0),
+    iron: Math.round((parseFloat(serving.iron) || 0) * 10) / 10,
+  };
+}
+
 async function searchFatSecret(q) {
   const url = `/api/fatsecret-search?q=${encodeURIComponent(q)}`;
   let res = await fetch(url);
@@ -188,6 +222,7 @@ async function searchFatSecret(q) {
       fibre: Math.round((parseFloat(serving.fiber) || 0) * 10) / 10,
       sodium: Math.round(parseFloat(serving.sodium) || 0),
       sugar: Math.round((parseFloat(serving.sugar) || 0) * 10) / 10,
+      ...extraMicrosFromFatSecretServing(serving),
       source: "fatsecret",
       servingGrams: parseGramsFromServing(serving),
     };
@@ -240,6 +275,7 @@ async function lookupFatSecretBarcode(barcode) {
     fibre: Math.round((parseFloat(serving.fiber) || 0) * 10) / 10,
     sodium: Math.round(parseFloat(serving.sodium) || 0),
     sugar: Math.round((parseFloat(serving.sugar) || 0) * 10) / 10,
+    ...extraMicrosFromFatSecretServing(serving),
     source: "fatsecret",
   };
   return looksLikeEmptyNutrition(found) ? null : found;
@@ -278,6 +314,7 @@ async function lookupOpenFoodFactsBarcode(barcode) {
     fibre: Math.round((per100.fiber_100g || 0) * factor * 10) / 10,
     sodium: Math.round((per100.sodium_100g || 0) * factor * 1000),
     sugar: Math.round((per100.sugars_100g || 0) * factor * 10) / 10,
+    ...extraMicrosFromOFF(per100, factor),
     source: "off",
   };
   return looksLikeEmptyNutrition(found) ? null : found;
@@ -967,6 +1004,14 @@ export default function FoodSearch() {
     fibre: Number(row.fibre_g) || 0,
     sodium: Number(row.sodium_mg) || 0,
     sugar: Number(row.sugar_g) || 0,
+    saturatedFat: Number(row.saturated_fat_g) || 0,
+    transFat: Number(row.trans_fat_g) || 0,
+    cholesterol: Number(row.cholesterol_mg) || 0,
+    potassium: Number(row.potassium_mg) || 0,
+    addedSugar: Number(row.added_sugar_g) || 0,
+    vitaminD: Number(row.vitamin_d_mcg) || 0,
+    calcium: Number(row.calcium_mg) || 0,
+    iron: Number(row.iron_mg) || 0,
     servingGrams: row.serving_grams || 100,
     source: row.source || "favourite",
   })), [favourites.rows]);
@@ -1009,6 +1054,10 @@ export default function FoodSearch() {
     const snapshot = items.map(it => ({
       name: it.name, cal: it.cal, protein: it.protein, carbs: it.carbs,
       fat: it.fat, fibre: it.fibre || 0, sodium: it.sodium || 0, sugar: it.sugar || 0,
+      saturatedFat: it.saturatedFat || 0, transFat: it.transFat || 0,
+      cholesterol: it.cholesterol || 0, potassium: it.potassium || 0,
+      addedSugar: it.addedSugar || 0, vitaminD: it.vitaminD || 0,
+      calcium: it.calcium || 0, iron: it.iron || 0,
     }));
     await savedMeals.create(name, snapshot);
     if (mealToLog) {
