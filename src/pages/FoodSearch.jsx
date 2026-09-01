@@ -267,7 +267,7 @@ async function lookupOpenFoodFactsBarcode(barcode) {
   return looksLikeEmptyNutrition(found) ? null : found;
 }
 
-function BarcodeScanner({ onAddFood, onClose, defaultMeal }) {
+function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSearchManually }) {
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   // Guards against the decode callback firing more than once for the same
@@ -372,7 +372,19 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal }) {
         </div>
       )}
       {scanning && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "20px 0", color: "#555", fontSize: 13 }}><div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid #333", borderTopColor: "#8fbc8f", animation: "spin 0.8s linear infinite" }} />Looking up product…</div>}
-      {error && <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070", marginBottom: 12 }}>{error}</div>}
+      {error && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070", marginBottom: 10 }}>{error}</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={onSearchManually} style={{ flex: 1, background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "9px", fontSize: 13, color: "#ccc", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <i className="ti ti-search" style={{ fontSize: 14 }} /> Search manually
+            </button>
+            <button onClick={onCreateCustom} style={{ flex: 1, background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "9px", fontSize: 13, color: "#8fbc8f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <i className="ti ti-plus" style={{ fontSize: 14 }} /> Create custom food
+            </button>
+          </div>
+        </div>
+      )}
       {result && (
         <div>
           <div style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Product found</div>
@@ -417,7 +429,7 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal }) {
 //    it required posting a secret API key from the browser, which can't be
 //    done safely client-side) ────────────────────────────────────────────────
 
-function ScanModal({ onClose, onAddFood, defaultMeal }) {
+function ScanModal({ onClose, onAddFood, defaultMeal, onCreateCustom, onSearchManually }) {
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -427,7 +439,7 @@ function ScanModal({ onClose, onAddFood, defaultMeal }) {
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
         </div>
         <div style={{ padding: 20 }}>
-          <BarcodeScanner onAddFood={onAddFood} onClose={onClose} defaultMeal={defaultMeal} />
+          <BarcodeScanner onAddFood={onAddFood} onClose={onClose} defaultMeal={defaultMeal} onCreateCustom={onCreateCustom} onSearchManually={onSearchManually} />
         </div>
       </div>
     </div>
@@ -1229,6 +1241,8 @@ export default function FoodSearch() {
           onClose={() => setScanOpen(false)}
           defaultMeal={activeMeal}
           onAddFood={async (food, meal) => { await addFoodLog(food, meal); refetchRecent(); setToast(`${food.name} added to ${meal}`); }}
+          onCreateCustom={() => { setScanOpen(false); setCreateFoodOpen(true); }}
+          onSearchManually={() => { setScanOpen(false); setTimeout(() => inputRef.current?.focus(), 0); }}
         />
       )}
 
