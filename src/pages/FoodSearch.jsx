@@ -205,7 +205,12 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal }) {
   const [error, setError] = useState(null);
   const [meal, setMeal] = useState(defaultMeal);
 
-  useEffect(() => { return () => stopScanner(); }, []);
+  // Jump straight into the camera on open — no reason to make someone tap
+  // "Start scanning" first when they already tapped "Scan barcode" to get
+  // here. Deliberately mount-only: startScanner/stopScanner recreate every
+  // render, but re-running this on every render would restart the camera.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { startScanner(); return () => stopScanner(); }, []);
 
   async function startScanner() {
     setError(null); setResult(null); setLooking(true);
