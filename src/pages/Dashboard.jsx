@@ -1,51 +1,134 @@
 // src/pages/Dashboard.jsx
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
 import { useFoodLogs } from '../hooks/useFoodLogs';
 import { useCheckins } from '../hooks/useCheckins';
 import { useHistory } from '../hooks/useHistory';
-import { todayLocalDate, dateNDaysAgo, generateInsights, computeStreak } from '../lib/patterns';
+import { useWeightLogs } from '../hooks/useWeightLogs';
+import { todayLocalDate, dateNDaysAgo, dateRange, generateInsights, computeStreak } from '../lib/patterns';
 import AppNav from '../components/AppNav';
+import { WeekBars } from './Progress';
 
-// ─── Calorie Ring ─────────────────────────────────────────────────────────────
-function CalorieRing({ consumed, target }) {
-  const pct = Math.min(consumed / target, 1);
-  const r = 72;
-  const cx = 90, cy = 90;
-  const circ = 2 * Math.PI * r;
-  const dash = circ * pct;
-  const remaining = target - consumed;
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
+// ─── Daily Nutrition ───────────────────────────────────────────────────────
+function MacroTile({ label, value, target, color, icon }) {
+  const pct = target ? Math.min((value / target) * 100, 100) : 0;
   return (
-    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-      <svg width="180" height="180" style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1e1e1e" strokeWidth="10" />
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#8fbc8f" strokeWidth="10" strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" style={{ transition: 'stroke-dasharray 1s cubic-bezier(0.4,0,0.2,1)' }} />
-      </svg>
-      <div style={{ position: 'absolute', textAlign: 'center' }}>
-        <div style={{ fontFamily: "'Syne', sans-serif", fontSize: '28px', fontWeight: 700, color: '#e8e8e8', lineHeight: 1 }}>
-          {remaining > 0 ? remaining.toLocaleString() : '0'}
-        </div>
-        <div style={{ color: '#555', fontSize: '11px', marginTop: '3px' }}>kcal left</div>
+    <div style={{ background: '#181818', borderRadius: 10, padding: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <i className={`ti ${icon}`} style={{ color, fontSize: 13 }} />
+        <span style={{ color: '#666', fontSize: 11 }}>{label}</span>
+      </div>
+      <div style={{ color: '#e8e8e8', fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
+        {value}{target ? <span style={{ color: '#444', fontSize: 11, fontWeight: 400 }}>/{target}g</span> : 'g'}
+      </div>
+      <div style={{ height: 4, background: '#1e1e1e', borderRadius: 99 }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.8s ease' }} />
       </div>
     </div>
   );
 }
 
-// ─── Macro Bar ────────────────────────────────────────────────────────────────
-function MacroBar({ label, current, target, color }) {
-  const pct = Math.min(current / target, 1) * 100;
+function NutritionCard({ consumed, target, protein, carbs, fat, targets, onClick }) {
+  const pct = target ? Math.min((consumed / target) * 100, 100) : 0;
   return (
-    <div style={{ flex: 1 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-        <span style={{ color: '#666', fontSize: '12px' }}>{label}</span>
-        <span style={{ color: '#555', fontSize: '12px' }}>{current}<span style={{ color: '#333' }}>/{target}g</span></span>
+    <div
+      onClick={onClick}
+      style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: 16, padding: 22, cursor: 'pointer', transition: 'border-color 0.15s' }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = '#3a5a3a'}
+      onMouseLeave={e => e.currentTarget.style.borderColor = '#1e1e1e'}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <span style={{ color: '#666', fontSize: 13, fontWeight: 500 }}>Daily Nutrition</span>
+        <span style={{ color: '#444', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+          Nutrients <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
+        </span>
       </div>
-      <div style={{ height: '4px', background: '#1e1e1e', borderRadius: '99px' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '99px', transition: 'width 0.8s ease' }} />
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 700, color: '#e8e8e8' }}>{consumed.toLocaleString()}</span>
+        <span style={{ color: '#555', fontSize: 14 }}>/ {target.toLocaleString()} kcal</span>
       </div>
+      <div style={{ height: 8, background: '#1e1e1e', borderRadius: 99, marginBottom: 20 }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: '#8fbc8f', borderRadius: 99, transition: 'width 0.8s ease' }} />
+      </div>
+      <div className="grid-3">
+        <MacroTile label="Protein" value={protein} target={targets.protein} color="#8fbc8f" icon="ti-meat" />
+        <MacroTile label="Carbs" value={carbs} target={targets.carbs} color="#6aabcf" icon="ti-bread" />
+        <MacroTile label="Fat" value={fat} target={targets.fat} color="#9f97e8" icon="ti-droplet" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Progress (weight + week calories) ─────────────────────────────────────
+function WeightCard({ weightLogs, latest, unit, onLog, navigate }) {
+  const [showInput, setShowInput] = useState(false);
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const chartData = {
+    labels: weightLogs.map(w => w.logged_date),
+    datasets: [{
+      data: weightLogs.map(w => Number(w.weight)),
+      borderColor: '#8fbc8f',
+      backgroundColor: '#8fbc8f22',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 0,
+    }],
+  };
+  const chartOptions = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    scales: { x: { display: false }, y: { display: false } },
+  };
+
+  async function submit() {
+    if (!value || saving) return;
+    setSaving(true);
+    try {
+      await onLog(Number(value), unit);
+      setValue('');
+      setShowInput(false);
+    } catch (err) {
+      console.error('Failed to log weight:', err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: 16, padding: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <span style={{ color: '#666', fontSize: 13, fontWeight: 500 }}>Weight</span>
+        <button onClick={() => setShowInput(s => !s)} style={{ background: 'none', border: 'none', color: '#8fbc8f', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+          {showInput ? 'Cancel' : '+ Log'}
+        </button>
+      </div>
+      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 700, color: '#e8e8e8', marginBottom: 14 }}>
+        {latest ? `${latest.weight}${latest.unit}` : '—'}
+      </div>
+      {showInput ? (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <input
+            type="number" value={value} onChange={e => setValue(e.target.value)} placeholder={`Weight (${unit})`}
+            style={{ flex: 1, background: '#181818', border: '1px solid #2a2a2a', borderRadius: 7, padding: '7px 10px', color: '#e8e8e8', fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
+          />
+          <button onClick={submit} disabled={!value || saving} style={{ background: !value || saving ? '#2a2a2a' : '#8fbc8f', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: !value || saving ? '#666' : '#0f0f0f', cursor: !value || saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>Save</button>
+        </div>
+      ) : weightLogs.length > 1 ? (
+        <div style={{ height: 60 }}><Line data={chartData} options={chartOptions} /></div>
+      ) : (
+        <div style={{ fontSize: 12, color: '#444' }}>Log your weight to see a trend here</div>
+      )}
+      <button onClick={() => navigate('/progress')} style={{ background: 'none', border: 'none', color: '#444', fontSize: 11, cursor: 'pointer', marginTop: 12, padding: 0, fontFamily: 'inherit' }}>View full history →</button>
     </div>
   );
 }
@@ -165,18 +248,15 @@ function GuestBanner({ daysRemaining, onSave }) {
 }
 
 // ─── Shortcut Cards ───────────────────────────────────────────────────────────
-function ShortcutRow({ navigate, onWaterClick }) {
+function ShortcutRow({ navigate }) {
   const shortcuts = [
     { label: 'Log food',  icon: '＋', action: () => navigate('/food') },
     { label: 'Scan barcode', icon: '📷', action: () => navigate('/food', { state: { openScan: true } }) },
-    { label: 'Water',     icon: '💧', action: onWaterClick },
-    { label: 'Patterns',  icon: '✦',  action: () => navigate('/insights') },
-    { label: 'Progress',  icon: '📈', action: () => navigate('/progress') },
   ];
   return (
-    <div className="grid-5" style={{ marginBottom: '20px' }}>
+    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
       {shortcuts.map((s, i) => (
-        <button key={i} onClick={s.action} style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '14px 8px', cursor: s.action ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }} onMouseEnter={e => { if (s.action) e.currentTarget.style.borderColor = '#3a5a3a'; }} onMouseLeave={e => { e.currentTarget.style.borderColor = '#1e1e1e'; }}>
+        <button key={i} onClick={s.action} style={{ flex: 1, maxWidth: 160, background: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '14px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#3a5a3a'} onMouseLeave={e => e.currentTarget.style.borderColor = '#1e1e1e'}>
           <span style={{ fontSize: '20px', lineHeight: 1 }}>{s.icon}</span>
           <span style={{ color: '#666', fontSize: '11px', fontWeight: 500 }}>{s.label}</span>
         </button>
@@ -189,14 +269,14 @@ function ShortcutRow({ navigate, onWaterClick }) {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const waterCardRef = useRef(null);
-  const [waterHighlight, setWaterHighlight] = useState(false);
 
   const today = todayLocalDate();
   const { profile } = useProfile();
   const { meals, deleteFood } = useFoodLogs(today);
   const { checkin, save: saveCheckin } = useCheckins(today);
   const { dailyData } = useHistory(dateNDaysAgo(30), today);
+  const weightUnit = profile?.unit === 'imperial' ? 'lb' : 'kg';
+  const { logs: weightLogs, latest: latestWeight, logWeight } = useWeightLogs(dateNDaysAgo(29), today);
 
   const targets = {
     calories: profile?.calorie_target || 2000,
@@ -222,17 +302,14 @@ export default function Dashboard() {
   const setEnergy = (e) => saveCheckin({ mood, energy: e });
   const setGlasses = (n) => saveCheckin({ mood, energy, water_glasses: n });
 
-  function jumpToWater() {
-    waterCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setWaterHighlight(true);
-    setTimeout(() => setWaterHighlight(false), 1200);
-  }
-
   const allItems = Object.values(meals).flat();
   const consumed        = allItems.reduce((s, i) => s + i.cal,     0);
   const consumedProtein = allItems.reduce((s, i) => s + i.protein, 0);
   const consumedCarbs   = allItems.reduce((s, i) => s + i.carbs,   0);
   const consumedFat     = allItems.reduce((s, i) => s + i.fat,     0);
+
+  const byDate = new Map(dailyData.map(d => [d.date, d]));
+  const weekDays = dateRange(dateNDaysAgo(6), today).map(date => byDate.get(date) || { date, calories: 0 });
 
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening';
@@ -261,68 +338,78 @@ export default function Dashboard() {
         {/* Content */}
         <div className="page-pad app-content-pad" style={{ maxWidth: '1100px' }}>
           {isGuest && <GuestBanner daysRemaining={daysRemaining} onSave={() => navigate('/settings')} />}
-          <ShortcutRow navigate={navigate} onWaterClick={jumpToWater} />
+          <ShortcutRow navigate={navigate} />
 
-          <div className="grid-2" style={{ marginBottom: '16px' }}>
-            {/* Calorie ring */}
-            <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                <span style={{ color: '#666', fontSize: '13px', fontWeight: 500 }}>Calories</span>
-                <span style={{ color: '#444', fontSize: '12px' }}>{calorieTarget.toLocaleString()} target</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-                <CalorieRing consumed={consumed} target={calorieTarget} />
-                <div style={{ flex: 1, minWidth: 160 }}>
-                  <div style={{ marginBottom: '4px' }}>
-                    <span style={{ color: '#555', fontSize: '12px' }}>Consumed </span>
-                    <span style={{ color: '#e8e8e8', fontWeight: 600 }}>{consumed}</span>
-                  </div>
-                  <div style={{ marginBottom: '16px' }}>
-                    <span style={{ color: '#555', fontSize: '12px' }}>Target </span>
-                    <span style={{ color: '#e8e8e8', fontWeight: 600 }}>{calorieTarget.toLocaleString()}</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <MacroBar label="Protein" current={consumedProtein} target={targets.protein?.g || 150} color="#8fbc8f" />
-                    <MacroBar label="Carbs"   current={consumedCarbs}   target={targets.carbs?.g   || 200} color="#6aabcf" />
-                    <MacroBar label="Fat"     current={consumedFat}     target={targets.fat?.g     || 67}  color="#9f97e8" />
-                  </div>
-                </div>
+          {/* Daily Nutrition */}
+          <div style={{ marginBottom: '16px' }}>
+            <NutritionCard
+              consumed={consumed}
+              target={calorieTarget}
+              protein={consumedProtein}
+              carbs={consumedCarbs}
+              fat={consumedFat}
+              targets={{ protein: targets.protein.g, carbs: targets.carbs.g, fat: targets.fat.g }}
+              onClick={() => navigate('/nutrients')}
+            />
+          </div>
+
+          {/* Progress: weight + this week's calories */}
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ color: '#666', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Progress</div>
+            <div className="grid-2">
+              <WeightCard weightLogs={weightLogs} latest={latestWeight} unit={weightUnit} onLog={(w, u) => logWeight(today, w, u)} navigate={navigate} />
+              <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '20px' }}>
+                <div style={{ color: '#666', fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>This week's calories</div>
+                <WeekBars days={weekDays} calorieTarget={calorieTarget} />
               </div>
             </div>
+          </div>
 
-            {/* Water + Mood */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div ref={waterCardRef} style={{ background: '#141414', border: `1px solid ${waterHighlight ? '#4a7a9a' : '#1e1e1e'}`, borderRadius: '16px', padding: '20px', transition: 'border-color 0.3s' }}>
+          {/* AI Insights */}
+          <div
+            onClick={() => navigate('/insights')}
+            style={{ background: '#0f1a0f', border: '1px solid #1e3a1e', borderRadius: '16px', padding: '20px', marginBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: '16px', cursor: 'pointer', transition: 'border-color 0.15s' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = '#3a5a3a'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = '#1e3a1e'}
+          >
+            <div style={{ width: '36px', height: '36px', background: '#4a7a4a22', border: '1px solid #3a5a3a', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <i className="ti ti-sparkles" style={{ fontSize: 16, color: '#8fbc8f' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ color: '#4a7a4a', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>AI Insights</span>
+                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: '#4a7a4a' }} />
+              </div>
+              <p style={{ color: '#ccc', fontSize: '14px', lineHeight: 1.6, margin: '6px 0 0' }}>
+                {insight?.body || 'Start logging your meals to get personalised tips based on your patterns.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Check in: water + mood */}
+          <div style={{ marginBottom: '16px' }}>
+            <div style={{ color: '#666', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Check in</div>
+            <div className="grid-2">
+              <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                   <span style={{ color: '#666', fontSize: '13px', fontWeight: 500 }}>Water</span>
                   <span style={{ color: '#6aabcf', fontSize: '13px', fontWeight: 600 }}>{glasses}/8 glasses</span>
                 </div>
                 <WaterTracker glasses={glasses} setGlasses={setGlasses} />
               </div>
-              <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '20px', flex: 1 }}>
+              <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '20px' }}>
                 <span style={{ color: '#666', fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '14px' }}>How are you feeling?</span>
                 <MoodCheckin mood={mood} setMood={setMood} energy={energy} setEnergy={setEnergy} />
               </div>
             </div>
           </div>
 
-          {/* Pattern insight */}
-          <div style={{ background: '#0f1a0f', border: '1px solid #1e3a1e', borderRadius: '16px', padding: '20px', marginBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: '16px' }}>
-            <div style={{ width: '36px', height: '36px', background: '#4a7a4a22', border: '1px solid #3a5a3a', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <i className="ti ti-sparkles" style={{ fontSize: 16, color: '#8fbc8f' }} />
-            </div>
-            <div>
-              <div style={{ color: '#4a7a4a', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px' }}>Your pattern</div>
-              <p style={{ color: '#ccc', fontSize: '14px', lineHeight: 1.6, margin: 0 }}>
-                {insight?.body || 'Start logging your meals to get personalised insights based on your patterns.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Meal log */}
+          {/* Daily food log */}
           <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <span style={{ color: '#666', fontSize: '13px', fontWeight: 500 }}>Today's meals</span>
+              <span onClick={() => navigate('/log')} style={{ color: '#666', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                Daily food log <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
+              </span>
               <span style={{ color: '#8fbc8f', fontSize: '13px', fontWeight: 600 }}>{consumed} kcal logged</span>
             </div>
             <MealLog

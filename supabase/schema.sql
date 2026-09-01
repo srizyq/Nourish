@@ -41,6 +41,9 @@ create table if not exists public.food_logs (
   protein_g numeric default 0,
   carbs_g numeric default 0,
   fat_g numeric default 0,
+  fibre_g numeric default 0,
+  sodium_mg numeric default 0,
+  sugar_g numeric default 0,
   source text,
   created_at timestamptz default now()
 );
@@ -77,6 +80,30 @@ create policy "checkins: insert own" on public.checkins
   for insert with check (auth.uid() = user_id);
 create policy "checkins: update own" on public.checkins
   for update using (auth.uid() = user_id);
+
+-- ── weight_logs ─────────────────────────────────────────────────────────────
+-- One entry per day (unique per user+date, upsert on conflict) so logging
+-- again the same day just updates rather than creating duplicates.
+create table if not exists public.weight_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  logged_date date not null,
+  weight numeric not null,
+  unit text not null default 'kg' check (unit in ('kg', 'lb')),
+  created_at timestamptz default now(),
+  unique (user_id, logged_date)
+);
+
+alter table public.weight_logs enable row level security;
+
+create policy "weight_logs: select own" on public.weight_logs
+  for select using (auth.uid() = user_id);
+create policy "weight_logs: insert own" on public.weight_logs
+  for insert with check (auth.uid() = user_id);
+create policy "weight_logs: update own" on public.weight_logs
+  for update using (auth.uid() = user_id);
+create policy "weight_logs: delete own" on public.weight_logs
+  for delete using (auth.uid() = user_id);
 
 -- ── custom_foods ────────────────────────────────────────────────────────────
 -- User-created foods that aren't in the USDA/Open Food Facts/curated

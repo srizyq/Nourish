@@ -7,10 +7,20 @@ import {
 import { Line, Bar } from "react-chartjs-2";
 import { useProfile } from "../hooks/useProfile";
 import { useHistory } from "../hooks/useHistory";
-import { todayLocalDate, dateNDaysAgo, streakFor, computeStreak } from "../lib/patterns";
+import { useWeightLogs } from "../hooks/useWeightLogs";
+import { todayLocalDate, dateNDaysAgo, dateRange, streakFor, computeStreak } from "../lib/patterns";
 import AppNav from "../components/AppNav";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, Filler);
+
+const WEIGHT_RANGES = [
+  { id: "7d", label: "1 week", days: 7 },
+  { id: "30d", label: "1 month", days: 30 },
+  { id: "90d", label: "3 months", days: 90 },
+  { id: "365d", label: "1 year", days: 365 },
+  { id: "5y", label: "5 years", days: 1825 },
+  { id: "all", label: "All time", days: null },
+];
 
 // ── colour tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -41,16 +51,6 @@ function avg(nums) {
   return nums.length ? nums.reduce((s, n) => s + n, 0) / nums.length : 0;
 }
 
-function dateRange(startDate, endDate) {
-  const dates = [];
-  let cursor = new Date(startDate + "T00:00:00");
-  const end = new Date(endDate + "T00:00:00");
-  while (cursor <= end) {
-    dates.push(todayLocalDate(cursor));
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return dates;
-}
 
 // ── stat card ─────────────────────────────────────────────────────────────
 function StatCard({ label, value, hint }) {
@@ -90,7 +90,7 @@ function StreakItem({ icon, iconBg, iconColor, name, count }) {
 }
 
 // ── week-at-a-glance bars ────────────────────────────────────────────────
-function WeekBars({ days, calorieTarget }) {
+export function WeekBars({ days, calorieTarget }) {
   const max = Math.max(calorieTarget || 0, ...days.map(d => d.calories), 1);
   return (
     <div>
@@ -125,11 +125,17 @@ export default function Progress() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const [range, setRange] = useState(30);
+  const [weightRange, setWeightRange] = useState("30d");
   const initials = (profile?.name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
 
   const today = todayLocalDate();
   const { dailyData, loading } = useHistory(dateNDaysAgo(range - 1), today);
   const { dailyData: badgeData } = useHistory(dateNDaysAgo(59), today);
+  const weightRangeDays = WEIGHT_RANGES.find(r => r.id === weightRange)?.days;
+  const { logs: weightLogs, loading: weightLoading } = useWeightLogs(
+    weightRangeDays ? dateNDaysAgo(weightRangeDays - 1) : null,
+    today
+  );
 
   const calorieTarget = profile?.calorie_target || null;
   const proteinTarget = profile?.protein_g || null;
@@ -191,6 +197,21 @@ export default function Progress() {
       { label: "Carbs", data: filledDays.map(d => d.carbs_g || 0), backgroundColor: C.blue },
       { label: "Fat", data: filledDays.map(d => d.fat_g || 0), backgroundColor: C.purple },
     ],
+  };
+
+  const weightLabels = weightLogs.map(w => new Date(w.logged_date + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short", ...(weightRangeDays > 365 ? { year: "2-digit" } : {}) }));
+  const weightChartData = {
+    labels: weightLabels,
+    datasets: [{
+      label: "Weight",
+      data: weightLogs.map(w => Number(w.weight)),
+      borderColor: C.green,
+      backgroundColor: C.green + "22",
+      fill: true,
+      tension: 0.3,
+      spanGaps: true,
+      pointRadius: weightLogs.length > 60 ? 0 : 3,
+    }],
   };
 
   const chartOptions = {
@@ -306,6 +327,32 @@ export default function Progress() {
                 <EmptyChartBox icon="ti-chart-bar" message="Log at least 1 day to see your macro chart" />
               )}
             </div>
+          </div>
+
+          {/* weight chart */}
+          <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+              <div>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS, marginBottom: 2 }}>Weight</div>
+                <div style={{ fontSize: 12, color: C.textM }}>Logged from the dashboard</div>
+              </div>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {WEIGHT_RANGES.map(r => (
+                  <button key={r.id} onClick={() => setWeightRange(r.id)} style={{
+                    background: weightRange === r.id ? C.bgAI : C.bgCard,
+                    border: `1px solid ${weightRange === r.id ? C.borderA2 : C.border2}`,
+                    borderRadius: 7, padding: "5px 11px", fontSize: 12,
+                    color: weightRange === r.id ? C.green : "#888", cursor: "pointer",
+                    fontFamily: "'DM Sans', sans-serif",
+                  }}>{r.label}</button>
+                ))}
+              </div>
+            </div>
+            {weightLoading ? null : weightLogs.length > 1 ? (
+              <div style={{ height: 220 }}><Line data={weightChartData} options={chartOptions} /></div>
+            ) : (
+              <EmptyChartBox icon="ti-scale" message="Log your weight from the dashboard to see a trend here" />
+            )}
           </div>
 
           {/* bottom row */}

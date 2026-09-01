@@ -16,6 +16,20 @@ function dateNDaysAgo(n, from = new Date()) {
   return todayLocalDate(d);
 }
 
+// Every calendar date from startDate to endDate inclusive, as
+// YYYY-MM-DD strings — used to fill gaps for charts so a day with no
+// data still gets a labelled point instead of being skipped.
+function dateRange(startDate, endDate) {
+  const dates = [];
+  let cursor = new Date(startDate + "T00:00:00");
+  const end = new Date(endDate + "T00:00:00");
+  while (cursor <= end) {
+    dates.push(todayLocalDate(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
 // ── join food_logs + checkins into one row per calendar day ────────────────
 export function joinDailyData(foodLogs, checkins) {
   const byDate = new Map();
@@ -182,4 +196,4 @@ export function generateMoodResponse(moodId, energy) {
   return tip + energyNote;
 }
 
-export { dateNDaysAgo, MOOD_SCORE };
+export { dateNDaysAgo, dateRange, MOOD_SCORE };

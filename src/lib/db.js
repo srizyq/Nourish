@@ -59,6 +59,9 @@ export async function addFoodLog(userId, entry) {
       protein_g: entry.protein || 0,
       carbs_g: entry.carbs || 0,
       fat_g: entry.fat || 0,
+      fibre_g: entry.fibre || 0,
+      sodium_mg: entry.sodium || 0,
+      sugar_g: entry.sugar || 0,
       source: entry.source || 'local',
     })
     .select()
@@ -227,4 +230,44 @@ export async function addFavouriteFood(userId, food) {
 export async function removeFavouriteFoodByName(userId, name) {
   const { error } = await supabase.from('favourite_foods').delete().eq('user_id', userId).eq('name', name);
   if (error) throw error;
+}
+
+// ─── weight_logs ────────────────────────────────────────────────────────────
+
+export async function getWeightLogsForRange(userId, startDate, endDate) {
+  let query = supabase
+    .from('weight_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .order('logged_date', { ascending: true });
+  if (startDate) query = query.gte('logged_date', startDate);
+  if (endDate) query = query.lte('logged_date', endDate);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data;
+}
+
+export async function getLatestWeightLog(userId) {
+  const { data, error } = await supabase
+    .from('weight_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .order('logged_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function upsertWeightLog(userId, date, weight, unit) {
+  const { data, error } = await supabase
+    .from('weight_logs')
+    .upsert(
+      { user_id: userId, logged_date: date, weight, unit },
+      { onConflict: 'user_id,logged_date' }
+    )
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }

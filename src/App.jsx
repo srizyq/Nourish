@@ -15,6 +15,8 @@ import AIInsights from "./pages/AIInsights";
 import MealPlans from './pages/MealPlans'
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
+import Nutrients from "./pages/Nutrients";
+import DailyLog from "./pages/DailyLog";
 
 export default function App() {
   return (
@@ -31,6 +33,8 @@ export default function App() {
           <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/food" element={<RequireAuth><FoodSearch /></RequireAuth>} />
           <Route path="/progress" element={<RequireAuth><Progress /></RequireAuth>} />
+          <Route path="/nutrients" element={<RequireAuth><Nutrients /></RequireAuth>} />
+          <Route path="/log" element={<RequireAuth><DailyLog /></RequireAuth>} />
           <Route path="/insights" element={<RequireAuth><AIInsights /></RequireAuth>} />
           <Route path="/meals" element={<RequireAuth><MealPlans /></RequireAuth>} />
           <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />

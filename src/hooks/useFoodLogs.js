@@ -28,6 +28,9 @@ export function useFoodLogs(date) {
         protein: Number(row.protein_g) || 0,
         carbs: Number(row.carbs_g) || 0,
         fat: Number(row.fat_g) || 0,
+        fibre: Number(row.fibre_g) || 0,
+        sodium: Number(row.sodium_mg) || 0,
+        sugar: Number(row.sugar_g) || 0,
       });
     }
     return grouped;
@@ -43,6 +46,9 @@ export function useFoodLogs(date) {
       protein: food.protein || 0,
       carbs: food.carbs || 0,
       fat: food.fat || 0,
+      fibre: food.fibre || 0,
+      sodium: food.sodium || 0,
+      sugar: food.sugar || 0,
       source: food.source,
     });
     setLogs(prev => [...prev, created]);
