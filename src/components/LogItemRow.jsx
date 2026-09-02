@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { round1 } from '../lib/format';
-import { scaleFood } from '../lib/foodMath';
+import { scaleFood, UNITS, amountToServings } from '../lib/foodMath';
 
 const C = {
   border: '#1e1e1e', border2: '#2a2a2a',
@@ -13,29 +13,31 @@ const labelStyle = { fontSize: 11, color: C.textM, marginBottom: 4, display: 'bl
 // A logged food row that expands in place to edit how much of it you had —
 // shared between the Dashboard's compact meal log and the full /log page
 // so both stay in sync instead of drifting into two separate editing UIs.
-// Editing scales every macro/micronutrient from the currently-logged
-// amount (via a servings multiplier) rather than hand-typing new numbers,
-// so the values stay internally consistent.
+// You can only change the amount (a number + unit — serving/g/kg/lb/oz,
+// the same picker used when adding food), never the macros directly; every
+// macro/micronutrient is scaled proportionally from the currently-logged
+// amount so the numbers always stay internally consistent.
 export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSave }) {
-  const [servings, setServings] = useState('1');
+  const [amount, setAmount] = useState('1');
+  const [unit, setUnit] = useState('serving');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  // Reset to "1" (i.e. no change) whenever this row opens, so stale edits
-  // from a previous expand don't linger if you collapse without saving.
-  useEffect(() => { if (isExpanded) setServings('1'); }, [isExpanded, item]);
+  // Reset to "1 serving" (i.e. no change) whenever this row opens, so
+  // stale edits from a previous expand don't linger if you collapse
+  // without saving.
+  useEffect(() => { if (isExpanded) { setAmount('1'); setUnit('serving'); } }, [isExpanded, item]);
 
-  const servingsNum = Number(servings) || 0;
-  const preview = scaleFood(item, servingsNum);
+  const servingGrams = item.servingGrams || 100;
+  const servings = amountToServings(Number(amount) || 0, unit, servingGrams);
+  const gramsEquivalent = Math.round(servings * servingGrams);
+  const preview = scaleFood(item, servings || 0);
 
   async function handleSave() {
     setSaving(true);
     setError(null);
     try {
-      await onSave({
-        ...preview,
-        servingGrams: item.servingGrams ? Math.round(item.servingGrams * servingsNum) : null,
-      });
+      await onSave({ ...preview, servingGrams: gramsEquivalent });
     } catch (err) {
       console.error('Failed to save food log edits:', err);
       setError("Couldn't save — try again.");
@@ -60,25 +62,26 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
       {isExpanded && (
         <div style={{ padding: '4px 18px 16px', background: '#111' }}>
           <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>Servings (1 = what's currently logged)</label>
-            <input style={{ ...fieldStyle, width: 100 }} type="number" min="0" step="0.25" value={servings} onChange={e => setServings(e.target.value)} />
+            <label style={labelStyle}>Amount ("1 serving" = what's currently logged)</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input style={{ ...fieldStyle, width: 90 }} type="number" min="0" step="any" value={amount} onChange={e => setAmount(e.target.value)} />
+              <select style={{ ...fieldStyle, cursor: 'pointer' }} value={unit} onChange={e => setUnit(e.target.value)}>
+                {UNITS.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
+              </select>
+            </div>
+            {unit !== 'serving' && <div style={{ fontSize: 11, color: C.textM, marginTop: 4 }}>≈ {round1(servings)} × the currently-logged serving</div>}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
             <div><label style={labelStyle}>Calories</label><div style={fieldStyle}>{preview.cal}</div></div>
             <div><label style={labelStyle}>Protein (g)</label><div style={fieldStyle}>{round1(preview.protein)}</div></div>
             <div><label style={labelStyle}>Carbs (g)</label><div style={fieldStyle}>{round1(preview.carbs)}</div></div>
             <div><label style={labelStyle}>Fat (g)</label><div style={fieldStyle}>{round1(preview.fat)}</div></div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
-            <div><label style={labelStyle}>Fibre (g)</label><div style={fieldStyle}>{round1(preview.fibre)}</div></div>
-            <div><label style={labelStyle}>Sodium (mg)</label><div style={fieldStyle}>{Math.round(preview.sodium)}</div></div>
-            <div><label style={labelStyle}>Sugar (g)</label><div style={fieldStyle}>{round1(preview.sugar)}</div></div>
-          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
               onClick={handleSave}
-              disabled={saving || !servingsNum}
-              style={{ background: saving || !servingsNum ? '#2a2a2a' : C.green, border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: saving || !servingsNum ? '#666' : '#0f0f0f', cursor: saving || !servingsNum ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
+              disabled={saving || !servings}
+              style={{ background: saving || !servings ? '#2a2a2a' : C.green, border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: saving || !servings ? '#666' : '#0f0f0f', cursor: saving || !servings ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
             >
               {saving ? 'Saving…' : 'Save changes'}
             </button>

@@ -1,7 +1,28 @@
+// Amount+unit selector shared by the add-food flow and the daily-log edit
+// flow, so both let you say "200g" / "1.5kg" / "2 servings" rather than
+// typing a bare, ambiguous multiplier.
+export const UNITS = [
+  { id: "serving", label: "serving", toGrams: null },
+  { id: "g", label: "g", toGrams: 1 },
+  { id: "kg", label: "kg", toGrams: 1000 },
+  { id: "lb", label: "lb", toGrams: 453.592 },
+  { id: "oz", label: "oz", toGrams: 28.3495 },
+];
+
+// How many base servings `amount` of `unit` represents for a food whose
+// "1 serving" (its base cal/protein/etc values) weighs `servingGrams`.
+export function amountToServings(amount, unitId, servingGrams) {
+  if (!amount || amount <= 0) return 0;
+  if (unitId === "serving") return amount;
+  const unit = UNITS.find(u => u.id === unitId);
+  const grams = amount * unit.toGrams;
+  return grams / (servingGrams || 100);
+}
+
 // Scales every macro/micronutrient field on a food object by a servings
 // multiplier — shared between the search/add flow (scaling a food before
 // logging it) and the daily-log edit flow (scaling an already-logged item
-// by a "servings" adjustment instead of hand-typing new macro numbers).
+// by an amount/unit adjustment instead of hand-typing new macro numbers).
 export function scaleFood(food, servings) {
   const round1 = n => Math.round(n * 10) / 10;
   return {
