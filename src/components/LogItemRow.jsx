@@ -73,11 +73,24 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
         <div style={{ padding: '4px 18px 16px', background: '#111' }}>
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>Amount ("1 serving" = what's currently logged)</label>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <input style={{ ...fieldStyle, width: 90 }} type="number" min="0" step="any" value={amount} onChange={e => setAmount(e.target.value)} />
-              <select style={{ ...fieldStyle, cursor: 'pointer' }} value={unit} onChange={e => setUnit(e.target.value)}>
-                {availableUnits.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
-              </select>
+              <div style={{ display: 'flex', background: '#0f0f0f', border: `1px solid ${C.border2}`, borderRadius: 20, padding: 2 }}>
+                {availableUnits.map(u => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => setUnit(u.id)}
+                    style={{
+                      background: unit === u.id ? '#2a3a2a' : 'transparent', border: 'none', borderRadius: 18,
+                      padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                      color: unit === u.id ? C.green : C.textM, transition: 'background 0.15s, color 0.15s',
+                    }}
+                  >
+                    {u.label}
+                  </button>
+                ))}
+              </div>
             </div>
             {unit !== 'serving' && <div style={{ fontSize: 11, color: C.textM, marginTop: 4 }}>≈ {round1(servings)} × the currently-logged serving</div>}
             {!hasKnownWeight && <div style={{ fontSize: 11, color: C.textM, marginTop: 4 }}>No serving size on record for this item — only relative scaling is available. Delete and re-add it via search for gram-accurate editing.</div>}
