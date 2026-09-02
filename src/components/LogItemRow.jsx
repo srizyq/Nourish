@@ -30,22 +30,35 @@ function MacroReadout({ value, unit, label, color }) {
 // macro/micronutrient is scaled proportionally from the currently-logged
 // amount so the numbers always stay internally consistent.
 export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSave }) {
-  const [amount, setAmount] = useState('1');
-  const [unit, setUnit] = useState('serving');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Reset to "1 serving" (i.e. no change) whenever this row opens, so
-  // stale edits from a previous expand don't linger if you collapse
-  // without saving.
-  useEffect(() => { if (isExpanded) { setAmount('1'); setUnit('serving'); } }, [isExpanded, item]);
-
   // Older items logged before serving_grams was tracked have no real
   // weight on record. Silently guessing 100g there would look precise
   // without being true — so weight-based units are only offered when we
-  // actually know what "1 serving" of this item weighs.
+  // actually know what this item weighs.
   const hasKnownWeight = !!item.servingGrams;
-  const availableUnits = hasKnownWeight ? UNITS : UNITS.filter(u => u.id === 'serving');
+
+  const [amount, setAmount] = useState(hasKnownWeight ? String(item.servingGrams) : '1');
+  const [unit, setUnit] = useState(hasKnownWeight ? 'g' : 'serving');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Reset whenever this row opens, so stale edits from a previous expand
+  // don't linger if you collapse without saving. Deliberately NOT "1
+  // serving" for known-weight items — "serving" would mean "whatever's
+  // currently saved", which silently redefines itself on every edit (e.g.
+  // scaling to 10x and saving makes 10x the new "1 serving" forever after,
+  // compounding on the next edit). Grams are an absolute, stable anchor
+  // instead: the box always shows and edits the item's real current
+  // weight, so typing the same number back always gives the same result.
+  useEffect(() => {
+    if (!isExpanded) return;
+    setAmount(hasKnownWeight ? String(item.servingGrams) : '1');
+    setUnit(hasKnownWeight ? 'g' : 'serving');
+  }, [isExpanded, item, hasKnownWeight]);
+
+  // "serving" is only offered when there's no real weight to anchor to —
+  // otherwise it's the same ambiguous, self-redefining reference point
+  // that caused the bug above.
+  const availableUnits = hasKnownWeight ? UNITS.filter(u => u.id !== 'serving') : UNITS.filter(u => u.id === 'serving');
   const servingGrams = item.servingGrams || 100;
   const servings = amountToServings(Number(amount) || 0, unit, servingGrams);
   const gramsEquivalent = Math.round(servings * servingGrams);
@@ -84,7 +97,7 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
       {isExpanded && (
         <div style={{ padding: '4px 18px 16px', background: '#111' }}>
           <div style={{ marginBottom: 12 }}>
-            <label style={labelStyle}>Amount ("1 serving" = what's currently logged)</label>
+            <label style={labelStyle}>{hasKnownWeight ? `Amount (currently ${item.servingGrams}g)` : 'Amount ("1 serving" = what\'s currently logged)'}</label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <input style={{ ...fieldStyle, width: 90 }} type="number" min="0" step="any" value={amount} onChange={e => setAmount(e.target.value)} />
               <div style={{ display: 'flex', background: '#0f0f0f', border: `1px solid ${C.border2}`, borderRadius: 20, padding: 2 }}>
@@ -104,8 +117,7 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
                 ))}
               </div>
             </div>
-            {unit !== 'serving' && <div style={{ fontSize: 11, color: C.textM, marginTop: 4 }}>≈ {round1(servings)} × the currently-logged serving</div>}
-            {!hasKnownWeight && <div style={{ fontSize: 11, color: C.textM, marginTop: 4 }}>No serving size on record for this item — only relative scaling is available. Delete and re-add it via search for gram-accurate editing.</div>}
+            {!hasKnownWeight && <div style={{ fontSize: 11, color: C.textM, marginTop: 4 }}>No serving size on record for this item — only relative scaling is available (1 = what's currently logged). Delete and re-add it via search for gram-accurate editing.</div>}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
             <MacroReadout value={preview.cal} unit="" label="Calories" color={C.green} />
