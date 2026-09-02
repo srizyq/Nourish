@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useProfile } from '../hooks/useProfile';
 import { useFoodLogs } from '../hooks/useFoodLogs';
 import { todayLocalDate } from '../lib/patterns';
@@ -16,17 +16,36 @@ const MEAL_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', 
 
 export default function DailyLog() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile } = useProfile();
   const isPremium = !!profile?.is_premium;
   const today = todayLocalDate();
-  const { meals, hourlyGroups, loading, deleteFood, updateFood } = useFoodLogs(today);
+  // The Progress page calendar links here with a specific date to jump
+  // straight to that day instead of always landing on today.
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const requested = location.state?.date;
+    return requested && requested <= today ? requested : today;
+  });
+  const isToday = selectedDate === today;
+  const { meals, hourlyGroups, loading, deleteFood, updateFood } = useFoodLogs(selectedDate);
   const [open, setOpen] = useState({ breakfast: true, lunch: true, dinner: true, snacks: true });
   const [openHours, setOpenHours] = useState({});
   const [expandedId, setExpandedId] = useState(null);
 
+  function shiftDate(days) {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + days);
+    const next = todayLocalDate(d);
+    if (next > today) return; // no browsing into the future
+    setSelectedDate(next);
+    setExpandedId(null);
+  }
+
   const initials = (profile?.name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
   const totalCal = Object.values(meals).flat().reduce((s, i) => s + i.cal, 0);
-  const dateStr = new Date().toLocaleDateString('en-AU', { weekday: 'long', month: 'long', day: 'numeric' });
+  const dateStr = isToday
+    ? 'Today'
+    : new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: C.bg, fontFamily: "'DM Sans', sans-serif", color: C.textP }}>
@@ -41,10 +60,18 @@ export default function DailyLog() {
         </div>
 
         <div className="page-pad" style={{ maxWidth: 700 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: 13, color: C.textM }}>{dateStr}</div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: C.green }}>{Math.round(totalCal).toLocaleString()} kcal logged</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button onClick={() => shiftDate(-1)} style={{ background: 'none', border: 'none', color: C.textM, cursor: 'pointer', fontSize: 16, display: 'flex', padding: 2 }} aria-label="Previous day">
+                  <i className="ti ti-chevron-left" />
+                </button>
+                <div style={{ fontSize: 13, color: C.textM, minWidth: 90, textAlign: 'center' }}>{dateStr}</div>
+                <button onClick={() => shiftDate(1)} disabled={isToday} style={{ background: 'none', border: 'none', color: isToday ? C.border2 : C.textM, cursor: isToday ? 'default' : 'pointer', fontSize: 16, display: 'flex', padding: 2 }} aria-label="Next day">
+                  <i className="ti ti-chevron-right" />
+                </button>
+              </div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: C.green, textAlign: 'center' }}>{Math.round(totalCal).toLocaleString()} kcal logged</div>
             </div>
             {!isPremium && (
               <div title="Hourly timeline — a Pro feature" style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.bgCard, border: `1px solid ${C.border2}`, borderRadius: 20, padding: '5px 12px', fontSize: 11, color: C.textM }}>
@@ -57,7 +84,7 @@ export default function DailyLog() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {hourlyGroups.length === 0 && (
                 <div style={{ textAlign: 'center', padding: 24, color: C.textM, fontSize: 13, background: C.bgCard, border: `1px dashed ${C.border2}`, borderRadius: 10 }}>
-                  Nothing logged today yet.
+                  {isToday ? 'Nothing logged today yet.' : 'Nothing logged this day.'}
                 </div>
               )}
               {hourlyGroups.map(({ hour, label, items }) => {
@@ -95,9 +122,11 @@ export default function DailyLog() {
                   </div>
                 );
               })}
-              <button onClick={() => navigate('/food')} style={{ background: 'none', border: `1px dashed ${C.border2}`, borderRadius: 12, color: '#3a5a3a', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
-                + Add food
-              </button>
+              {isToday && (
+                <button onClick={() => navigate('/food')} style={{ background: 'none', border: `1px dashed ${C.border2}`, borderRadius: 12, color: '#3a5a3a', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
+                  + Add food
+                </button>
+              )}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -135,9 +164,11 @@ export default function DailyLog() {
                             />
                           ))
                         )}
-                        <button onClick={() => navigate('/food', { state: { openMeal: mealKey } })} style={{ width: '100%', background: 'none', border: 'none', color: '#3a5a3a', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
-                          + Add food
-                        </button>
+                        {isToday && (
+                          <button onClick={() => navigate('/food', { state: { openMeal: mealKey } })} style={{ width: '100%', background: 'none', border: 'none', color: '#3a5a3a', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
+                            + Add food
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

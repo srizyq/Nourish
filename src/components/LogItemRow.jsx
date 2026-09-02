@@ -4,11 +4,23 @@ import { scaleFood, UNITS, amountToServings } from '../lib/foodMath';
 
 const C = {
   border: '#1e1e1e', border2: '#2a2a2a',
-  green: '#8fbc8f', textP: '#e8e8e8', textS: '#ccc', textM: '#555',
+  green: '#8fbc8f', blue: '#6aabcf', purple: '#9f97e8',
+  textP: '#e8e8e8', textS: '#ccc', textM: '#555',
 };
 
 const fieldStyle = { width: '100%', background: '#0f0f0f', border: `1px solid ${C.border2}`, borderRadius: 7, padding: '7px 10px', color: C.textP, fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
 const labelStyle = { fontSize: 11, color: C.textM, marginBottom: 4, display: 'block' };
+
+// Plain text macro readout — matches the style used everywhere else in the
+// app (e.g. FoodCard's add-food preview) instead of a bordered box.
+function MacroReadout({ value, unit, label, color }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: 16, fontWeight: 600, color }}>{value}{unit}</div>
+      <div style={{ fontSize: 11, color: C.textM, marginTop: 2 }}>{label}</div>
+    </div>
+  );
+}
 
 // A logged food row that expands in place to edit how much of it you had —
 // shared between the Dashboard's compact meal log and the full /log page
@@ -95,11 +107,11 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
             {unit !== 'serving' && <div style={{ fontSize: 11, color: C.textM, marginTop: 4 }}>≈ {round1(servings)} × the currently-logged serving</div>}
             {!hasKnownWeight && <div style={{ fontSize: 11, color: C.textM, marginTop: 4 }}>No serving size on record for this item — only relative scaling is available. Delete and re-add it via search for gram-accurate editing.</div>}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
-            <div><label style={labelStyle}>Calories</label><div style={fieldStyle}>{preview.cal}</div></div>
-            <div><label style={labelStyle}>Protein (g)</label><div style={fieldStyle}>{round1(preview.protein)}</div></div>
-            <div><label style={labelStyle}>Carbs (g)</label><div style={fieldStyle}>{round1(preview.carbs)}</div></div>
-            <div><label style={labelStyle}>Fat (g)</label><div style={fieldStyle}>{round1(preview.fat)}</div></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
+            <MacroReadout value={preview.cal} unit="" label="Calories" color={C.green} />
+            <MacroReadout value={round1(preview.protein)} unit="g" label="Protein" color={C.green} />
+            <MacroReadout value={round1(preview.carbs)} unit="g" label="Carbs" color={C.blue} />
+            <MacroReadout value={round1(preview.fat)} unit="g" label="Fat" color={C.purple} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button
