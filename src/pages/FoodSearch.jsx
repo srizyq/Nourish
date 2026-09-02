@@ -90,6 +90,14 @@ function scaleFood(food, servings) {
     fibre: round1((food.fibre || 0) * servings),
     sodium: Math.round((food.sodium || 0) * servings),
     sugar: round1((food.sugar || 0) * servings),
+    saturatedFat: round1((food.saturatedFat || 0) * servings),
+    transFat: round1((food.transFat || 0) * servings),
+    cholesterol: Math.round((food.cholesterol || 0) * servings),
+    potassium: Math.round((food.potassium || 0) * servings),
+    addedSugar: round1((food.addedSugar || 0) * servings),
+    vitaminD: round1((food.vitaminD || 0) * servings),
+    calcium: Math.round((food.calcium || 0) * servings),
+    iron: round1((food.iron || 0) * servings),
   };
 }
 
@@ -99,6 +107,23 @@ function scaleFood(food, servings) {
 // Australia subdomain so results are products actually sold here
 // (Capilano, Sanitarium, Woolworths own brand, etc.) instead of being
 // dominated by UK/US supermarket SKUs.
+// Open Food Facts reports everything per-100g in grams (even things like
+// cholesterol/calcium/iron that are more naturally read in mg, and vitamin D
+// which is more naturally read in micrograms) — convert each to the unit
+// food_logs actually stores, scaled by the same `factor` used for cal/protein/etc.
+function extraMicrosFromOFF(per100, factor) {
+  return {
+    saturatedFat: Math.round((per100["saturated-fat_100g"] || 0) * factor * 10) / 10,
+    transFat: Math.round((per100["trans-fat_100g"] || 0) * factor * 10) / 10,
+    cholesterol: Math.round((per100["cholesterol_100g"] || 0) * factor * 1000),
+    potassium: Math.round((per100["potassium_100g"] || 0) * factor * 1000),
+    addedSugar: Math.round((per100["added-sugars_100g"] || 0) * factor * 10) / 10,
+    vitaminD: Math.round((per100["vitamin-d_100g"] || 0) * factor * 1000000 * 10) / 10,
+    calcium: Math.round((per100["calcium_100g"] || 0) * factor * 1000),
+    iron: Math.round((per100["iron_100g"] || 0) * factor * 1000 * 10) / 10,
+  };
+}
+
 async function searchOpenFoodFacts(q) {
   const url = `https://au.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&sort_by=unique_scans_n&fields=product_name,generic_name,brands,nutriments,code`;
   // Open Food Facts' shared search backend has occasional one-off blips
@@ -130,6 +155,7 @@ async function searchOpenFoodFacts(q) {
       fibre: Math.round((n.fiber_100g || 0) * 10) / 10,
       sodium: Math.round((n.sodium_100g || 0) * 1000),
       sugar: Math.round((n.sugars_100g || 0) * 10) / 10,
+      ...extraMicrosFromOFF(n, 1),
       source: "off",
       servingGrams: 100,
     };
@@ -160,6 +186,22 @@ function parseGramsFromServing(serving) {
   return match ? parseFloat(match[1]) : 100;
 }
 
+// FatSecret reports these already in the units food_logs stores them in
+// (mg for cholesterol/potassium/calcium, mcg for vitamin D) — no unit
+// conversion needed here, unlike Open Food Facts' all-grams convention.
+function extraMicrosFromFatSecretServing(serving) {
+  return {
+    saturatedFat: Math.round((parseFloat(serving.saturated_fat) || 0) * 10) / 10,
+    transFat: Math.round((parseFloat(serving.trans_fat) || 0) * 10) / 10,
+    cholesterol: Math.round(parseFloat(serving.cholesterol) || 0),
+    potassium: Math.round(parseFloat(serving.potassium) || 0),
+    addedSugar: Math.round((parseFloat(serving.added_sugars) || 0) * 10) / 10,
+    vitaminD: Math.round((parseFloat(serving.vitamin_d) || 0) * 10) / 10,
+    calcium: Math.round(parseFloat(serving.calcium) || 0),
+    iron: Math.round((parseFloat(serving.iron) || 0) * 10) / 10,
+  };
+}
+
 async function searchFatSecret(q) {
   const url = `/api/fatsecret-search?q=${encodeURIComponent(q)}`;
   let res = await fetch(url);
@@ -188,6 +230,7 @@ async function searchFatSecret(q) {
       fibre: Math.round((parseFloat(serving.fiber) || 0) * 10) / 10,
       sodium: Math.round(parseFloat(serving.sodium) || 0),
       sugar: Math.round((parseFloat(serving.sugar) || 0) * 10) / 10,
+      ...extraMicrosFromFatSecretServing(serving),
       source: "fatsecret",
       servingGrams: parseGramsFromServing(serving),
     };
@@ -240,7 +283,9 @@ async function lookupFatSecretBarcode(barcode) {
     fibre: Math.round((parseFloat(serving.fiber) || 0) * 10) / 10,
     sodium: Math.round(parseFloat(serving.sodium) || 0),
     sugar: Math.round((parseFloat(serving.sugar) || 0) * 10) / 10,
+    ...extraMicrosFromFatSecretServing(serving),
     source: "fatsecret",
+    servingGrams: parseGramsFromServing(serving),
   };
   return looksLikeEmptyNutrition(found) ? null : found;
 }
@@ -278,7 +323,9 @@ async function lookupOpenFoodFactsBarcode(barcode) {
     fibre: Math.round((per100.fiber_100g || 0) * factor * 10) / 10,
     sodium: Math.round((per100.sodium_100g || 0) * factor * 1000),
     sugar: Math.round((per100.sugars_100g || 0) * factor * 10) / 10,
+    ...extraMicrosFromOFF(per100, factor),
     source: "off",
+    servingGrams: servingG,
   };
   return looksLikeEmptyNutrition(found) ? null : found;
 }
@@ -297,6 +344,8 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSea
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [meal, setMeal] = useState(defaultMeal);
+  const [amount, setAmount] = useState(1);
+  const [unit, setUnit] = useState("serving");
 
   // Jump straight into the camera on open — no reason to make someone tap
   // "Start scanning" first when they already tapped "Scan barcode" to get
@@ -372,11 +421,18 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSea
       }
       setError(null);
       setResult(found);
+      setAmount(1);
+      setUnit("serving");
     } catch (err) { console.error(err); setResult(null); setError("Couldn't look up this product. Check your connection and try again."); }
     finally { setScanning(false); }
   }
 
   function reset() { setResult(null); setError(null); setScanning(false); startScanner(); }
+
+  const servingGrams = result?.servingGrams || 100;
+  const servings = result ? amountToServings(Number(amount) || 0, unit, servingGrams) : 0;
+  const scaled = result ? scaleFood(result, servings || 0) : null;
+  const gramsEquivalent = Math.round(servings * servingGrams);
 
   return (
     <div>
@@ -408,27 +464,28 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSea
             <div style={{ fontSize: 14, color: "#e8e8e8", fontWeight: 600, marginBottom: 2 }}>{result.name}</div>
             {result.brand && <div style={{ fontSize: 12, color: "#555", marginBottom: 10 }}>{result.brand} · {result.serving}</div>}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 14 }}>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#8fbc8f" }}>{result.protein}g</div><div style={{ fontSize: 10, color: "#555" }}>Protein</div></div>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#6aabcf" }}>{result.carbs}g</div><div style={{ fontSize: 10, color: "#555" }}>Carbs</div></div>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#b48250" }}>{result.fat}g</div><div style={{ fontSize: 10, color: "#555" }}>Fat</div></div>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#9f97e8" }}>{result.fibre}g</div><div style={{ fontSize: 10, color: "#555" }}>Fibre</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#8fbc8f" }}>{scaled.protein}g</div><div style={{ fontSize: 10, color: "#555" }}>Protein</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#6aabcf" }}>{scaled.carbs}g</div><div style={{ fontSize: 10, color: "#555" }}>Carbs</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#b48250" }}>{scaled.fat}g</div><div style={{ fontSize: 10, color: "#555" }}>Fat</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#9f97e8" }}>{scaled.fibre}g</div><div style={{ fontSize: 10, color: "#555" }}>Fibre</div></div>
             </div>
             <div style={{ display: "flex", gap: 16, paddingTop: 10, borderTop: "1px solid #1e1e1e" }}>
-              <div style={{ fontSize: 12, color: "#555" }}>Sodium <span style={{ color: "#888" }}>{result.sodium}mg</span></div>
-              <div style={{ fontSize: 12, color: "#555" }}>Sugar <span style={{ color: "#888" }}>{result.sugar}g</span></div>
+              <div style={{ fontSize: 12, color: "#555" }}>Sodium <span style={{ color: "#888" }}>{scaled.sodium}mg</span></div>
+              <div style={{ fontSize: 12, color: "#555" }}>Sugar <span style={{ color: "#888" }}>{scaled.sugar}g</span></div>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "#8fbc8f" }}>{result.cal}</span>
-            <span style={{ fontSize: 12, color: "#555" }}> kcal per {result.serving}</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: "#8fbc8f" }}>{scaled.cal}</span>
+            <span style={{ fontSize: 12, color: "#555" }}> kcal{unit !== "g" && ` · ≈${gramsEquivalent}g`} — label serving: {result.serving}</span>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <select value={meal} onChange={e => setMeal(e.target.value)} style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
-              {MEALS.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <button onClick={reset} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
-            <button onClick={() => { onAddFood(result, meal); onClose(); }} style={{ background: "#8fbc8f", border: "none", borderRadius: 8, padding: "7px 18px", fontSize: 13, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>+ Add to {meal}</button>
-          </div>
+          <AddControls
+            amount={amount} setAmount={setAmount}
+            unit={unit} setUnit={setUnit}
+            meal={meal} setMeal={setMeal}
+            onAdd={() => { onAddFood(scaled, meal); onClose(); }}
+            disabled={!servings}
+          />
+          <button onClick={reset} style={{ marginTop: 10, width: "100%", background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
         </div>
       )}
       {!result && !scanning && (
@@ -967,6 +1024,14 @@ export default function FoodSearch() {
     fibre: Number(row.fibre_g) || 0,
     sodium: Number(row.sodium_mg) || 0,
     sugar: Number(row.sugar_g) || 0,
+    saturatedFat: Number(row.saturated_fat_g) || 0,
+    transFat: Number(row.trans_fat_g) || 0,
+    cholesterol: Number(row.cholesterol_mg) || 0,
+    potassium: Number(row.potassium_mg) || 0,
+    addedSugar: Number(row.added_sugar_g) || 0,
+    vitaminD: Number(row.vitamin_d_mcg) || 0,
+    calcium: Number(row.calcium_mg) || 0,
+    iron: Number(row.iron_mg) || 0,
     servingGrams: row.serving_grams || 100,
     source: row.source || "favourite",
   })), [favourites.rows]);
@@ -1009,6 +1074,10 @@ export default function FoodSearch() {
     const snapshot = items.map(it => ({
       name: it.name, cal: it.cal, protein: it.protein, carbs: it.carbs,
       fat: it.fat, fibre: it.fibre || 0, sodium: it.sodium || 0, sugar: it.sugar || 0,
+      saturatedFat: it.saturatedFat || 0, transFat: it.transFat || 0,
+      cholesterol: it.cholesterol || 0, potassium: it.potassium || 0,
+      addedSugar: it.addedSugar || 0, vitaminD: it.vitaminD || 0,
+      calcium: it.calcium || 0, iron: it.iron || 0,
     }));
     await savedMeals.create(name, snapshot);
     if (mealToLog) {

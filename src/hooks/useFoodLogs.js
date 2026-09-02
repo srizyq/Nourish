@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { addFoodLog, deleteFoodLog, getFoodLogsForDate } from '../lib/db';
+import { addFoodLog, deleteFoodLog, updateFoodLog, getFoodLogsForDate } from '../lib/db';
 
 export function useFoodLogs(date) {
   const { user } = useAuth();
@@ -31,6 +31,14 @@ export function useFoodLogs(date) {
         fibre: Number(row.fibre_g) || 0,
         sodium: Number(row.sodium_mg) || 0,
         sugar: Number(row.sugar_g) || 0,
+        saturatedFat: Number(row.saturated_fat_g) || 0,
+        transFat: Number(row.trans_fat_g) || 0,
+        cholesterol: Number(row.cholesterol_mg) || 0,
+        potassium: Number(row.potassium_mg) || 0,
+        addedSugar: Number(row.added_sugar_g) || 0,
+        vitaminD: Number(row.vitamin_d_mcg) || 0,
+        calcium: Number(row.calcium_mg) || 0,
+        iron: Number(row.iron_mg) || 0,
       });
     }
     return grouped;
@@ -49,6 +57,14 @@ export function useFoodLogs(date) {
       fibre: food.fibre || 0,
       sodium: food.sodium || 0,
       sugar: food.sugar || 0,
+      saturatedFat: food.saturatedFat || 0,
+      transFat: food.transFat || 0,
+      cholesterol: food.cholesterol || 0,
+      potassium: food.potassium || 0,
+      addedSugar: food.addedSugar || 0,
+      vitaminD: food.vitaminD || 0,
+      calcium: food.calcium || 0,
+      iron: food.iron || 0,
       source: food.source,
     });
     setLogs(prev => [...prev, created]);
@@ -60,5 +76,11 @@ export function useFoodLogs(date) {
     setLogs(prev => prev.filter(l => l.id !== id));
   }, []);
 
-  return { logs, meals, loading, addFood, deleteFood, refetch };
+  const updateFood = useCallback(async (id, food) => {
+    const updated = await updateFoodLog(id, food);
+    setLogs(prev => prev.map(l => (l.id === id ? updated : l)));
+    return updated;
+  }, []);
+
+  return { logs, meals, loading, addFood, deleteFood, updateFood, refetch };
 }

@@ -62,7 +62,19 @@ export default function Nutrients() {
     fibre: t.fibre + (Number(row.fibre_g) || 0),
     sodium: t.sodium + (Number(row.sodium_mg) || 0),
     sugar: t.sugar + (Number(row.sugar_g) || 0),
-  }), { cal: 0, protein: 0, carbs: 0, fat: 0, fibre: 0, sodium: 0, sugar: 0 });
+    saturatedFat: t.saturatedFat + (Number(row.saturated_fat_g) || 0),
+    transFat: t.transFat + (Number(row.trans_fat_g) || 0),
+    cholesterol: t.cholesterol + (Number(row.cholesterol_mg) || 0),
+    potassium: t.potassium + (Number(row.potassium_mg) || 0),
+    addedSugar: t.addedSugar + (Number(row.added_sugar_g) || 0),
+    vitaminD: t.vitaminD + (Number(row.vitamin_d_mcg) || 0),
+    calcium: t.calcium + (Number(row.calcium_mg) || 0),
+    iron: t.iron + (Number(row.iron_mg) || 0),
+  }), {
+    cal: 0, protein: 0, carbs: 0, fat: 0, fibre: 0, sodium: 0, sugar: 0,
+    saturatedFat: 0, transFat: 0, cholesterol: 0, potassium: 0,
+    addedSugar: 0, vitaminD: 0, calcium: 0, iron: 0,
+  });
 
   const round1 = n => Math.round(n * 10) / 10;
 
@@ -97,6 +109,22 @@ export default function Nutrients() {
                 <MicroCard icon="ti-leaf" label="Fibre" value={round1(totals.fibre)} unit="g" guideline="Guideline: 25–30g/day" color={C.green} />
                 <MicroCard icon="ti-droplet" label="Sodium" value={Math.round(totals.sodium)} unit="mg" guideline="Guideline: under 2,300mg/day" color={C.blue} />
                 <MicroCard icon="ti-candy" label="Sugar" value={round1(totals.sugar)} unit="g" guideline="Guideline: under 50g/day" color={C.gold} />
+              </div>
+
+              <div style={{ fontSize: 11, color: C.textM, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Fat breakdown</div>
+              <div className="grid-3" style={{ marginBottom: 20 }}>
+                <MicroCard icon="ti-droplet-filled" label="Saturated fat" value={round1(totals.saturatedFat)} unit="g" guideline="Guideline: under 20g/day" color={C.gold} />
+                <MicroCard icon="ti-alert-triangle" label="Trans fat" value={round1(totals.transFat)} unit="g" guideline="Guideline: as low as possible" color={C.purple} />
+                <MicroCard icon="ti-egg" label="Cholesterol" value={Math.round(totals.cholesterol)} unit="mg" guideline="Guideline: under 300mg/day" color={C.blue} />
+              </div>
+
+              <div style={{ fontSize: 11, color: C.textM, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>Vitamins &amp; minerals</div>
+              <div className="grid-3" style={{ marginBottom: 20 }}>
+                <MicroCard icon="ti-candy" label="Added sugar" value={round1(totals.addedSugar)} unit="g" guideline="Guideline: under 25g/day" color={C.gold} />
+                <MicroCard icon="ti-bolt" label="Potassium" value={Math.round(totals.potassium)} unit="mg" guideline="Guideline: 2,600–3,400mg/day" color={C.green} />
+                <MicroCard icon="ti-sun" label="Vitamin D" value={round1(totals.vitaminD)} unit="mcg" guideline="Guideline: 15mcg/day" color={C.gold} />
+                <MicroCard icon="ti-bone" label="Calcium" value={Math.round(totals.calcium)} unit="mg" guideline="Guideline: 1,000mg/day" color={C.blue} />
+                <MicroCard icon="ti-drop" label="Iron" value={round1(totals.iron)} unit="mg" guideline="Guideline: 8–18mg/day" color={C.purple} />
               </div>
 
               {logs.length === 0 && (
