@@ -431,8 +431,8 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSea
 
   const servingGrams = result?.servingGrams || 100;
   const servings = result ? amountToServings(Number(amount) || 0, unit, servingGrams) : 0;
-  const scaled = result ? scaleFood(result, servings || 0) : null;
   const gramsEquivalent = Math.round(servings * servingGrams);
+  const scaled = result ? { ...scaleFood(result, servings || 0), servingGrams: gramsEquivalent } : null;
 
   return (
     <div>
@@ -756,8 +756,12 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd, addLabel, on
 
   const servingGrams = food.servingGrams || 100;
   const servings = amountToServings(Number(amount) || 0, unit, servingGrams);
-  const scaled = scaleFood(food, servings || 0);
   const gramsEquivalent = Math.round(servings * servingGrams);
+  // servingGrams on the scaled object is the actual weight THIS logged
+  // amount represents (not the original food's per-serving weight) — so
+  // that re-adding it later from "Recently/Frequently logged" scales from
+  // an accurate baseline instead of guessing 100g every time.
+  const scaled = { ...scaleFood(food, servings || 0), servingGrams: gramsEquivalent };
   const catStyle = getCategoryStyle(food);
 
   return (
@@ -991,7 +995,7 @@ export default function FoodSearch() {
     fibre: 0,
     sodium: 0,
     sugar: 0,
-    servingGrams: 100,
+    servingGrams: row.serving_grams || 100,
     source: row.source || "log",
   })), [recentRows]);
 
@@ -1008,7 +1012,7 @@ export default function FoodSearch() {
     fibre: 0,
     sodium: 0,
     sugar: 0,
-    servingGrams: 100,
+    servingGrams: row.serving_grams || 100,
     source: row.source || "log",
   })), [frequent.rows]);
 

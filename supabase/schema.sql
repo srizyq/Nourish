@@ -52,6 +52,7 @@ create table if not exists public.food_logs (
   vitamin_d_mcg numeric default 0,
   calcium_mg numeric default 0,
   iron_mg numeric default 0,
+  serving_grams numeric,
   source text,
   created_at timestamptz default now()
 );
