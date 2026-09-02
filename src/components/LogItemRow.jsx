@@ -28,6 +28,12 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
   // without saving.
   useEffect(() => { if (isExpanded) { setAmount('1'); setUnit('serving'); } }, [isExpanded, item]);
 
+  // Older items logged before serving_grams was tracked have no real
+  // weight on record. Silently guessing 100g there would look precise
+  // without being true — so weight-based units are only offered when we
+  // actually know what "1 serving" of this item weighs.
+  const hasKnownWeight = !!item.servingGrams;
+  const availableUnits = hasKnownWeight ? UNITS : UNITS.filter(u => u.id === 'serving');
   const servingGrams = item.servingGrams || 100;
   const servings = amountToServings(Number(amount) || 0, unit, servingGrams);
   const gramsEquivalent = Math.round(servings * servingGrams);
@@ -37,7 +43,11 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
     setSaving(true);
     setError(null);
     try {
-      await onSave({ ...preview, servingGrams: gramsEquivalent });
+      // Only persist a servingGrams value when the item actually had one —
+      // otherwise a "2 servings" edit on a legacy item with no real weight
+      // would silently fabricate one from the 100g fallback and make it
+      // look gram-accurate on the next edit.
+      await onSave({ ...preview, servingGrams: hasKnownWeight ? gramsEquivalent : null });
     } catch (err) {
       console.error('Failed to save food log edits:', err);
       setError("Couldn't save — try again.");
@@ -66,10 +76,11 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
             <div style={{ display: 'flex', gap: 8 }}>
               <input style={{ ...fieldStyle, width: 90 }} type="number" min="0" step="any" value={amount} onChange={e => setAmount(e.target.value)} />
               <select style={{ ...fieldStyle, cursor: 'pointer' }} value={unit} onChange={e => setUnit(e.target.value)}>
-                {UNITS.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
+                {availableUnits.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
               </select>
             </div>
             {unit !== 'serving' && <div style={{ fontSize: 11, color: C.textM, marginTop: 4 }}>≈ {round1(servings)} × the currently-logged serving</div>}
+            {!hasKnownWeight && <div style={{ fontSize: 11, color: C.textM, marginTop: 4 }}>No serving size on record for this item — only relative scaling is available. Delete and re-add it via search for gram-accurate editing.</div>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 14 }}>
             <div><label style={labelStyle}>Calories</label><div style={fieldStyle}>{preview.cal}</div></div>
