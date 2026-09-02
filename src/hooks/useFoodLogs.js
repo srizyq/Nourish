@@ -39,6 +39,7 @@ export function useFoodLogs(date) {
         vitaminD: Number(row.vitamin_d_mcg) || 0,
         calcium: Number(row.calcium_mg) || 0,
         iron: Number(row.iron_mg) || 0,
+        servingGrams: row.serving_grams || null,
       });
     }
     return grouped;
@@ -65,6 +66,7 @@ export function useFoodLogs(date) {
       vitaminD: food.vitaminD || 0,
       calcium: food.calcium || 0,
       iron: food.iron || 0,
+      servingGrams: food.servingGrams || null,
       source: food.source,
     });
     setLogs(prev => [...prev, created]);

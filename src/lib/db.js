@@ -70,6 +70,7 @@ export async function addFoodLog(userId, entry) {
       vitamin_d_mcg: entry.vitaminD || 0,
       calcium_mg: entry.calcium || 0,
       iron_mg: entry.iron || 0,
+      serving_grams: entry.servingGrams || null,
       source: entry.source || 'local',
     })
     .select()

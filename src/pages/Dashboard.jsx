@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler,
@@ -13,12 +13,26 @@ import { useHistory } from '../hooks/useHistory';
 import { useWeightLogs } from '../hooks/useWeightLogs';
 import { todayLocalDate, dateNDaysAgo, dateRange, generateInsights, computeStreak } from '../lib/patterns';
 import AppNav from '../components/AppNav';
+import LogItemRow from '../components/LogItemRow';
+import { round1 } from '../lib/format';
 import { WeekBars } from './Progress';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
 // ─── Daily Nutrition ───────────────────────────────────────────────────────
-function MacroTile({ label, value, target, color, icon }) {
+// "eaten" shows the raw logged value, "remaining" shows target minus logged
+// (negative once over budget, labelled accordingly), "percent" shows logged
+// as a share of target — same underlying numbers, three ways to read them.
+function displayAmount(mode, value, target, unit) {
+  if (mode === 'percent') return target ? `${Math.round((value / target) * 100)}%` : '—';
+  if (mode === 'remaining') {
+    const left = round1(target - value);
+    return left >= 0 ? `${left}${unit} left` : `${round1(Math.abs(left))}${unit} over`;
+  }
+  return `${round1(value)}${unit}`;
+}
+
+function MacroTile({ label, value, target, color, icon, mode }) {
   const pct = target ? Math.min((value / target) * 100, 100) : 0;
   return (
     <div style={{ background: '#181818', borderRadius: 10, padding: 12 }}>
@@ -27,7 +41,9 @@ function MacroTile({ label, value, target, color, icon }) {
         <span style={{ color: '#666', fontSize: 11 }}>{label}</span>
       </div>
       <div style={{ color: '#e8e8e8', fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
-        {value}{target ? <span style={{ color: '#444', fontSize: 11, fontWeight: 400 }}>/{target}g</span> : 'g'}
+        {mode === 'eaten'
+          ? <>{round1(value)}{target ? <span style={{ color: '#444', fontSize: 11, fontWeight: 400 }}>/{target}g</span> : 'g'}</>
+          : displayAmount(mode, value, target, 'g')}
       </div>
       <div style={{ height: 4, background: '#1e1e1e', borderRadius: 99 }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.8s ease' }} />
@@ -36,7 +52,14 @@ function MacroTile({ label, value, target, color, icon }) {
   );
 }
 
+const NUTRITION_MODES = [
+  { id: 'eaten', label: 'Eaten' },
+  { id: 'remaining', label: 'Remaining' },
+  { id: 'percent', label: '%' },
+];
+
 function NutritionCard({ consumed, target, protein, carbs, fat, targets, onClick }) {
+  const [mode, setMode] = useState('eaten');
   const pct = target ? Math.min((consumed / target) * 100, 100) : 0;
   return (
     <div
@@ -47,21 +70,44 @@ function NutritionCard({ consumed, target, protein, carbs, fat, targets, onClick
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
         <span style={{ color: '#666', fontSize: 13, fontWeight: 500 }}>Daily Nutrition</span>
-        <span style={{ color: '#444', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-          Nutrients <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div onClick={e => e.stopPropagation()} style={{ display: 'flex', background: '#0f0f0f', border: '1px solid #1e1e1e', borderRadius: 20, padding: 2 }}>
+            {NUTRITION_MODES.map(m => (
+              <button
+                key={m.id}
+                onClick={() => setMode(m.id)}
+                style={{
+                  background: mode === m.id ? '#2a3a2a' : 'transparent', border: 'none', borderRadius: 18,
+                  padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  color: mode === m.id ? '#8fbc8f' : '#555', transition: 'background 0.15s, color 0.15s',
+                }}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <span style={{ color: '#444', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+            Nutrients <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
+          </span>
+        </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-        <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 700, color: '#e8e8e8' }}>{consumed.toLocaleString()}</span>
-        <span style={{ color: '#555', fontSize: 14 }}>/ {target.toLocaleString()} kcal</span>
+        {mode === 'eaten' ? (
+          <>
+            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 700, color: '#e8e8e8' }}>{Math.round(consumed).toLocaleString()}</span>
+            <span style={{ color: '#555', fontSize: 14 }}>/ {target.toLocaleString()} kcal</span>
+          </>
+        ) : (
+          <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 700, color: '#e8e8e8' }}>{displayAmount(mode, consumed, target, ' kcal')}</span>
+        )}
       </div>
       <div style={{ height: 8, background: '#1e1e1e', borderRadius: 99, marginBottom: 20 }}>
         <div style={{ height: '100%', width: `${pct}%`, background: '#8fbc8f', borderRadius: 99, transition: 'width 0.8s ease' }} />
       </div>
       <div className="grid-3">
-        <MacroTile label="Protein" value={protein} target={targets.protein} color="#8fbc8f" icon="ti-meat" />
-        <MacroTile label="Carbs" value={carbs} target={targets.carbs} color="#6aabcf" icon="ti-bread" />
-        <MacroTile label="Fat" value={fat} target={targets.fat} color="#9f97e8" icon="ti-droplet" />
+        <MacroTile label="Protein" value={protein} target={targets.protein} color="#8fbc8f" icon="ti-meat" mode={mode} />
+        <MacroTile label="Carbs" value={carbs} target={targets.carbs} color="#6aabcf" icon="ti-bread" mode={mode} />
+        <MacroTile label="Fat" value={fat} target={targets.fat} color="#9f97e8" icon="ti-droplet" mode={mode} />
       </div>
     </div>
   );
@@ -182,52 +228,47 @@ function MoodCheckin({ mood, setMood, energy, setEnergy }) {
 }
 
 // ─── Meal Log ─────────────────────────────────────────────────────────────────
-function MealLog({ meals, onDelete, onNavigateFood }) {
+function MealLog({ meals, onDelete, onSave, onNavigateFood }) {
+  // Nothing auto-opens — the per-meal macro line below each meal name
+  // already covers the "doesn't look empty" concern without forcing any one
+  // meal open regardless of what's actually in it.
   const [open, setOpen] = useState({});
-  const initialisedRef = useRef(false);
-
-  // Auto-expand whichever meal actually has something logged, once — rather
-  // than always defaulting to Breakfast regardless of what's really in the
-  // log. If nothing's logged yet, everything stays collapsed (the "X kcal
-  // logged" total in the card header above already covers the empty case).
-  useEffect(() => {
-    if (initialisedRef.current) return;
-    const firstWithItems = Object.keys(meals).find(m => meals[m].length > 0);
-    if (!firstWithItems) return;
-    setOpen({ [firstWithItems]: true });
-    initialisedRef.current = true;
-  }, [meals]);
+  const [expandedId, setExpandedId] = useState(null);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {Object.entries(meals).map(([mealName, items]) => {
-        const total = items.reduce((s, i) => s + i.cal, 0);
+        const total = Math.round(items.reduce((s, i) => s + i.cal, 0));
+        const protein = round1(items.reduce((s, i) => s + i.protein, 0));
+        const carbs = round1(items.reduce((s, i) => s + i.carbs, 0));
+        const fat = round1(items.reduce((s, i) => s + i.fat, 0));
         const isOpen = open[mealName];
         return (
           <div key={mealName} style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', overflow: 'hidden' }}>
             <button onClick={() => setOpen(o => ({ ...o, [mealName]: !o[mealName] }))} style={{ width: '100%', background: 'none', border: 'none', padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: '14px', color: '#ccc', textTransform: 'capitalize' }}>{mealName}</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: '14px', color: '#ccc', textTransform: 'capitalize' }}>{mealName}</div>
+                {items.length > 0 && <div style={{ color: '#555', fontSize: '12px', marginTop: 2 }}>P {protein}g · C {carbs}g · F {fat}g</div>}
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ color: '#555', fontSize: '13px' }}>{total} kcal</span>
                 <span style={{ color: '#444', fontSize: '12px', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
               </div>
             </button>
             {isOpen && (
-              <div style={{ borderTop: '1px solid #1e1e1e', padding: '4px 0' }}>
+              <div style={{ borderTop: '1px solid #1e1e1e' }}>
                 {items.length === 0 ? (
                   <p style={{ color: '#333', fontSize: '13px', padding: '12px 16px' }}>Nothing logged yet</p>
                 ) : (
                   items.map((item) => (
-                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 16px', transition: 'background 0.15s' }} onMouseEnter={e => e.currentTarget.style.background = '#181818'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      <div>
-                        <div style={{ color: '#ccc', fontSize: '14px' }}>{item.name}</div>
-                        <div style={{ color: '#444', fontSize: '12px', marginTop: '1px' }}>P {item.protein}g · C {item.carbs}g · F {item.fat}g</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <span style={{ color: '#8fbc8f', fontSize: '14px', fontWeight: 500 }}>{item.cal}</span>
-                        <button onClick={() => onDelete(item.id)} style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', fontSize: '14px', padding: '2px 4px', transition: 'color 0.15s' }} onMouseEnter={e => e.target.style.color = '#c07070'} onMouseLeave={e => e.target.style.color = '#333'}>×</button>
-                      </div>
-                    </div>
+                    <LogItemRow
+                      key={item.id}
+                      item={item}
+                      isExpanded={expandedId === item.id}
+                      onToggle={() => setExpandedId(prev => (prev === item.id ? null : item.id))}
+                      onDelete={() => onDelete(item.id)}
+                      onSave={async (fields) => { await onSave(item.id, fields); setExpandedId(null); }}
+                    />
                   ))
                 )}
                 <button onClick={() => onNavigateFood(mealName)} style={{ width: '100%', background: 'none', border: 'none', color: '#3a5a3a', fontSize: '13px', cursor: 'pointer', padding: '10px 16px', textAlign: 'left', transition: 'color 0.15s' }} onMouseEnter={e => e.target.style.color = '#8fbc8f'} onMouseLeave={e => e.target.style.color = '#3a5a3a'}>
@@ -285,7 +326,7 @@ export default function Dashboard() {
 
   const today = todayLocalDate();
   const { profile } = useProfile();
-  const { meals, deleteFood } = useFoodLogs(today);
+  const { meals, deleteFood, updateFood } = useFoodLogs(today);
   const { checkin, save: saveCheckin } = useCheckins(today);
   const { dailyData } = useHistory(dateNDaysAgo(30), today);
   const weightUnit = profile?.unit === 'imperial' ? 'lb' : 'kg';
@@ -423,11 +464,12 @@ export default function Dashboard() {
               <span onClick={() => navigate('/log')} style={{ color: '#666', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                 Daily food log <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
               </span>
-              <span style={{ color: '#8fbc8f', fontSize: '13px', fontWeight: 600 }}>{consumed} kcal logged</span>
+              <span style={{ color: '#8fbc8f', fontSize: '13px', fontWeight: 600 }}>{Math.round(consumed)} kcal logged</span>
             </div>
             <MealLog
               meals={meals}
               onDelete={deleteFood}
+              onSave={updateFood}
               onNavigateFood={(mealName) => navigate('/food', { state: { openMeal: mealName } })}
             />
           </div>
