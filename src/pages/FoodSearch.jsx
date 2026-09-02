@@ -9,7 +9,7 @@ import { useFrequentFoods } from '../hooks/useFrequentFoods';
 import { useProfile } from '../hooks/useProfile';
 import { todayLocalDate } from '../lib/patterns';
 import { mealFromDate, currentTimeHHMM, timeStringToDate, formatTime12h, formatTimeFromDate } from '../lib/mealTime';
-import { scaleFood } from '../lib/foodMath';
+import { scaleFood, UNITS, amountToServings } from '../lib/foodMath';
 import AppNav from '../components/AppNav';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -63,24 +63,6 @@ function getCategoryStyle(food) {
 }
 
 
-// ─── Unit conversion ───────────────────────────────────────────────────────
-const UNITS = [
-  { id: "serving", label: "serving", toGrams: null },
-  { id: "g", label: "g", toGrams: 1 },
-  { id: "kg", label: "kg", toGrams: 1000 },
-  { id: "lb", label: "lb", toGrams: 453.592 },
-  { id: "oz", label: "oz", toGrams: 28.3495 },
-];
-
-// How many base servings `amount` of `unit` represents for a food whose
-// "1 serving" (its base cal/protein/etc values) weighs `servingGrams`.
-function amountToServings(amount, unitId, servingGrams) {
-  if (!amount || amount <= 0) return 0;
-  if (unitId === "serving") return amount;
-  const unit = UNITS.find(u => u.id === unitId);
-  const grams = amount * unit.toGrams;
-  return grams / (servingGrams || 100);
-}
 
 
 // ─── Live search ─────────────────────────────────────────────────────────
