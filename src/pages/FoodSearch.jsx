@@ -90,6 +90,14 @@ function scaleFood(food, servings) {
     fibre: round1((food.fibre || 0) * servings),
     sodium: Math.round((food.sodium || 0) * servings),
     sugar: round1((food.sugar || 0) * servings),
+    saturatedFat: round1((food.saturatedFat || 0) * servings),
+    transFat: round1((food.transFat || 0) * servings),
+    cholesterol: Math.round((food.cholesterol || 0) * servings),
+    potassium: Math.round((food.potassium || 0) * servings),
+    addedSugar: round1((food.addedSugar || 0) * servings),
+    vitaminD: round1((food.vitaminD || 0) * servings),
+    calcium: Math.round((food.calcium || 0) * servings),
+    iron: round1((food.iron || 0) * servings),
   };
 }
 
@@ -277,6 +285,7 @@ async function lookupFatSecretBarcode(barcode) {
     sugar: Math.round((parseFloat(serving.sugar) || 0) * 10) / 10,
     ...extraMicrosFromFatSecretServing(serving),
     source: "fatsecret",
+    servingGrams: parseGramsFromServing(serving),
   };
   return looksLikeEmptyNutrition(found) ? null : found;
 }
@@ -316,6 +325,7 @@ async function lookupOpenFoodFactsBarcode(barcode) {
     sugar: Math.round((per100.sugars_100g || 0) * factor * 10) / 10,
     ...extraMicrosFromOFF(per100, factor),
     source: "off",
+    servingGrams: servingG,
   };
   return looksLikeEmptyNutrition(found) ? null : found;
 }
@@ -334,6 +344,8 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSea
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [meal, setMeal] = useState(defaultMeal);
+  const [amount, setAmount] = useState(1);
+  const [unit, setUnit] = useState("serving");
 
   // Jump straight into the camera on open — no reason to make someone tap
   // "Start scanning" first when they already tapped "Scan barcode" to get
@@ -409,11 +421,18 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSea
       }
       setError(null);
       setResult(found);
+      setAmount(1);
+      setUnit("serving");
     } catch (err) { console.error(err); setResult(null); setError("Couldn't look up this product. Check your connection and try again."); }
     finally { setScanning(false); }
   }
 
   function reset() { setResult(null); setError(null); setScanning(false); startScanner(); }
+
+  const servingGrams = result?.servingGrams || 100;
+  const servings = result ? amountToServings(Number(amount) || 0, unit, servingGrams) : 0;
+  const scaled = result ? scaleFood(result, servings || 0) : null;
+  const gramsEquivalent = Math.round(servings * servingGrams);
 
   return (
     <div>
@@ -445,27 +464,28 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSea
             <div style={{ fontSize: 14, color: "#e8e8e8", fontWeight: 600, marginBottom: 2 }}>{result.name}</div>
             {result.brand && <div style={{ fontSize: 12, color: "#555", marginBottom: 10 }}>{result.brand} · {result.serving}</div>}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 14 }}>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#8fbc8f" }}>{result.protein}g</div><div style={{ fontSize: 10, color: "#555" }}>Protein</div></div>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#6aabcf" }}>{result.carbs}g</div><div style={{ fontSize: 10, color: "#555" }}>Carbs</div></div>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#b48250" }}>{result.fat}g</div><div style={{ fontSize: 10, color: "#555" }}>Fat</div></div>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#9f97e8" }}>{result.fibre}g</div><div style={{ fontSize: 10, color: "#555" }}>Fibre</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#8fbc8f" }}>{scaled.protein}g</div><div style={{ fontSize: 10, color: "#555" }}>Protein</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#6aabcf" }}>{scaled.carbs}g</div><div style={{ fontSize: 10, color: "#555" }}>Carbs</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#b48250" }}>{scaled.fat}g</div><div style={{ fontSize: 10, color: "#555" }}>Fat</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#9f97e8" }}>{scaled.fibre}g</div><div style={{ fontSize: 10, color: "#555" }}>Fibre</div></div>
             </div>
             <div style={{ display: "flex", gap: 16, paddingTop: 10, borderTop: "1px solid #1e1e1e" }}>
-              <div style={{ fontSize: 12, color: "#555" }}>Sodium <span style={{ color: "#888" }}>{result.sodium}mg</span></div>
-              <div style={{ fontSize: 12, color: "#555" }}>Sugar <span style={{ color: "#888" }}>{result.sugar}g</span></div>
+              <div style={{ fontSize: 12, color: "#555" }}>Sodium <span style={{ color: "#888" }}>{scaled.sodium}mg</span></div>
+              <div style={{ fontSize: 12, color: "#555" }}>Sugar <span style={{ color: "#888" }}>{scaled.sugar}g</span></div>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "#8fbc8f" }}>{result.cal}</span>
-            <span style={{ fontSize: 12, color: "#555" }}> kcal per {result.serving}</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: "#8fbc8f" }}>{scaled.cal}</span>
+            <span style={{ fontSize: 12, color: "#555" }}> kcal{unit !== "g" && ` · ≈${gramsEquivalent}g`} — label serving: {result.serving}</span>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <select value={meal} onChange={e => setMeal(e.target.value)} style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
-              {MEALS.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
-            <button onClick={reset} style={{ background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
-            <button onClick={() => { onAddFood(result, meal); onClose(); }} style={{ background: "#8fbc8f", border: "none", borderRadius: 8, padding: "7px 18px", fontSize: 13, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap" }}>+ Add to {meal}</button>
-          </div>
+          <AddControls
+            amount={amount} setAmount={setAmount}
+            unit={unit} setUnit={setUnit}
+            meal={meal} setMeal={setMeal}
+            onAdd={() => { onAddFood(scaled, meal); onClose(); }}
+            disabled={!servings}
+          />
+          <button onClick={reset} style={{ marginTop: 10, width: "100%", background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
         </div>
       )}
       {!result && !scanning && (

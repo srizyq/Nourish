@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler,
@@ -183,7 +183,20 @@ function MoodCheckin({ mood, setMood, energy, setEnergy }) {
 
 // ─── Meal Log ─────────────────────────────────────────────────────────────────
 function MealLog({ meals, onDelete, onNavigateFood }) {
-  const [open, setOpen] = useState({ breakfast: true, lunch: false, dinner: false, snacks: false });
+  const [open, setOpen] = useState({});
+  const initialisedRef = useRef(false);
+
+  // Auto-expand whichever meal actually has something logged, once — rather
+  // than always defaulting to Breakfast regardless of what's really in the
+  // log. If nothing's logged yet, everything stays collapsed (the "X kcal
+  // logged" total in the card header above already covers the empty case).
+  useEffect(() => {
+    if (initialisedRef.current) return;
+    const firstWithItems = Object.keys(meals).find(m => meals[m].length > 0);
+    if (!firstWithItems) return;
+    setOpen({ [firstWithItems]: true });
+    initialisedRef.current = true;
+  }, [meals]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
