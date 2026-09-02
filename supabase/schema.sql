@@ -17,6 +17,7 @@ create table if not exists public.profiles (
   fat_g int,
   water_target int default 8,
   onboarding_completed boolean default false,
+  is_premium boolean default false,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -53,6 +54,7 @@ create table if not exists public.food_logs (
   calcium_mg numeric default 0,
   iron_mg numeric default 0,
   serving_grams numeric,
+  logged_at timestamptz,
   source text,
   created_at timestamptz default now()
 );

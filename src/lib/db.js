@@ -71,6 +71,7 @@ export async function addFoodLog(userId, entry) {
       calcium_mg: entry.calcium || 0,
       iron_mg: entry.iron || 0,
       serving_grams: entry.servingGrams || null,
+      logged_at: entry.loggedAt ? entry.loggedAt.toISOString() : null,
       source: entry.source || 'local',
     })
     .select()
@@ -95,6 +96,15 @@ export async function updateFoodLog(id, entry) {
       fibre_g: entry.fibre || 0,
       sodium_mg: entry.sodium || 0,
       sugar_g: entry.sugar || 0,
+      saturated_fat_g: entry.saturatedFat || 0,
+      trans_fat_g: entry.transFat || 0,
+      cholesterol_mg: entry.cholesterol || 0,
+      potassium_mg: entry.potassium || 0,
+      added_sugar_g: entry.addedSugar || 0,
+      vitamin_d_mcg: entry.vitaminD || 0,
+      calcium_mg: entry.calcium || 0,
+      iron_mg: entry.iron || 0,
+      serving_grams: entry.servingGrams || null,
     })
     .eq('id', id)
     .select()

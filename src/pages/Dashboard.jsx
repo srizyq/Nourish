@@ -228,26 +228,29 @@ function MoodCheckin({ mood, setMood, energy, setEnergy }) {
 }
 
 // ─── Meal Log ─────────────────────────────────────────────────────────────────
-function MealLog({ meals, onDelete, onSave, onNavigateFood }) {
-  // Nothing auto-opens — the per-meal macro line below each meal name
-  // already covers the "doesn't look empty" concern without forcing any one
-  // meal open regardless of what's actually in it.
+// `groups` is a uniform [{ key, label, items }] shape — either the four
+// meal categories (free tier) or hourly buckets (Pro), computed by the
+// caller so this component doesn't need to know which tier it's in.
+function MealLog({ groups, onDelete, onSave, onNavigateFood }) {
+  // Nothing auto-opens — the per-group macro line already covers the
+  // "doesn't look empty" concern without forcing any one group open
+  // regardless of what's actually in it.
   const [open, setOpen] = useState({});
   const [expandedId, setExpandedId] = useState(null);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      {Object.entries(meals).map(([mealName, items]) => {
+      {groups.map(({ key, label, items }) => {
         const total = Math.round(items.reduce((s, i) => s + i.cal, 0));
         const protein = round1(items.reduce((s, i) => s + i.protein, 0));
         const carbs = round1(items.reduce((s, i) => s + i.carbs, 0));
         const fat = round1(items.reduce((s, i) => s + i.fat, 0));
-        const isOpen = open[mealName];
+        const isOpen = open[key];
         return (
-          <div key={mealName} style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', overflow: 'hidden' }}>
-            <button onClick={() => setOpen(o => ({ ...o, [mealName]: !o[mealName] }))} style={{ width: '100%', background: 'none', border: 'none', padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div key={key} style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', overflow: 'hidden' }}>
+            <button onClick={() => setOpen(o => ({ ...o, [key]: !o[key] }))} style={{ width: '100%', background: 'none', border: 'none', padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ textAlign: 'left' }}>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: '14px', color: '#ccc', textTransform: 'capitalize' }}>{mealName}</div>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: '14px', color: '#ccc' }}>{label}</div>
                 {items.length > 0 && <div style={{ color: '#555', fontSize: '12px', marginTop: 2 }}>P {protein}g · C {carbs}g · F {fat}g</div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -271,7 +274,7 @@ function MealLog({ meals, onDelete, onSave, onNavigateFood }) {
                     />
                   ))
                 )}
-                <button onClick={() => onNavigateFood(mealName)} style={{ width: '100%', background: 'none', border: 'none', color: '#3a5a3a', fontSize: '13px', cursor: 'pointer', padding: '10px 16px', textAlign: 'left', transition: 'color 0.15s' }} onMouseEnter={e => e.target.style.color = '#8fbc8f'} onMouseLeave={e => e.target.style.color = '#3a5a3a'}>
+                <button onClick={() => onNavigateFood(key)} style={{ width: '100%', background: 'none', border: 'none', color: '#3a5a3a', fontSize: '13px', cursor: 'pointer', padding: '10px 16px', textAlign: 'left', transition: 'color 0.15s' }} onMouseEnter={e => e.target.style.color = '#8fbc8f'} onMouseLeave={e => e.target.style.color = '#3a5a3a'}>
                   + Add food
                 </button>
               </div>
@@ -326,7 +329,8 @@ export default function Dashboard() {
 
   const today = todayLocalDate();
   const { profile } = useProfile();
-  const { meals, deleteFood, updateFood } = useFoodLogs(today);
+  const isPremium = !!profile?.is_premium;
+  const { meals, hourlyGroups, deleteFood, updateFood } = useFoodLogs(today);
   const { checkin, save: saveCheckin } = useCheckins(today);
   const { dailyData } = useHistory(dateNDaysAgo(30), today);
   const weightUnit = profile?.unit === 'imperial' ? 'lb' : 'kg';
@@ -467,10 +471,12 @@ export default function Dashboard() {
               <span style={{ color: '#8fbc8f', fontSize: '13px', fontWeight: 600 }}>{Math.round(consumed)} kcal logged</span>
             </div>
             <MealLog
-              meals={meals}
+              groups={isPremium
+                ? hourlyGroups.map(g => ({ key: String(g.hour), label: g.label, items: g.items }))
+                : Object.entries(meals).map(([key, items]) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1), items }))}
               onDelete={deleteFood}
               onSave={updateFood}
-              onNavigateFood={(mealName) => navigate('/food', { state: { openMeal: mealName } })}
+              onNavigateFood={(key) => navigate('/food', isPremium ? undefined : { state: { openMeal: key } })}
             />
           </div>
         </div>
