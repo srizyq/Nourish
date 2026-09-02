@@ -14,6 +14,7 @@ import { useWeightLogs } from '../hooks/useWeightLogs';
 import { todayLocalDate, dateNDaysAgo, dateRange, generateInsights, computeStreak } from '../lib/patterns';
 import AppNav from '../components/AppNav';
 import LogItemRow from '../components/LogItemRow';
+import LogCalendar from '../components/LogCalendar';
 import { round1 } from '../lib/format';
 import { WeekBars } from './Progress';
 
@@ -336,6 +337,15 @@ export default function Dashboard() {
   const weightUnit = profile?.unit === 'imperial' ? 'lb' : 'kg';
   const { logs: weightLogs, latest: latestWeight, logWeight } = useWeightLogs(dateNDaysAgo(29), today);
 
+  // Logging calendar browses independently of anything else on the page,
+  // so it needs its own fetch scoped to whatever month is currently shown.
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
+  const calMonthStart = todayLocalDate(calMonth);
+  const calMonthEnd = todayLocalDate(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0));
+  const { dailyData: calData, loading: calLoading } = useHistory(calMonthStart, calMonthEnd);
+  const calByDate = new Map(calData.map(d => [d.date, d]));
+  const canGoNextMonth = calMonthStart < todayLocalDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+
   const targets = {
     calories: profile?.calorie_target || 2000,
     protein: { g: profile?.protein_g || 150 },
@@ -411,15 +421,25 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Progress: weight + this week's calories */}
+          {/* Progress: weight + this week's calories + logging calendar */}
           <div style={{ marginBottom: '16px' }}>
             <div style={{ color: '#666', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Progress</div>
-            <div className="grid-2">
+            <div className="grid-3">
               <WeightCard weightLogs={weightLogs} latest={latestWeight} unit={weightUnit} onLog={(w, u) => logWeight(today, w, u)} navigate={navigate} />
               <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '20px' }}>
                 <div style={{ color: '#666', fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>This week's calories</div>
                 <WeekBars days={weekDays} calorieTarget={calorieTarget} />
               </div>
+              <LogCalendar
+                month={calMonth}
+                byDate={calByDate}
+                calorieTarget={calorieTarget}
+                loading={calLoading}
+                onPrevMonth={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+                onNextMonth={() => canGoNextMonth && setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+                canGoNext={canGoNextMonth}
+                onSelectDay={(date) => navigate('/log', { state: { date } })}
+              />
             </div>
           </div>
 
