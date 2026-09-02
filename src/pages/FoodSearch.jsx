@@ -6,7 +6,10 @@ import { useCustomFoods } from '../hooks/useCustomFoods';
 import { useSavedMeals } from '../hooks/useSavedMeals';
 import { useFavouriteFoods } from '../hooks/useFavouriteFoods';
 import { useFrequentFoods } from '../hooks/useFrequentFoods';
+import { useProfile } from '../hooks/useProfile';
 import { todayLocalDate } from '../lib/patterns';
+import { mealFromDate, currentTimeHHMM, timeStringToDate, formatTime12h, formatTimeFromDate } from '../lib/mealTime';
+import { scaleFood } from '../lib/foodMath';
 import AppNav from '../components/AppNav';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -79,27 +82,6 @@ function amountToServings(amount, unitId, servingGrams) {
   return grams / (servingGrams || 100);
 }
 
-function scaleFood(food, servings) {
-  const round1 = n => Math.round(n * 10) / 10;
-  return {
-    ...food,
-    cal: Math.round(food.cal * servings),
-    protein: round1(food.protein * servings),
-    carbs: round1(food.carbs * servings),
-    fat: round1(food.fat * servings),
-    fibre: round1((food.fibre || 0) * servings),
-    sodium: Math.round((food.sodium || 0) * servings),
-    sugar: round1((food.sugar || 0) * servings),
-    saturatedFat: round1((food.saturatedFat || 0) * servings),
-    transFat: round1((food.transFat || 0) * servings),
-    cholesterol: Math.round((food.cholesterol || 0) * servings),
-    potassium: Math.round((food.potassium || 0) * servings),
-    addedSugar: round1((food.addedSugar || 0) * servings),
-    vitaminD: round1((food.vitaminD || 0) * servings),
-    calcium: Math.round((food.calcium || 0) * servings),
-    iron: round1((food.iron || 0) * servings),
-  };
-}
 
 // ─── Live search ─────────────────────────────────────────────────────────
 // Open Food Facts — no API key required, strong branded/packaged coverage
@@ -330,7 +312,7 @@ async function lookupOpenFoodFactsBarcode(barcode) {
   return looksLikeEmptyNutrition(found) ? null : found;
 }
 
-function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSearchManually }) {
+function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, isPremium, onCreateCustom, onSearchManually }) {
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   // Guards against the decode callback firing more than once for the same
@@ -344,6 +326,7 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSea
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [meal, setMeal] = useState(defaultMeal);
+  const [time, setTime] = useState(defaultTime);
   const [amount, setAmount] = useState(1);
   const [unit, setUnit] = useState("serving");
 
@@ -423,6 +406,7 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSea
       setResult(found);
       setAmount(1);
       setUnit("serving");
+      setTime(currentTimeHHMM());
     } catch (err) { console.error(err); setResult(null); setError("Couldn't look up this product. Check your connection and try again."); }
     finally { setScanning(false); }
   }
@@ -482,7 +466,9 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSea
             amount={amount} setAmount={setAmount}
             unit={unit} setUnit={setUnit}
             meal={meal} setMeal={setMeal}
-            onAdd={() => { onAddFood(scaled, meal); onClose(); }}
+            time={time} setTime={setTime}
+            isPremium={isPremium}
+            onAdd={() => { onAddFood(scaled, isPremium ? null : meal, isPremium ? timeStringToDate(time) : null); onClose(); }}
             disabled={!servings}
           />
           <button onClick={reset} style={{ marginTop: 10, width: "100%", background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
@@ -502,7 +488,7 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, onCreateCustom, onSea
 //    it required posting a secret API key from the browser, which can't be
 //    done safely client-side) ────────────────────────────────────────────────
 
-function ScanModal({ onClose, onAddFood, defaultMeal, onCreateCustom, onSearchManually }) {
+function ScanModal({ onClose, onAddFood, defaultMeal, defaultTime, isPremium, onCreateCustom, onSearchManually }) {
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -512,7 +498,7 @@ function ScanModal({ onClose, onAddFood, defaultMeal, onCreateCustom, onSearchMa
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
         </div>
         <div style={{ padding: 20 }}>
-          <BarcodeScanner onAddFood={onAddFood} onClose={onClose} defaultMeal={defaultMeal} onCreateCustom={onCreateCustom} onSearchManually={onSearchManually} />
+          <BarcodeScanner onAddFood={onAddFood} onClose={onClose} defaultMeal={defaultMeal} defaultTime={defaultTime} isPremium={isPremium} onCreateCustom={onCreateCustom} onSearchManually={onSearchManually} />
         </div>
       </div>
     </div>
@@ -663,10 +649,11 @@ function SavedMealsModal({ meals, loading, onClose, onLog, onDelete, onStartBuil
 // ─── Meal builder review — save what's been added to the builder cart as a
 //    named saved meal, and optionally log it right away ──────────────────
 
-function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal }) {
+function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal, defaultTime, isPremium }) {
   const [name, setName] = useState("");
   const [logNow, setLogNow] = useState(true);
   const [meal, setMeal] = useState(defaultMeal);
+  const [time, setTime] = useState(defaultTime);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -682,7 +669,7 @@ function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal }) {
     setSaving(true);
     setError(null);
     try {
-      await onSave(name.trim(), items, logNow ? meal : null);
+      await onSave(name.trim(), items, logNow && !isPremium ? meal : null, logNow && isPremium ? timeStringToDate(time) : null);
       onClose();
     } catch (err) {
       console.error(err);
@@ -722,13 +709,17 @@ function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal }) {
             Also log to today
           </label>
           {logNow && (
-            <select value={meal} onChange={e => setMeal(e.target.value)} style={{ ...fieldStyle, marginBottom: 16, cursor: "pointer" }}>
-              {MEALS.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
+            isPremium ? (
+              <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ ...fieldStyle, marginBottom: 16, cursor: "pointer" }} />
+            ) : (
+              <select value={meal} onChange={e => setMeal(e.target.value)} style={{ ...fieldStyle, marginBottom: 16, cursor: "pointer" }}>
+                {MEALS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            )
           )}
           {error && <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070", marginBottom: 12 }}>{error}</div>}
           <button onClick={submit} disabled={!name.trim() || saving} style={{ width: "100%", background: !name.trim() || saving ? "#2a2a2a" : "#8fbc8f", border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, color: !name.trim() || saving ? "#666" : "#0f0f0f", cursor: !name.trim() || saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-            {saving ? "Saving…" : logNow ? `Save meal & log to ${meal}` : "Save meal"}
+            {saving ? "Saving…" : !logNow ? "Save meal" : isPremium ? `Save meal & log at ${formatTime12h(time)}` : `Save meal & log to ${meal}`}
           </button>
         </>
       )}
@@ -747,12 +738,14 @@ function MacroPill({ value, unit = "g", label, color }) {
   );
 }
 
-function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd, addLabel, onDelete, isFavourite, onToggleFavourite }) {
+function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, isPremium, onAdd, addLabel, onDelete, isFavourite, onToggleFavourite }) {
   const [amount, setAmount] = useState(1);
   const [unit, setUnit] = useState("serving");
   const [meal, setMeal] = useState(defaultMeal);
+  const [time, setTime] = useState(defaultTime);
 
   useEffect(() => { setMeal(defaultMeal); }, [defaultMeal]);
+  useEffect(() => { setTime(defaultTime); }, [defaultTime]);
 
   const servingGrams = food.servingGrams || 100;
   const servings = amountToServings(Number(amount) || 0, unit, servingGrams);
@@ -805,7 +798,9 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd, addLabel, on
             amount={amount} setAmount={setAmount}
             unit={unit} setUnit={setUnit}
             meal={meal} setMeal={setMeal}
-            onAdd={() => onAdd(scaled, meal)}
+            time={time} setTime={setTime}
+            isPremium={isPremium}
+            onAdd={() => onAdd(scaled, isPremium ? null : meal, isPremium ? timeStringToDate(time) : null)}
             disabled={!servings}
             addLabel={addLabel}
           />
@@ -820,7 +815,7 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, onAdd, addLabel, on
   );
 }
 
-function AddControls({ amount, setAmount, unit, setUnit, meal, setMeal, onAdd, disabled, addLabel }) {
+function AddControls({ amount, setAmount, unit, setUnit, meal, setMeal, time, setTime, isPremium, onAdd, disabled, addLabel }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", gap: 8 }}>
@@ -832,16 +827,23 @@ function AddControls({ amount, setAmount, unit, setUnit, meal, setMeal, onAdd, d
         <select value={unit} onChange={e => setUnit(e.target.value)} style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
           {UNITS.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
         </select>
-        <select value={meal} onChange={e => setMeal(e.target.value)} style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
-          {MEALS.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
+        {isPremium ? (
+          <input
+            type="time" value={time} onChange={e => setTime(e.target.value)}
+            style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}
+          />
+        ) : (
+          <select value={meal} onChange={e => setMeal(e.target.value)} style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
+            {MEALS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+        )}
       </div>
       <button
         onClick={onAdd}
         disabled={disabled}
         style={{ background: disabled ? "#2a2a2a" : "#8fbc8f", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, color: disabled ? "#666" : "#0f0f0f", cursor: disabled ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}
       >
-        {addLabel ? addLabel : `+ Add to ${meal}`}
+        {addLabel ? addLabel : isPremium ? `+ Add at ${formatTime12h(time)}` : `+ Add to ${meal}`}
       </button>
     </div>
   );
@@ -860,6 +862,8 @@ function Toast({ message, onDone }) {
 
 export default function FoodSearch() {
   const location = useLocation();
+  const { profile } = useProfile();
+  const isPremium = !!profile?.is_premium;
   const { addFood: addFoodLog } = useFoodLogs(todayLocalDate());
   const { rows: recentRows, loading: recentLoading, refetch: refetchRecent } = useRecentFoods(6);
   const customFoods = useCustomFoods();
@@ -868,14 +872,20 @@ export default function FoodSearch() {
   const frequent = useFrequentFoods(6);
   const [query, setQuery] = useState("");
   // Dashboard's per-meal "+ Add food" links here with the meal it was
-  // clicked from (e.g. { openMeal: "breakfast" }) so this page lands on
-  // the right meal instead of always defaulting to Lunch.
+  // clicked from (e.g. { openMeal: "breakfast" }). Otherwise, default to
+  // whatever meal actually fits the current time of day instead of always
+  // landing on Lunch regardless of when you're logging.
   const [activeMeal, setActiveMeal] = useState(() => {
     const requested = location.state?.openMeal;
-    if (!requested) return "Lunch";
-    const capitalized = requested.charAt(0).toUpperCase() + requested.slice(1);
-    return MEALS.includes(capitalized) ? capitalized : "Lunch";
+    if (requested) {
+      const capitalized = requested.charAt(0).toUpperCase() + requested.slice(1);
+      if (MEALS.includes(capitalized)) return capitalized;
+    }
+    const auto = mealFromDate(new Date());
+    return auto.charAt(0).toUpperCase() + auto.slice(1);
   });
+  // Pro users log against a real clock time instead of a meal category.
+  const [activeTime, setActiveTime] = useState(() => currentTimeHHMM());
   const [expandedId, setExpandedId] = useState(null);
   const [mealDropdownOpen, setMealDropdownOpen] = useState(false);
   const [toast, setToast] = useState(null);
@@ -1040,10 +1050,10 @@ export default function FoodSearch() {
     source: row.source || "favourite",
   })), [favourites.rows]);
 
-  async function logFood(food, meal) {
-    await addFoodLog(food, meal);
+  async function logFood(food, meal, loggedAt) {
+    await addFoodLog(food, meal, loggedAt);
     refetchRecent();
-    setToast(`${food.name} added to ${meal}`);
+    setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ""}`);
     setExpandedId(null);
   }
 
@@ -1053,9 +1063,9 @@ export default function FoodSearch() {
     setExpandedId(null);
   }
 
-  function handleAdd(food, meal) {
+  function handleAdd(food, meal, loggedAt) {
     if (builderMode) return addToBuilder(food);
-    return logFood(food, meal);
+    return logFood(food, meal, loggedAt);
   }
 
   async function handleDeleteCustom(food) {
@@ -1074,7 +1084,7 @@ export default function FoodSearch() {
     setBuilderReviewOpen(false);
   }
 
-  async function handleSaveBuilderMeal(name, items, mealToLog) {
+  async function handleSaveBuilderMeal(name, items, mealToLog, timeToLog) {
     const snapshot = items.map(it => ({
       name: it.name, cal: it.cal, protein: it.protein, carbs: it.carbs,
       fat: it.fat, fibre: it.fibre || 0, sodium: it.sodium || 0, sugar: it.sugar || 0,
@@ -1084,23 +1094,24 @@ export default function FoodSearch() {
       calcium: it.calcium || 0, iron: it.iron || 0,
     }));
     await savedMeals.create(name, snapshot);
-    if (mealToLog) {
+    const logging = mealToLog || timeToLog;
+    if (logging) {
       for (const it of items) {
-        await addFoodLog(it, mealToLog);
+        await addFoodLog(it, mealToLog, timeToLog);
       }
       refetchRecent();
     }
-    setToast(`Saved "${name}"${mealToLog ? ` and logged to ${mealToLog}` : ""}`);
+    setToast(`Saved "${name}"${mealToLog ? ` and logged to ${mealToLog}` : timeToLog ? ` and logged at ${formatTimeFromDate(timeToLog)}` : ""}`);
     cancelBuilder();
   }
 
   async function handleLogSavedMeal(savedMeal) {
     const items = savedMeal.items || [];
     for (const it of items) {
-      await addFoodLog(it, activeMeal);
+      await addFoodLog(it, isPremium ? null : activeMeal, isPremium ? new Date() : null);
     }
     refetchRecent();
-    setToast(`${savedMeal.name} logged to ${activeMeal}`);
+    setToast(`${savedMeal.name} logged${isPremium ? ` at ${formatTimeFromDate(new Date())}` : ` to ${activeMeal}`}`);
     setSavedMealsOpen(false);
   }
 
@@ -1116,16 +1127,26 @@ export default function FoodSearch() {
         <div className="page-pad-top" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px 12px", paddingTop: 14, paddingBottom: 14, borderBottom: "1px solid #1e1e1e", background: "#0f0f0f", position: "sticky", top: 0, zIndex: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16, color: "#e8e8e8" }}>Food search</span>
-            <div style={{ position: "relative" }}>
-              <button onClick={() => setMealDropdownOpen(o => !o)} style={{ background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "4px 10px", fontSize: 12, color: "#8fbc8f", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
-                Adding to: {activeMeal} ▾
-              </button>
-              {mealDropdownOpen && (
-                <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 8, overflow: "hidden", zIndex: 50, minWidth: 140 }}>
-                  {MEALS.map(m => <div key={m} onClick={() => { setActiveMeal(m); setMealDropdownOpen(false); }} style={{ padding: "9px 14px", fontSize: 13, color: m === activeMeal ? "#8fbc8f" : "#ccc", background: m === activeMeal ? "#0f1a0f" : "transparent", cursor: "pointer" }}>{m}</div>)}
-                </div>
-              )}
-            </div>
+            {isPremium ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "4px 10px" }}>
+                <span style={{ fontSize: 12, color: "#8fbc8f" }}>Logging at</span>
+                <input
+                  type="time" value={activeTime} onChange={e => setActiveTime(e.target.value)}
+                  style={{ background: "none", border: "none", color: "#8fbc8f", fontSize: 12, fontFamily: "inherit", cursor: "pointer", outline: "none" }}
+                />
+              </div>
+            ) : (
+              <div style={{ position: "relative" }}>
+                <button onClick={() => setMealDropdownOpen(o => !o)} style={{ background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "4px 10px", fontSize: 12, color: "#8fbc8f", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
+                  Adding to: {activeMeal} ▾
+                </button>
+                {mealDropdownOpen && (
+                  <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 8, overflow: "hidden", zIndex: 50, minWidth: 140 }}>
+                    {MEALS.map(m => <div key={m} onClick={() => { setActiveMeal(m); setMealDropdownOpen(false); }} style={{ padding: "9px 14px", fontSize: 13, color: m === activeMeal ? "#8fbc8f" : "#ccc", background: m === activeMeal ? "#0f1a0f" : "transparent", cursor: "pointer" }}>{m}</div>)}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <div onClick={() => setCreateFoodOpen(true)} title="Create a custom food" style={{ width: 32, height: 32, background: "#181818", border: "1px solid #1e1e1e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, color: "#888" }}><i className="ti ti-plus" /></div>
@@ -1169,6 +1190,8 @@ export default function FoodSearch() {
                       isExpanded={expandedId === food.id}
                       onToggle={() => handleToggle(food.id)}
                       defaultMeal={activeMeal}
+                      defaultTime={activeTime}
+                      isPremium={isPremium}
                       onAdd={handleAdd}
                       addLabel={builderMode ? "+ Add to meal" : undefined}
                       isFavourite={true}
@@ -1188,6 +1211,8 @@ export default function FoodSearch() {
                       isExpanded={expandedId === food.id}
                       onToggle={() => handleToggle(food.id)}
                       defaultMeal={activeMeal}
+                      defaultTime={activeTime}
+                      isPremium={isPremium}
                       onAdd={handleAdd}
                       addLabel={builderMode ? "+ Add to meal" : undefined}
                       isFavourite={favourites.isFavourite(food.name)}
@@ -1211,6 +1236,8 @@ export default function FoodSearch() {
                       isExpanded={expandedId === food.id}
                       onToggle={() => handleToggle(food.id)}
                       defaultMeal={activeMeal}
+                      defaultTime={activeTime}
+                      isPremium={isPremium}
                       onAdd={handleAdd}
                       addLabel={builderMode ? "+ Add to meal" : undefined}
                       isFavourite={favourites.isFavourite(food.name)}
@@ -1252,6 +1279,8 @@ export default function FoodSearch() {
                     isExpanded={expandedId === food.id}
                     onToggle={() => handleToggle(food.id)}
                     defaultMeal={activeMeal}
+                      defaultTime={activeTime}
+                      isPremium={isPremium}
                     onAdd={handleAdd}
                     addLabel={builderMode ? "+ Add to meal" : undefined}
                     onDelete={food.source === "custom" ? () => handleDeleteCustom(food) : undefined}
@@ -1291,6 +1320,8 @@ export default function FoodSearch() {
                         isExpanded={expandedId === food.id}
                         onToggle={() => handleToggle(food.id)}
                         defaultMeal={activeMeal}
+                      defaultTime={activeTime}
+                      isPremium={isPremium}
                         onAdd={handleAdd}
                         addLabel={builderMode ? "+ Add to meal" : undefined}
                         isFavourite={favourites.isFavourite(food.name)}
@@ -1329,7 +1360,9 @@ export default function FoodSearch() {
         <ScanModal
           onClose={() => setScanOpen(false)}
           defaultMeal={activeMeal}
-          onAddFood={async (food, meal) => { await addFoodLog(food, meal); refetchRecent(); setToast(`${food.name} added to ${meal}`); }}
+          defaultTime={activeTime}
+          isPremium={isPremium}
+          onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
           onCreateCustom={() => { setScanOpen(false); setCreateFoodOpen(true); }}
           onSearchManually={() => { setScanOpen(false); setTimeout(() => inputRef.current?.focus(), 0); }}
         />
@@ -1364,6 +1397,8 @@ export default function FoodSearch() {
         <BuilderReviewModal
           items={builderItems}
           defaultMeal={activeMeal}
+                      defaultTime={activeTime}
+                      isPremium={isPremium}
           onClose={() => setBuilderReviewOpen(false)}
           onRemove={(i) => setBuilderItems(prev => prev.filter((_, idx) => idx !== i))}
           onSave={handleSaveBuilderMeal}

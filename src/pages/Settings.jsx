@@ -593,6 +593,9 @@ export default function Settings() {
                     </span>{' '}— this guest session's data will be left behind unless you upgrade it first.
                   </p>
                 )}
+                <FieldRow label="Pro features" hint="Test toggle — real billing isn't wired up yet">
+                  <Toggle on={!!profile?.is_premium} onChange={(on) => saveProfile({ is_premium: on })} />
+                </FieldRow>
                 <button
                   onClick={requestLogout}
                   style={{

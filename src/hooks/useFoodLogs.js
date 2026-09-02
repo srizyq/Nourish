@@ -1,6 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { addFoodLog, deleteFoodLog, updateFoodLog, getFoodLogsForDate } from '../lib/db';
+import { mealFromDate, groupItemsByHour } from '../lib/mealTime';
+
+function mapRow(row) {
+  return {
+    id: row.id,
+    name: row.food_name,
+    meal: row.meal,
+    cal: Number(row.calories) || 0,
+    protein: Number(row.protein_g) || 0,
+    carbs: Number(row.carbs_g) || 0,
+    fat: Number(row.fat_g) || 0,
+    fibre: Number(row.fibre_g) || 0,
+    sodium: Number(row.sodium_mg) || 0,
+    sugar: Number(row.sugar_g) || 0,
+    saturatedFat: Number(row.saturated_fat_g) || 0,
+    transFat: Number(row.trans_fat_g) || 0,
+    cholesterol: Number(row.cholesterol_mg) || 0,
+    potassium: Number(row.potassium_mg) || 0,
+    addedSugar: Number(row.added_sugar_g) || 0,
+    vitaminD: Number(row.vitamin_d_mcg) || 0,
+    calcium: Number(row.calcium_mg) || 0,
+    iron: Number(row.iron_mg) || 0,
+    servingGrams: row.serving_grams || null,
+    loggedAt: row.logged_at || null,
+    createdAt: row.created_at || null,
+  };
+}
 
 export function useFoodLogs(date) {
   const { user } = useAuth();
@@ -17,39 +44,32 @@ export function useFoodLogs(date) {
 
   useEffect(() => { refetch(); }, [refetch]);
 
+  const items = useMemo(() => logs.map(mapRow), [logs]);
+
   const meals = useMemo(() => {
     const grouped = { breakfast: [], lunch: [], dinner: [], snacks: [] };
-    for (const row of logs) {
-      const key = row.meal in grouped ? row.meal : 'snacks';
-      grouped[key].push({
-        id: row.id,
-        name: row.food_name,
-        cal: Number(row.calories) || 0,
-        protein: Number(row.protein_g) || 0,
-        carbs: Number(row.carbs_g) || 0,
-        fat: Number(row.fat_g) || 0,
-        fibre: Number(row.fibre_g) || 0,
-        sodium: Number(row.sodium_mg) || 0,
-        sugar: Number(row.sugar_g) || 0,
-        saturatedFat: Number(row.saturated_fat_g) || 0,
-        transFat: Number(row.trans_fat_g) || 0,
-        cholesterol: Number(row.cholesterol_mg) || 0,
-        potassium: Number(row.potassium_mg) || 0,
-        addedSugar: Number(row.added_sugar_g) || 0,
-        vitaminD: Number(row.vitamin_d_mcg) || 0,
-        calcium: Number(row.calcium_mg) || 0,
-        iron: Number(row.iron_mg) || 0,
-        servingGrams: row.serving_grams || null,
-      });
+    for (const item of items) {
+      const key = item.meal in grouped ? item.meal : 'snacks';
+      grouped[key].push(item);
     }
     return grouped;
-  }, [logs]);
+  }, [items]);
 
-  const addFood = useCallback(async (food, mealName) => {
+  // Pro users' daily log view — same items, grouped by the hour they were
+  // actually logged instead of by meal category.
+  const hourlyGroups = useMemo(() => groupItemsByHour(items), [items]);
+
+  // mealName is optional — when omitted (Pro/time-based logging), the meal
+  // category is derived from loggedAt purely so the food_logs row (which
+  // still requires a meal value) has something sensible; the Pro UI never
+  // shows this value to the user.
+  const addFood = useCallback(async (food, mealName, loggedAt) => {
     if (!user || !date) return;
+    const meal = mealName ? mealName.toLowerCase() : mealFromDate(loggedAt || new Date());
     const created = await addFoodLog(user.id, {
       loggedDate: date,
-      meal: mealName.toLowerCase(),
+      meal,
+      loggedAt: loggedAt || null,
       name: food.name,
       cal: food.cal,
       protein: food.protein || 0,
@@ -84,5 +104,5 @@ export function useFoodLogs(date) {
     return updated;
   }, []);
 
-  return { logs, meals, loading, addFood, deleteFood, updateFood, refetch };
+  return { logs, meals, hourlyGroups, loading, addFood, deleteFood, updateFood, refetch };
 }
