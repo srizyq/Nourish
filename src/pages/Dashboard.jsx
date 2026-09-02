@@ -33,16 +33,20 @@ function displayAmount(mode, value, target, unit) {
 }
 
 function MacroTile({ label, value, target, color, icon, mode }) {
+  const pct = target ? Math.min((value / target) * 100, 100) : 0;
   return (
-    <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: 10, padding: '12px 14px' }}>
+    <div style={{ background: '#181818', borderRadius: 10, padding: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         <i className={`ti ${icon}`} style={{ color, fontSize: 13 }} />
         <span style={{ color: '#666', fontSize: 11 }}>{label}</span>
       </div>
-      <div style={{ color: '#e8e8e8', fontSize: 22, fontWeight: 700 }}>
+      <div style={{ color: '#e8e8e8', fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
         {mode === 'eaten'
-          ? <>{round1(value)}{target ? <span style={{ color: '#444', fontSize: 13, fontWeight: 400 }}>/{target}g</span> : 'g'}</>
+          ? <>{round1(value)}{target ? <span style={{ color: '#444', fontSize: 11, fontWeight: 400 }}>/{target}g</span> : 'g'}</>
           : displayAmount(mode, value, target, 'g')}
+      </div>
+      <div style={{ height: 4, background: '#1e1e1e', borderRadius: 99 }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.8s ease' }} />
       </div>
     </div>
   );
