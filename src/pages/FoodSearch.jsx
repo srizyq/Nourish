@@ -728,6 +728,13 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, isPrem
   const [unit, setUnit] = useState("serving");
   const [meal, setMeal] = useState(defaultMeal);
   const [time, setTime] = useState(defaultTime);
+  // Quick-add (the collapsed row's "+" button) always logs the default 1
+  // serving — the same values this card is already initialised with — so
+  // the common case (re-logging something you've had before, or adding a
+  // fresh search result as-is) never requires expanding the card first.
+  // Expanding is still there for anyone who wants to change the amount,
+  // unit, or meal before logging.
+  const [justAdded, setJustAdded] = useState(false);
 
   useEffect(() => { setMeal(defaultMeal); }, [defaultMeal]);
   useEffect(() => { setTime(defaultTime); }, [defaultTime]);
@@ -741,6 +748,19 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, isPrem
   // an accurate baseline instead of guessing 100g every time.
   const scaled = { ...scaleFood(food, servings || 0), servingGrams: gramsEquivalent };
   const catStyle = getCategoryStyle(food);
+
+  // Deliberately NOT derived from the `amount`/`unit`/`meal`/`time` state
+  // above — those can already be mid-edit if the card was expanded and
+  // then collapsed again without hitting Add, and quick-add must always
+  // mean exactly "1 serving, to the current default meal/time", not
+  // whatever was last typed into the (now-hidden) amount field.
+  const defaultScaled = { ...scaleFood(food, 1), servingGrams };
+  function handleQuickAdd(e) {
+    e.stopPropagation();
+    onAdd(defaultScaled, isPremium ? null : defaultMeal, isPremium ? timeStringToDate(defaultTime) : null);
+    setJustAdded(true);
+    setTimeout(() => setJustAdded(false), 1100);
+  }
 
   return (
     <div style={{ background: "#181818", border: `1px solid ${isExpanded ? "#4a7a4a" : "#1e1e1e"}`, borderRadius: 10, marginBottom: 8, overflow: "hidden", transition: "border-color 0.15s", cursor: "pointer" }}>
@@ -757,6 +777,20 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, isPrem
           <span style={{ fontSize: 15, fontWeight: 600, color: "#8fbc8f" }}>{food.cal}</span>
           <span style={{ fontSize: 11, color: "#555" }}> kcal</span>
         </div>
+        <button
+          onClick={handleQuickAdd}
+          disabled={justAdded}
+          title={addLabel ? "Quick add — 1 serving to meal builder" : `Quick add — 1 serving to ${defaultMeal}`}
+          style={{
+            width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+            background: justAdded ? "#0f1a0f" : "#8fbc8f", border: justAdded ? "1px solid #4a7a4a" : "none",
+            color: justAdded ? "#8fbc8f" : "#0f0f0f", fontSize: 15, lineHeight: 1,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: justAdded ? "default" : "pointer", fontFamily: "inherit",
+          }}
+        >
+          <i className={`ti ${justAdded ? "ti-check" : "ti-plus"}`} />
+        </button>
         {onToggleFavourite && (
           <button onClick={(e) => { e.stopPropagation(); onToggleFavourite(); }} title={isFavourite ? "Remove favourite" : "Add favourite"} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0, color: isFavourite ? "#e8c468" : "#333", fontSize: 16, display: "flex" }}>
             <i className={isFavourite ? "ti ti-star-filled" : "ti ti-star"} />
