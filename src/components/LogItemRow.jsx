@@ -91,10 +91,11 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <span style={{ color: C.green, fontSize: 14, fontWeight: 500 }}>{Math.round(item.cal)}</span>
           <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ background: 'none', border: 'none', color: C.border2, cursor: 'pointer', fontSize: 15, padding: '2px 4px' }}>×</button>
-          <span style={{ color: C.border2, fontSize: 12 }}>{isExpanded ? '▲' : '▼'}</span>
+          <span style={{ color: C.border2, fontSize: 12, display: 'inline-block', transition: 'transform 220ms cubic-bezier(0.77, 0, 0.175, 1)', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </div>
       </div>
-      {isExpanded && (
+      <div style={{ display: 'grid', gridTemplateRows: isExpanded ? '1fr' : '0fr', transition: 'grid-template-rows 220ms cubic-bezier(0.77, 0, 0.175, 1)' }}>
+        <div style={{ overflow: 'hidden' }}>
         <div style={{ padding: '4px 18px 16px', background: '#111' }}>
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>{hasKnownWeight ? `Amount (currently ${item.servingGrams}g)` : 'Amount ("1 serving" = what\'s currently logged)'}</label>
@@ -136,7 +137,8 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
             {error && <span style={{ color: '#c07070', fontSize: 12 }}>{error}</span>}
           </div>
         </div>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

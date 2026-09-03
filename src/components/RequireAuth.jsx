@@ -15,7 +15,6 @@ export default function RequireAuth({ children }) {
           border: '3px solid #2a2a2a', borderTopColor: '#8fbc8f',
           animation: 'spin 0.8s linear infinite',
         }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }

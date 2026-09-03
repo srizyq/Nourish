@@ -169,7 +169,6 @@ export default function AIInsights() {
     <div style={{ display: "flex", height: "100vh", background: C.bg, fontFamily: "'DM Sans', sans-serif", color: C.textP, overflow: "hidden" }}>
       <style>{`
         @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
-        @keyframes spin  { to{transform:rotate(360deg)} }
         * { box-sizing: border-box; }
         textarea:focus { outline: none; border-color: ${C.borderA} !important; }
         textarea { font-family: "DM Sans", sans-serif; }

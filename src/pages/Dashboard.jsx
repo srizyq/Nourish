@@ -187,7 +187,7 @@ function WaterTracker({ glasses, setGlasses, target = 8 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
       {Array.from({ length: target }).map((_, i) => (
-        <button key={i} onClick={() => setGlasses(i < glasses ? i : i + 1)} style={{ width: '28px', height: '28px', borderRadius: '6px', border: `1px solid ${i < glasses ? '#2a4a6a' : '#1e1e1e'}`, background: i < glasses ? '#6aabcf22' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', transition: 'all 0.15s', color: i < glasses ? '#6aabcf' : '#2a2a2a' }}>
+        <button key={i} onClick={() => setGlasses(i < glasses ? i : i + 1)} style={{ width: '28px', height: '28px', borderRadius: '6px', border: `1px solid ${i < glasses ? '#2a4a6a' : '#1e1e1e'}`, background: i < glasses ? '#6aabcf22' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', transition: 'background 0.15s, border-color 0.15s, color 0.15s', color: i < glasses ? '#6aabcf' : '#2a2a2a' }}>
           💧
         </button>
       ))}
@@ -209,7 +209,7 @@ function MoodCheckin({ mood, setMood, energy, setEnergy }) {
     <div>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
         {moods.map(m => (
-          <button key={m.id} onClick={() => setMood(m.id)} title={m.label} style={{ flex: 1, padding: '8px 4px', borderRadius: '8px', border: `1px solid ${mood === m.id ? '#3a5a3a' : '#1e1e1e'}`, background: mood === m.id ? '#0f1a0f' : 'transparent', cursor: 'pointer', fontSize: '20px', transition: 'all 0.15s' }}>
+          <button key={m.id} onClick={() => setMood(m.id)} title={m.label} style={{ flex: 1, padding: '8px 4px', borderRadius: '8px', border: `1px solid ${mood === m.id ? '#3a5a3a' : '#1e1e1e'}`, background: mood === m.id ? '#0f1a0f' : 'transparent', cursor: 'pointer', fontSize: '20px', transition: 'background 0.15s, border-color 0.15s' }}>
             {m.emoji}
           </button>
         ))}
@@ -316,7 +316,7 @@ function ShortcutRow({ navigate }) {
   return (
     <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
       {shortcuts.map((s, i) => (
-        <button key={i} onClick={s.action} style={{ flex: 1, maxWidth: 160, background: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '14px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', transition: 'all 0.15s' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#3a5a3a'} onMouseLeave={e => e.currentTarget.style.borderColor = '#1e1e1e'}>
+        <button key={i} onClick={s.action} style={{ flex: 1, maxWidth: 160, background: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '14px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', transition: 'border-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#3a5a3a'} onMouseLeave={e => e.currentTarget.style.borderColor = '#1e1e1e'}>
           <span style={{ fontSize: '20px', lineHeight: 1 }}>{s.icon}</span>
           <span style={{ color: '#666', fontSize: '11px', fontWeight: 500 }}>{s.label}</span>
         </button>

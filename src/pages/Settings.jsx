@@ -7,6 +7,7 @@ import { useAdaptiveTarget } from '../hooks/useAdaptiveTarget';
 import { pushSupported } from '../lib/pushNotifications';
 import { supabase } from '../lib/supabase';
 import { goalMacroSplits, calcCalories, buildTargets, splitFromGrams } from '../lib/calorieTargets';
+import { useClosingTransition } from '../hooks/useClosingTransition';
 import AppNav from '../components/AppNav';
 
 // ─── Reusable bits ──────────────────────────────────────────────────────────────
@@ -326,6 +327,7 @@ export default function Settings() {
   };
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const { closing: logoutConfirmClosing, close: closeLogoutConfirm } = useClosingTransition(() => setShowLogoutConfirm(false));
 
   const handleLogout = async () => {
     await signOut();
@@ -679,8 +681,8 @@ export default function Settings() {
       </div>
 
       {showLogoutConfirm && (
-        <div onClick={() => setShowLogoutConfirm(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: 16, width: '100%', maxWidth: 420, padding: 24 }}>
+        <div onClick={closeLogoutConfirm} className={`modal-backdrop${logoutConfirmClosing ? ' is-closing' : ''}`} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}>
+          <div onClick={e => e.stopPropagation()} className={`modal-panel${logoutConfirmClosing ? ' is-closing' : ''}`} style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: 16, width: '100%', maxWidth: 420, padding: 24 }}>
             <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 17, color: '#e8e8e8', marginBottom: 10 }}>
               Exit guest session?
             </div>
@@ -689,7 +691,7 @@ export default function Settings() {
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button
-                onClick={() => setShowLogoutConfirm(false)}
+                onClick={closeLogoutConfirm}
                 style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 8, color: '#ccc', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
               >
                 Cancel

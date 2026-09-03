@@ -12,6 +12,7 @@ import { mealFromDate, currentTimeHHMM, timeStringToDate, formatTime12h, formatT
 import { scaleFood, UNITS, amountToServings } from '../lib/foodMath';
 import AppNav from '../components/AppNav';
 import PhotoScanModal from '../components/PhotoScanModal';
+import { useClosingTransition } from '../hooks/useClosingTransition';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -472,13 +473,13 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, isPremiu
 //    done safely client-side) ────────────────────────────────────────────────
 
 function ScanModal({ onClose, onAddFood, defaultMeal, defaultTime, isPremium, onCreateCustom, onSearchManually }) {
+  const { closing, close } = useClosingTransition(onClose);
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#141414", border: "1px solid #2a2a2a", borderRadius: 16, width: "100%", maxWidth: 460, maxHeight: "85vh", overflowY: "auto" }}>
+    <div onClick={close} className={`modal-backdrop${closing ? ' is-closing' : ''}`} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}>
+      <div onClick={e => e.stopPropagation()} className={`modal-panel${closing ? ' is-closing' : ''}`} style={{ background: "#141414", border: "1px solid #2a2a2a", borderRadius: 16, width: "100%", maxWidth: 460, maxHeight: "85vh", overflowY: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #1e1e1e", position: "sticky", top: 0, background: "#141414", zIndex: 10 }}>
           <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 15, color: "#e8e8e8" }}>Scan barcode</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
+          <button onClick={close} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
         </div>
         <div style={{ padding: 20 }}>
           <BarcodeScanner onAddFood={onAddFood} onClose={onClose} defaultMeal={defaultMeal} defaultTime={defaultTime} isPremium={isPremium} onCreateCustom={onCreateCustom} onSearchManually={onSearchManually} />
@@ -491,12 +492,13 @@ function ScanModal({ onClose, onAddFood, defaultMeal, defaultTime, isPremium, on
 // ─── Modal shell (shared by the create-food / saved-meals / builder modals) ──
 
 function ModalShell({ title, onClose, children, maxWidth = 460 }) {
+  const { closing, close } = useClosingTransition(onClose);
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#141414", border: "1px solid #2a2a2a", borderRadius: 16, width: "100%", maxWidth, maxHeight: "85vh", overflowY: "auto" }}>
+    <div onClick={close} className={`modal-backdrop${closing ? ' is-closing' : ''}`} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}>
+      <div onClick={e => e.stopPropagation()} className={`modal-panel${closing ? ' is-closing' : ''}`} style={{ background: "#141414", border: "1px solid #2a2a2a", borderRadius: 16, width: "100%", maxWidth, maxHeight: "85vh", overflowY: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #1e1e1e", position: "sticky", top: 0, background: "#141414", zIndex: 10 }}>
           <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 15, color: "#e8e8e8" }}>{title}</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
+          <button onClick={close} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
         </div>
         <div style={{ padding: 20 }}>{children}</div>
       </div>
@@ -833,9 +835,14 @@ function AddControls({ amount, setAmount, unit, setUnit, meal, setMeal, time, se
 }
 
 function Toast({ message, onDone }) {
-  useEffect(() => { const t = setTimeout(onDone, 2200); return () => clearTimeout(t); }, [onDone]);
+  const [leaving, setLeaving] = useState(false);
+  useEffect(() => {
+    const leaveTimer = setTimeout(() => setLeaving(true), 2200 - 160);
+    const doneTimer = setTimeout(onDone, 2200);
+    return () => { clearTimeout(leaveTimer); clearTimeout(doneTimer); };
+  }, [onDone]);
   return (
-    <div style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", background: "#0f1a0f", border: "1px solid #4a7a4a", borderRadius: 10, padding: "10px 20px", color: "#8fbc8f", fontSize: 14, zIndex: 100, whiteSpace: "nowrap", pointerEvents: "none" }}>
+    <div className={leaving ? "toast-out" : "toast-in"} style={{ position: "fixed", bottom: 28, left: "50%", background: "#0f1a0f", border: "1px solid #4a7a4a", borderRadius: 10, padding: "10px 20px", color: "#8fbc8f", fontSize: 14, zIndex: 100, whiteSpace: "nowrap", pointerEvents: "none" }}>
       ✓ {message}
     </div>
   );
@@ -1331,7 +1338,6 @@ export default function FoodSearch() {
 
       {/* Toast */}
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Meal builder floating bar */}
       {builderMode && (

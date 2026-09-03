@@ -474,3 +474,64 @@
   .recap { grid-template-columns: 1fr; gap: 40px; }
   .recap-card-preview { order: -1; }
 }
+
+/* MOTION — shared, reused by multiple components rather than declared
+   per-file (see plans/001, plans/003, plans/005 for the audit behind
+   these). */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes modal-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes modal-panel-in {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes modal-panel-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.97) translateY(4px); }
+}
+
+.modal-backdrop {
+  animation: modal-backdrop-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.modal-backdrop.is-closing {
+  animation: modal-backdrop-out 160ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+.modal-panel {
+  animation: modal-panel-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  transform-origin: center;
+}
+.modal-panel.is-closing {
+  animation: modal-panel-out 160ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to { opacity: 0; transform: translateX(-50%) translateY(6px); }
+}
+.toast-in { animation: toast-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.toast-out { animation: toast-out 160ms cubic-bezier(0.4, 0, 1, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes modal-panel-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes modal-panel-out { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes toast-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes toast-out { from { opacity: 1; } to { opacity: 0; } }
+}
+
+/* Press feedback uses `animation`, not `transition` — nearly every
+   button in this codebase sets its own inline `transition` (for hover
+   color/border changes), and an inline `transition` fully replaces the
+   property rather than merging with an external rule, which would
+   silently strip `transform` from this rule's animated properties on
+   any button that already has one. `animation` is a separate CSS
+   property untouched by that, so it survives regardless of what a
+   button's own inline style sets. */
+@keyframes button-press { from { transform: scale(1); } to { transform: scale(0.97); } }
+button:not(:disabled):active {
+  animation: button-press 160ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
