@@ -317,3 +317,20 @@ export async function upsertWeightLog(userId, date, weight, unit) {
   if (error) throw error;
   return data;
 }
+
+// ─── push_subscriptions ─────────────────────────────────────────────────────
+
+export async function savePushSubscription(userId, subscription) {
+  const { error } = await supabase
+    .from('push_subscriptions')
+    .upsert(
+      { user_id: userId, endpoint: subscription.endpoint, subscription },
+      { onConflict: 'endpoint' }
+    );
+  if (error) throw error;
+}
+
+export async function deletePushSubscriptionByEndpoint(endpoint) {
+  const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint);
+  if (error) throw error;
+}

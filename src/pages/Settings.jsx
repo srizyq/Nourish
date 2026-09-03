@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
+import { useReminders } from '../hooks/useReminders';
+import { pushSupported } from '../lib/pushNotifications';
 import { supabase } from '../lib/supabase';
 import AppNav from '../components/AppNav';
 
@@ -234,6 +236,9 @@ export default function Settings() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profile, save: saveProfile } = useProfile();
+  const reminders = useReminders();
+  const [reminderTimeInput, setReminderTimeInput] = useState(reminders.time);
+  const [reminderError, setReminderError] = useState(null);
   const initials = (profile?.name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
   const [tab, setTab] = useState('goals');
   const [saved, setSaved] = useState(false);
@@ -243,7 +248,6 @@ export default function Settings() {
   const [customCal, setCustomCal] = useState(2000);
   const [proteinPct, setProteinPct] = useState(30);
   const [fatPct, setFatPct] = useState(30);
-  const [notifs, setNotifs] = useState({ meals: true, water: true, mood: true, recap: true, ai: true, trainer: false });
 
   // Sync form state once the real profile loads
   useEffect(() => {
@@ -262,6 +266,7 @@ export default function Settings() {
       setProteinPct(Math.round(split.protein * 100));
       setFatPct(Math.round(split.fat * 100));
     }
+    if (profile.reminder_time) setReminderTimeInput(profile.reminder_time);
   }, [profile]);
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
@@ -550,13 +555,44 @@ export default function Settings() {
             <div className="grid-2" style={{ alignItems: 'start' }}>
               <Card style={{ marginBottom: 0 }}>
                 <SectionLabel>Reminders</SectionLabel>
+                <FieldRow label="Daily reminder" hint={reminders.enabled ? `Nudges you at ${reminderTimeInput} if you haven't logged anything yet` : "Nudge to log food if you haven't yet"}>
+                  <Toggle
+                    on={reminders.enabled}
+                    onChange={async (on) => {
+                      setReminderError(null);
+                      try {
+                        if (on) await reminders.enable(reminderTimeInput);
+                        else await reminders.disable();
+                      } catch (err) {
+                        setReminderError(err.message || "Couldn't update reminders — try again.");
+                      }
+                    }}
+                  />
+                </FieldRow>
+                {reminders.enabled && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: '-4px', marginBottom: '16px' }}>
+                    <input
+                      type="time"
+                      value={reminderTimeInput}
+                      onChange={async (e) => {
+                        setReminderTimeInput(e.target.value);
+                        try { await reminders.setTime(e.target.value); } catch { setReminderError("Couldn't save the new time — try again."); }
+                      }}
+                      style={{ background: '#0f0f0f', border: '1px solid #2a2a2a', borderRadius: 7, padding: '7px 10px', color: '#e8e8e8', fontSize: 13, fontFamily: 'inherit' }}
+                    />
+                    <span style={{ color: '#555', fontSize: 12 }}>Time in your device's local timezone</span>
+                  </div>
+                )}
+                {!pushSupported() && (
+                  <p style={{ color: '#c07070', fontSize: 12, margin: '0 0 16px' }}>Push notifications aren't supported in this browser.</p>
+                )}
+                {reminderError && <p style={{ color: '#c07070', fontSize: 12, margin: '0 0 16px' }}>{reminderError}</p>}
                 {[
-                  { key: 'meals', label: 'Meal reminders',      hint: 'Nudge to log breakfast, lunch and dinner' },
-                  { key: 'water', label: 'Water reminders',     hint: 'Gentle reminders to stay hydrated' },
-                  { key: 'mood',  label: 'Daily mood check-in', hint: 'One tap each evening' },
+                  { key: 'water', label: 'Water reminders',     hint: 'Gentle reminders to stay hydrated — coming soon' },
+                  { key: 'mood',  label: 'Daily mood check-in', hint: 'One tap each evening — coming soon' },
                 ].map(n => (
                   <FieldRow key={n.key} label={n.label} hint={n.hint}>
-                    <Toggle on={notifs[n.key]} onChange={v => setNotifs(s => ({ ...s, [n.key]: v }))} />
+                    <Toggle on={false} onChange={() => {}} />
                   </FieldRow>
                 ))}
               </Card>
@@ -564,12 +600,12 @@ export default function Settings() {
               <Card style={{ marginBottom: 0 }}>
                 <SectionLabel>Updates</SectionLabel>
                 {[
-                  { key: 'recap',   label: 'Weekly recap',    hint: 'Your shareable Sunday summary' },
-                  { key: 'ai',      label: 'Pattern insights', hint: 'Nudges based on your logged patterns' },
-                  { key: 'trainer', label: 'Trainer updates', hint: 'When your trainer comments on your data' },
+                  { key: 'recap',   label: 'Weekly recap',    hint: 'Your shareable Sunday summary — coming soon' },
+                  { key: 'ai',      label: 'Pattern insights', hint: 'Nudges based on your logged patterns — coming soon' },
+                  { key: 'trainer', label: 'Trainer updates', hint: 'When your trainer comments on your data — coming soon' },
                 ].map(n => (
                   <FieldRow key={n.key} label={n.label} hint={n.hint}>
-                    <Toggle on={notifs[n.key]} onChange={v => setNotifs(s => ({ ...s, [n.key]: v }))} />
+                    <Toggle on={false} onChange={() => {}} />
                   </FieldRow>
                 ))}
               </Card>
