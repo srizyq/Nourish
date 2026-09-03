@@ -20,4 +20,4 @@ jobs:
     steps:
       - name: Call send-reminders endpoint
         run: |
-          curl -sf -w "\nHTTP %{http_code}\n" https://nourish-smoky.vercel.app/api/send-reminders
+          curl -sf -w "\nHTTP %{http_code}\n" https://attune-nouriish.vercel.app/api/send-reminders
