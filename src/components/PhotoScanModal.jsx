@@ -28,7 +28,7 @@ function resizeImage(file, maxDim = 1024, quality = 0.82) {
   });
 }
 
-export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaultTime, isPremium, onCreateCustom, onSearchManually }) {
+export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaultTime, selectedDate, isPremium, onCreateCustom, onSearchManually }) {
   const fileInputRef = useRef(null);
   const [preview, setPreview] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -88,7 +88,7 @@ export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaul
         // real measured weight, so downstream editing correctly falls
         // back to relative-only scaling instead of pretending precision.
       };
-      await onAddFood(food, isPremium ? null : meal, isPremium ? timeStringToDate(time) : null);
+      await onAddFood(food, isPremium ? null : meal, isPremium ? timeStringToDate(time, new Date(selectedDate + 'T00:00:00')) : null);
       onClose();
     } catch (err) {
       console.error(err);

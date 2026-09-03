@@ -208,8 +208,8 @@ function RecapCards() {
 
 function Pricing() {
   const plans = [
-    { name: 'Free', price: '$0', desc: 'Perfect to get started', features: ['Basic food logging', 'Aus & Asian database', '7-day history', 'Manual mood check-in'] },
-    { name: 'Pro', price: '$9.99', period: '/mo', desc: 'For serious trackers', features: ['Everything in Free', 'Pattern engine insights', 'Unlimited history', 'Barcode scanning', 'Priority support'], highlight: true },
+    { name: 'Free', price: '$0', desc: 'Perfect to get started', features: ['Basic food logging', 'Aus & Asian database', 'Full logging history', 'Manual mood check-in', 'Pattern engine insights', 'Barcode scanning'] },
+    { name: 'Pro', price: '$9.99', period: '/mo', desc: 'For serious trackers', features: ['Everything in Free', 'Exact-time logging', 'Hourly log timeline', 'Priority support'], highlight: true },
     { name: 'Team', price: '$29', period: '/mo', desc: 'For trainers & coaches', features: ['Everything in Pro', 'Up to 20 clients', 'Trainer dashboard', 'Client progress reports', 'Priority support'] },
   ]
   return (

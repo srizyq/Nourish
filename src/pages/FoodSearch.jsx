@@ -34,12 +34,20 @@ const CATEGORY_STYLES = {
   grain:     { icon: "ti-bread",   color: "#b48250" },
   sweet:     { icon: "ti-cookie",  color: "#d98fb0" },
   beverage:  { icon: "ti-cup",     color: "#6aabcf" },
+  alcohol:   { icon: "ti-beer",    color: "#c17a4a" },
   other:     { icon: "ti-package", color: "#888888" },
   custom:    { icon: "ti-stars",   color: "#b48fd9" },
 };
 
 // Checked in order — more specific animal-protein categories first, so e.g.
-// "Meat pie" matches "meat" before a generic bakery term could.
+// "Meat pie" matches "meat" before a generic bakery term could. Alcohol is
+// deliberately checked after every food category (not just beverage), so
+// e.g. "fruit cocktail" or "prawn cocktail" hit their real category via an
+// earlier, more specific keyword before "cocktail" is ever tested — and
+// "gin" is deliberately NOT a keyword here despite being a common spirit,
+// since it's a substring of both "ginger" and "virgin" (as in a
+// non-alcoholic "virgin mojito"), which would misclassify far more often
+// than it would correctly classify.
 const CATEGORY_KEYWORDS = [
   ["seafood", ["fish", "salmon", "tuna", "prawn", "shrimp", "crab", "oyster", "squid", "calamari", "cod", "barramundi", "trout", "sushi", "sashimi", "seafood"]],
   ["meat", ["chicken", "beef", "pork", "lamb", "turkey", "bacon", "sausage", "mince", "steak", "ham", "meat", "veal", "duck", "mutton", "burger", "sirloin"]],
@@ -49,7 +57,12 @@ const CATEGORY_KEYWORDS = [
   ["vegetable", ["broccoli", "spinach", "carrot", "potato", "tomato", "lettuce", "cabbage", "onion", "capsicum", "cucumber", "zucchini", "pumpkin", "corn", "bean", "vegetable", "salad", "kale", "mushroom"]],
   ["grain", ["bread", "rice", "oats", "pasta", "noodle", "cereal", "toast", "bagel", "muffin", "cake", "pastry", "pie", "naan", "roti", "wrap", "bun", "pizza", "biscuit", "cracker", "flour", "wheat", "quinoa"]],
   ["sweet", ["chocolate", "candy", "lolly", "sweet", "dessert", "ice cream", "honey", "sugar", "jam", "syrup", "cookie", "donut", "doughnut"]],
-  ["beverage", ["juice", "soda", "drink", "water", "coffee", "tea", "smoothie", "milkshake", "cola", "beer", "wine"]],
+  // " ale" and " ipa" (with a leading space, not bare "ale"/"ipa") so real
+  // products like "Original Pale Ale (Coopers)" and "XYZ IPA" match without
+  // "ale" alone catching "tamale" or "kale" (the latter is moot anyway
+  // since "vegetable" is checked first, but "tamale" has no such guard).
+  ["alcohol", ["beer", "wine", "cider", "vodka", "whiskey", "whisky", "rum", "tequila", "bourbon", "champagne", "prosecco", "liqueur", "cocktail", "sangria", "spritz", "negroni", "margarita", "martini", "mojito", "sherry", "brandy", "schnapps", "lager", "stout", "porter", " ale", " ipa", "alcohol", "spirits"]],
+  ["beverage", ["juice", "soda", "drink", "water", "coffee", "tea", "smoothie", "milkshake", "cola"]],
 ];
 
 function guessCategory(name) {
@@ -296,7 +309,7 @@ async function lookupOpenFoodFactsBarcode(barcode) {
   return looksLikeEmptyNutrition(found) ? null : found;
 }
 
-function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, isPremium, onCreateCustom, onSearchManually }) {
+function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selectedDate, isPremium, onCreateCustom, onSearchManually }) {
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   // Guards against the decode callback firing more than once for the same
@@ -452,7 +465,7 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, isPremiu
             meal={meal} setMeal={setMeal}
             time={time} setTime={setTime}
             isPremium={isPremium}
-            onAdd={() => { onAddFood(scaled, isPremium ? null : meal, isPremium ? timeStringToDate(time) : null); onClose(); }}
+            onAdd={() => { onAddFood(scaled, isPremium ? null : meal, isPremium ? timeStringToDate(time, new Date(selectedDate + "T00:00:00")) : null); onClose(); }}
             disabled={!servings}
           />
           <button onClick={reset} style={{ marginTop: 10, width: "100%", background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
@@ -472,7 +485,7 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, isPremiu
 //    it required posting a secret API key from the browser, which can't be
 //    done safely client-side) ────────────────────────────────────────────────
 
-function ScanModal({ onClose, onAddFood, defaultMeal, defaultTime, isPremium, onCreateCustom, onSearchManually }) {
+function ScanModal({ onClose, onAddFood, defaultMeal, defaultTime, selectedDate, isPremium, onCreateCustom, onSearchManually }) {
   const { closing, close } = useClosingTransition(onClose);
   return (
     <div onClick={close} className={`modal-backdrop${closing ? ' is-closing' : ''}`} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}>
@@ -482,7 +495,7 @@ function ScanModal({ onClose, onAddFood, defaultMeal, defaultTime, isPremium, on
           <button onClick={close} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
         </div>
         <div style={{ padding: 20 }}>
-          <BarcodeScanner onAddFood={onAddFood} onClose={onClose} defaultMeal={defaultMeal} defaultTime={defaultTime} isPremium={isPremium} onCreateCustom={onCreateCustom} onSearchManually={onSearchManually} />
+          <BarcodeScanner onAddFood={onAddFood} onClose={onClose} defaultMeal={defaultMeal} defaultTime={defaultTime} selectedDate={selectedDate} isPremium={isPremium} onCreateCustom={onCreateCustom} onSearchManually={onSearchManually} />
         </div>
       </div>
     </div>
@@ -634,7 +647,7 @@ function SavedMealsModal({ meals, loading, onClose, onLog, onDelete, onStartBuil
 // ─── Meal builder review — save what's been added to the builder cart as a
 //    named saved meal, and optionally log it right away ──────────────────
 
-function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal, defaultTime, isPremium }) {
+function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal, defaultTime, selectedDate, isPremium }) {
   const [name, setName] = useState("");
   const [logNow, setLogNow] = useState(true);
   const [meal, setMeal] = useState(defaultMeal);
@@ -654,7 +667,7 @@ function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal, def
     setSaving(true);
     setError(null);
     try {
-      await onSave(name.trim(), items, logNow && !isPremium ? meal : null, logNow && isPremium ? timeStringToDate(time) : null);
+      await onSave(name.trim(), items, logNow && !isPremium ? meal : null, logNow && isPremium ? timeStringToDate(time, new Date(selectedDate + "T00:00:00")) : null);
       onClose();
     } catch (err) {
       console.error(err);
@@ -723,7 +736,7 @@ function MacroPill({ value, unit = "g", label, color }) {
   );
 }
 
-function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, isPremium, onAdd, addLabel, onDelete, isFavourite, onToggleFavourite }) {
+function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, selectedDate, isPremium, onAdd, addLabel, onDelete, isFavourite, onToggleFavourite }) {
   const [amount, setAmount] = useState(1);
   const [unit, setUnit] = useState("serving");
   const [meal, setMeal] = useState(defaultMeal);
@@ -757,7 +770,7 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, isPrem
   const defaultScaled = { ...scaleFood(food, 1), servingGrams };
   function handleQuickAdd(e) {
     e.stopPropagation();
-    onAdd(defaultScaled, isPremium ? null : defaultMeal, isPremium ? timeStringToDate(defaultTime) : null);
+    onAdd(defaultScaled, isPremium ? null : defaultMeal, isPremium ? timeStringToDate(defaultTime, new Date(selectedDate + "T00:00:00")) : null);
     setJustAdded(true);
     setTimeout(() => setJustAdded(false), 1100);
   }
@@ -819,7 +832,7 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, isPrem
             meal={meal} setMeal={setMeal}
             time={time} setTime={setTime}
             isPremium={isPremium}
-            onAdd={() => onAdd(scaled, isPremium ? null : meal, isPremium ? timeStringToDate(time) : null)}
+            onAdd={() => onAdd(scaled, isPremium ? null : meal, isPremium ? timeStringToDate(time, new Date(selectedDate + "T00:00:00")) : null)}
             disabled={!servings}
             addLabel={addLabel}
           />
@@ -888,7 +901,26 @@ export default function FoodSearch() {
   const location = useLocation();
   const { profile } = useProfile();
   const isPremium = !!profile?.is_premium;
-  const { addFood: addFoodLog } = useFoodLogs(todayLocalDate());
+  const today = todayLocalDate();
+  // DailyLog's per-day "+ Add food" links here with the date it was
+  // clicked from (e.g. { date: "2026-08-27" }), so forgetting to log
+  // something can be fixed after the fact instead of only ever landing
+  // on today. Falls back to today for every other entry point (Dashboard
+  // shortcuts, nav) and clamps out anything invalid or in the future.
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const requested = location.state?.date;
+    return requested && requested <= today ? requested : today;
+  });
+  const isToday = selectedDate === today;
+  function shiftDate(days) {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + days);
+    const next = todayLocalDate(d);
+    if (next > today) return;
+    setSelectedDate(next);
+    setExpandedId(null);
+  }
+  const { addFood: addFoodLog } = useFoodLogs(selectedDate);
   const { rows: recentRows, loading: recentLoading, refetch: refetchRecent } = useRecentFoods(6);
   const customFoods = useCustomFoods();
   const savedMeals = useSavedMeals();
@@ -1075,6 +1107,16 @@ export default function FoodSearch() {
     source: row.source || "favourite",
   })), [favourites.rows]);
 
+  // timeStringToDate anchors to "now" by default — pass this as the base
+  // so a Pro user's exact-time logging still lands on the selected
+  // (possibly backdated) day instead of silently recording today's date
+  // with the right time-of-day, which is a real Postgres timestamp,
+  // not just display text — a UI mismatch here would corrupt data,
+  // not just look wrong.
+  function selectedDateBase() {
+    return new Date(selectedDate + "T00:00:00");
+  }
+
   async function logFood(food, meal, loggedAt) {
     await addFoodLog(food, meal, loggedAt);
     refetchRecent();
@@ -1132,11 +1174,15 @@ export default function FoodSearch() {
 
   async function handleLogSavedMeal(savedMeal) {
     const items = savedMeal.items || [];
+    // "Right now" but anchored to the selected day — matters when
+    // backdating, since a Pro user's saved-meal quick-log should still
+    // land on that day rather than silently jumping to today.
+    const loggedAt = isPremium ? timeStringToDate(currentTimeHHMM(), selectedDateBase()) : null;
     for (const it of items) {
-      await addFoodLog(it, isPremium ? null : activeMeal, isPremium ? new Date() : null);
+      await addFoodLog(it, isPremium ? null : activeMeal, loggedAt);
     }
     refetchRecent();
-    setToast(`${savedMeal.name} logged${isPremium ? ` at ${formatTimeFromDate(new Date())}` : ` to ${activeMeal}`}`);
+    setToast(`${savedMeal.name} logged${isPremium ? ` at ${formatTimeFromDate(loggedAt)}` : ` to ${activeMeal}`}`);
     setSavedMealsOpen(false);
   }
 
@@ -1152,6 +1198,17 @@ export default function FoodSearch() {
         <div className="page-pad-top" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px 12px", paddingTop: 14, paddingBottom: 14, borderBottom: "1px solid #1e1e1e", background: "#0f0f0f", position: "sticky", top: 0, zIndex: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16, color: "#e8e8e8" }}>Food search</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, background: isToday ? "transparent" : "#1a1508", border: isToday ? "none" : "1px solid #4a3a1a", borderRadius: 7, padding: isToday ? 0 : "3px 4px" }}>
+              <button onClick={() => shiftDate(-1)} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 15, display: "flex", padding: 3 }} aria-label="Previous day">
+                <i className="ti ti-chevron-left" />
+              </button>
+              <span style={{ fontSize: 12, color: isToday ? "#666" : "#e8c468", minWidth: 74, textAlign: "center" }}>
+                {isToday ? "Today" : new Date(selectedDate + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
+              </span>
+              <button onClick={() => shiftDate(1)} disabled={isToday} style={{ background: "none", border: "none", color: isToday ? "#2a2a2a" : "#666", cursor: isToday ? "default" : "pointer", fontSize: 15, display: "flex", padding: 3 }} aria-label="Next day">
+                <i className="ti ti-chevron-right" />
+              </button>
+            </div>
             {isPremium ? (
               <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "4px 10px" }}>
                 <span style={{ fontSize: 12, color: "#8fbc8f" }}>Logging at</span>
@@ -1217,7 +1274,7 @@ export default function FoodSearch() {
                       food={food}
                       isExpanded={expandedId === food.id}
                       onToggle={() => handleToggle(food.id)}
-                      defaultMeal={activeMeal}
+                      defaultMeal={activeMeal} selectedDate={selectedDate}
                       defaultTime={activeTime}
                       isPremium={isPremium}
                       onAdd={handleAdd}
@@ -1238,7 +1295,7 @@ export default function FoodSearch() {
                       food={food}
                       isExpanded={expandedId === food.id}
                       onToggle={() => handleToggle(food.id)}
-                      defaultMeal={activeMeal}
+                      defaultMeal={activeMeal} selectedDate={selectedDate}
                       defaultTime={activeTime}
                       isPremium={isPremium}
                       onAdd={handleAdd}
@@ -1263,7 +1320,7 @@ export default function FoodSearch() {
                       food={food}
                       isExpanded={expandedId === food.id}
                       onToggle={() => handleToggle(food.id)}
-                      defaultMeal={activeMeal}
+                      defaultMeal={activeMeal} selectedDate={selectedDate}
                       defaultTime={activeTime}
                       isPremium={isPremium}
                       onAdd={handleAdd}
@@ -1306,7 +1363,7 @@ export default function FoodSearch() {
                     food={food}
                     isExpanded={expandedId === food.id}
                     onToggle={() => handleToggle(food.id)}
-                    defaultMeal={activeMeal}
+                    defaultMeal={activeMeal} selectedDate={selectedDate}
                       defaultTime={activeTime}
                       isPremium={isPremium}
                     onAdd={handleAdd}
@@ -1347,7 +1404,7 @@ export default function FoodSearch() {
                         food={food}
                         isExpanded={expandedId === food.id}
                         onToggle={() => handleToggle(food.id)}
-                        defaultMeal={activeMeal}
+                        defaultMeal={activeMeal} selectedDate={selectedDate}
                       defaultTime={activeTime}
                       isPremium={isPremium}
                         onAdd={handleAdd}
@@ -1386,7 +1443,7 @@ export default function FoodSearch() {
       {scanOpen && (
         <ScanModal
           onClose={() => setScanOpen(false)}
-          defaultMeal={activeMeal}
+          defaultMeal={activeMeal} selectedDate={selectedDate}
           defaultTime={activeTime}
           isPremium={isPremium}
           onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
@@ -1399,7 +1456,7 @@ export default function FoodSearch() {
       {photoScanOpen && (
         <PhotoScanModal
           onClose={() => setPhotoScanOpen(false)}
-          defaultMeal={activeMeal}
+          defaultMeal={activeMeal} selectedDate={selectedDate}
           defaultTime={activeTime}
           isPremium={isPremium}
           onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
@@ -1436,7 +1493,7 @@ export default function FoodSearch() {
       {builderReviewOpen && (
         <BuilderReviewModal
           items={builderItems}
-          defaultMeal={activeMeal}
+          defaultMeal={activeMeal} selectedDate={selectedDate}
                       defaultTime={activeTime}
                       isPremium={isPremium}
           onClose={() => setBuilderReviewOpen(false)}

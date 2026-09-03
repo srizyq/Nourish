@@ -122,11 +122,9 @@ export default function DailyLog() {
                   </div>
                 );
               })}
-              {isToday && (
-                <button onClick={() => navigate('/food')} style={{ background: 'none', border: `1px dashed ${C.border2}`, borderRadius: 12, color: '#3a5a3a', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
-                  + Add food
-                </button>
-              )}
+              <button onClick={() => navigate('/food', { state: { date: selectedDate } })} style={{ background: 'none', border: `1px dashed ${C.border2}`, borderRadius: 12, color: '#3a5a3a', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
+                + Add food{!isToday ? ` to ${dateStr}` : ''}
+              </button>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -164,11 +162,9 @@ export default function DailyLog() {
                             />
                           ))
                         )}
-                        {isToday && (
-                          <button onClick={() => navigate('/food', { state: { openMeal: mealKey } })} style={{ width: '100%', background: 'none', border: 'none', color: '#3a5a3a', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
-                            + Add food
-                          </button>
-                        )}
+                        <button onClick={() => navigate('/food', { state: { openMeal: mealKey, date: selectedDate } })} style={{ width: '100%', background: 'none', border: 'none', color: '#3a5a3a', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
+                          + Add food
+                        </button>
                       </div>
                     )}
                   </div>
