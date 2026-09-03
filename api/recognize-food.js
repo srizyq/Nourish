@@ -4,10 +4,21 @@
 // directly from client code with no auth, which would have meant shipping
 // a secret key to every browser). This function holds the key server-side
 // and the client only ever talks to our own origin.
+//
+// Every call here costs real money (an Anthropic API request), so unlike
+// the other /api endpoints this one requires the caller to be a signed-in
+// user and enforces a monthly scan cap for anyone who isn't Pro. The cap
+// is tracked server-side via the service-role client — a free user's own
+// auth token can read/update their own profile row per RLS, so the count
+// has to be written by code they don't control, or they could just reset
+// it themselves with a direct Supabase call.
 
 import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
 
 const client = new Anthropic();
+
+const FREE_MONTHLY_SCAN_LIMIT = 5;
 
 const PROMPT = `You're looking at a photo of food. Identify what's in it and estimate its nutrition.
 
@@ -18,9 +29,60 @@ If the photo doesn't clearly show food, reply with exactly: {"error": "No food d
 
 Macros are grams, calories are kcal, all rounded to whole numbers except macros can have one decimal. This is a best-effort visual estimate, not a lab measurement — use your best judgement on typical portion sizes and preparation (e.g. oil/butter used in cooking, dressing on a salad).`;
 
+// "Same billing period" is just "same calendar month" — simplest thing
+// that resets on its own with no cron job, at the cost of everyone's
+// free scans resetting on the 1st rather than on their own signup
+// anniversary. Good enough for a 5-scan/month free cap.
+function samePeriod(periodStart, today) {
+  return !!periodStart && periodStart.slice(0, 7) === today.slice(0, 7);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) {
+    res.status(500).json({ error: 'Photo recognition is not fully configured' });
+    return;
+  }
+  const supabase = createClient(supabaseUrl, serviceKey);
+
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) {
+    res.status(401).json({ error: 'Sign in required.' });
+    return;
+  }
+  const { data: userData, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !userData?.user) {
+    res.status(401).json({ error: 'Sign in required.' });
+    return;
+  }
+  const userId = userData.user.id;
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('is_premium, photo_scans_used, photo_scans_period_start')
+    .eq('id', userId)
+    .single();
+  if (profileError || !profile) {
+    res.status(500).json({ error: "Couldn't verify your account. Try again." });
+    return;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const inSamePeriod = samePeriod(profile.photo_scans_period_start, today);
+  const usedSoFar = inSamePeriod ? profile.photo_scans_used : 0;
+
+  if (!profile.is_premium && usedSoFar >= FREE_MONTHLY_SCAN_LIMIT) {
+    res.status(403).json({
+      error: `You've used all ${FREE_MONTHLY_SCAN_LIMIT} free photo scans this month — upgrade to Pro for unlimited scans.`,
+      limitReached: true,
+    });
     return;
   }
 
@@ -48,6 +110,17 @@ export default async function handler(req, res) {
         },
       ],
     });
+
+    // Counts against the cap the moment we've actually spent the money on
+    // an Anthropic call, regardless of what it returned (a real result, a
+    // "no food detected", or an unparseable reply below) — not counted if
+    // we rejected the request before ever calling Anthropic (missing
+    // image, wrong type, or already over the limit above).
+    if (!profile.is_premium) {
+      await supabase.from('profiles')
+        .update({ photo_scans_used: usedSoFar + 1, photo_scans_period_start: today })
+        .eq('id', userId);
+    }
 
     const textBlock = response.content.find((b) => b.type === 'text');
     if (!textBlock) {

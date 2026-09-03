@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { timeStringToDate, formatTime12h } from '../lib/mealTime';
 import { useClosingTransition } from '../hooks/useClosingTransition';
+import { supabase } from '../lib/supabase';
 
 const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
 
@@ -29,11 +31,13 @@ function resizeImage(file, maxDim = 1024, quality = 0.82) {
 }
 
 export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaultTime, selectedDate, isPremium, onCreateCustom, onSearchManually }) {
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const [preview, setPreview] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [limitReached, setLimitReached] = useState(false);
   const [meal, setMeal] = useState(defaultMeal);
   const [time, setTime] = useState(defaultTime);
   const [adding, setAdding] = useState(false);
@@ -42,19 +46,25 @@ export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaul
   async function handleFile(file) {
     if (!file) return;
     setError(null);
+    setLimitReached(false);
     setResult(null);
     setAnalyzing(true);
     try {
       const { dataUrl, base64 } = await resizeImage(file);
       setPreview(dataUrl);
+      const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch('/api/recognize-food', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ image: base64, mediaType: 'image/jpeg' }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
         setError(data.error || "Couldn't analyze this photo. Try again.");
+        setLimitReached(!!data.limitReached);
         return;
       }
       setResult(data);
@@ -70,6 +80,7 @@ export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaul
     setPreview(null);
     setResult(null);
     setError(null);
+    setLimitReached(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
@@ -139,11 +150,17 @@ export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaul
 
           {error && (
             <div style={{ marginTop: 12 }}>
-              <div style={{ background: '#1a0f0f', border: '1px solid #c0707040', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#c07070', marginBottom: 10 }}>{error}</div>
+              <div style={{ background: limitReached ? '#1a1508' : '#1a0f0f', border: `1px solid ${limitReached ? '#4a3a1a' : '#c0707040'}`, borderRadius: 8, padding: '10px 14px', fontSize: 13, color: limitReached ? '#e8c468' : '#c07070', marginBottom: 10 }}>{error}</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={reset} style={{ flex: 1, background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 8, padding: '9px', fontSize: 13, color: '#ccc', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
-                  Try another photo
-                </button>
+                {limitReached ? (
+                  <button onClick={() => navigate('/settings')} style={{ flex: 1, background: '#0f1a0f', border: '1px solid #3a5a3a', borderRadius: 8, padding: '9px', fontSize: 13, color: '#8fbc8f', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                    Upgrade to Pro
+                  </button>
+                ) : (
+                  <button onClick={reset} style={{ flex: 1, background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 8, padding: '9px', fontSize: 13, color: '#ccc', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
+                    Try another photo
+                  </button>
+                )}
                 {onSearchManually && (
                   <button onClick={onSearchManually} style={{ flex: 1, background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 8, padding: '9px', fontSize: 13, color: '#ccc', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}>
                     Search manually
