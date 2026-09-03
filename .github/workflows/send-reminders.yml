@@ -1,0 +1,23 @@
+name: Send daily reminders
+
+# Substitutes for Vercel Cron, which isn't available on the current plan
+# (adding a `crons` entry to vercel.json was blocking every deployment
+# outright). This just pings the existing serverless endpoint on a
+# schedule — all the actual reminder logic still lives in
+# api/send-reminders.js, this workflow only provides the "every 15
+# minutes" trigger. GitHub's schedule can run a few minutes late under
+# load; that's fine since the endpoint's own logic already tolerates
+# being checked at an imprecise cadence.
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call send-reminders endpoint
+        run: |
+          curl -sf -w "\nHTTP %{http_code}\n" https://nourish-smoky.vercel.app/api/send-reminders
