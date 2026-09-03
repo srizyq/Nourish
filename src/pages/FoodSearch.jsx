@@ -11,6 +11,7 @@ import { todayLocalDate } from '../lib/patterns';
 import { mealFromDate, currentTimeHHMM, timeStringToDate, formatTime12h, formatTimeFromDate } from '../lib/mealTime';
 import { scaleFood, UNITS, amountToServings } from '../lib/foodMath';
 import AppNav from '../components/AppNav';
+import PhotoScanModal from '../components/PhotoScanModal';
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -874,6 +875,7 @@ export default function FoodSearch() {
   // Dashboard's "Scan barcode" shortcut links here with { openScan: true }
   // to jump straight into the scanner instead of landing on plain search.
   const [scanOpen, setScanOpen] = useState(!!location.state?.openScan);
+  const [photoScanOpen, setPhotoScanOpen] = useState(false);
   const [createFoodOpen, setCreateFoodOpen] = useState(false);
   const [savedMealsOpen, setSavedMealsOpen] = useState(false);
   const [builderMode, setBuilderMode] = useState(false);
@@ -1154,6 +1156,9 @@ export default function FoodSearch() {
             <div onClick={() => setScanOpen(true)} style={{ background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "7px 12px", color: "#8fbc8f", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }} onMouseEnter={e => e.currentTarget.style.borderColor = "#4a7a4a"} onMouseLeave={e => e.currentTarget.style.borderColor = "#3a5a3a"}>
               <i className="ti ti-barcode" style={{ fontSize: 14 }} /> Scan barcode
             </div>
+            <div onClick={() => setPhotoScanOpen(true)} style={{ background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "7px 12px", color: "#8fbc8f", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }} onMouseEnter={e => e.currentTarget.style.borderColor = "#4a7a4a"} onMouseLeave={e => e.currentTarget.style.borderColor = "#3a5a3a"}>
+              <i className="ti ti-camera" style={{ fontSize: 14 }} /> Scan photo
+            </div>
           </div>
 
           {/* Browsing (no search) — your own data: favourites, frequently
@@ -1347,6 +1352,19 @@ export default function FoodSearch() {
           onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
           onCreateCustom={() => { setScanOpen(false); setCreateFoodOpen(true); }}
           onSearchManually={() => { setScanOpen(false); setTimeout(() => inputRef.current?.focus(), 0); }}
+        />
+      )}
+
+      {/* Photo scan modal */}
+      {photoScanOpen && (
+        <PhotoScanModal
+          onClose={() => setPhotoScanOpen(false)}
+          defaultMeal={activeMeal}
+          defaultTime={activeTime}
+          isPremium={isPremium}
+          onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
+          onCreateCustom={() => { setPhotoScanOpen(false); setCreateFoodOpen(true); }}
+          onSearchManually={() => { setPhotoScanOpen(false); setTimeout(() => inputRef.current?.focus(), 0); }}
         />
       )}
 
