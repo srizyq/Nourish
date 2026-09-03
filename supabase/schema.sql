@@ -15,6 +15,7 @@ create table if not exists public.profiles (
   protein_g int,
   carbs_g int,
   fat_g int,
+  calorie_mode text check (calorie_mode in ('calculated', 'custom', 'adaptive')) default 'calculated',
   water_target int default 8,
   onboarding_completed boolean default false,
   is_premium boolean default false,

@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler,
@@ -11,7 +11,9 @@ import { useFoodLogs } from '../hooks/useFoodLogs';
 import { useCheckins } from '../hooks/useCheckins';
 import { useHistory } from '../hooks/useHistory';
 import { useWeightLogs } from '../hooks/useWeightLogs';
+import { useAdaptiveTarget } from '../hooks/useAdaptiveTarget';
 import { todayLocalDate, dateNDaysAgo, dateRange, generateInsights, computeStreak } from '../lib/patterns';
+import { goalMacroSplits, buildTargets } from '../lib/calorieTargets';
 import AppNav from '../components/AppNav';
 import LogItemRow from '../components/LogItemRow';
 import LogCalendar from '../components/LogCalendar';
@@ -329,7 +331,7 @@ export default function Dashboard() {
   const { user } = useAuth();
 
   const today = todayLocalDate();
-  const { profile } = useProfile();
+  const { profile, save: saveProfile } = useProfile();
   const isPremium = !!profile?.is_premium;
   const { meals, hourlyGroups, deleteFood, updateFood } = useFoodLogs(today);
   const { checkin, save: saveCheckin } = useCheckins(today);
@@ -353,6 +355,32 @@ export default function Dashboard() {
     fat: { g: profile?.fat_g || 67 },
   };
   const calorieTarget = targets.calories;
+
+  // No server-side cron for this — an adaptive target is only ever
+  // "fresh as of last app open", recomputed once per mount here (the
+  // most-visited page) and again whenever Settings' Adaptive tab is
+  // opened. Only writes back when the new number actually differs, so a
+  // string of dashboard visits in one sitting doesn't spam profile
+  // updates for a value that hasn't changed.
+  const { compute: computeAdaptive } = useAdaptiveTarget();
+  const adaptiveRefreshedRef = useRef(false);
+  useEffect(() => {
+    if (!profile || profile.calorie_mode !== 'adaptive' || adaptiveRefreshedRef.current) return;
+    adaptiveRefreshedRef.current = true;
+    (async () => {
+      const result = await computeAdaptive(profile.goal || 'maintain');
+      if (!result.ready || Math.abs(result.target - (profile.calorie_target || 0)) < 10) return;
+      const split = goalMacroSplits[profile.goal] || goalMacroSplits.maintain;
+      const built = buildTargets(result.target, split, profile.water_target || 8);
+      await saveProfile({
+        calorie_target: built.calories,
+        protein_g: built.protein.g,
+        carbs_g: built.carbs.g,
+        fat_g: built.fat.g,
+      });
+    })();
+  }, [profile, computeAdaptive, saveProfile]);
+
   const name = profile?.name || 'there';
   const isGuest = !!user?.is_anonymous;
   const daysRemaining = user?.created_at

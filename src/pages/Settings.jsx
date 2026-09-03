@@ -3,66 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
 import { useReminders } from '../hooks/useReminders';
+import { useAdaptiveTarget } from '../hooks/useAdaptiveTarget';
 import { pushSupported } from '../lib/pushNotifications';
 import { supabase } from '../lib/supabase';
+import { goalMacroSplits, calcCalories, buildTargets, splitFromGrams } from '../lib/calorieTargets';
 import AppNav from '../components/AppNav';
-
-// ─── Shared calc (matches onboarding Step3) ────────────────────────────────────
-const activityMultipliers = {
-  sedentary: 1.2,
-  light: 1.375,
-  moderate: 1.55,
-  very: 1.725,
-};
-
-const goalAdjustments = {
-  lose: -400,
-  maintain: 0,
-  build: +300,
-};
-
-const goalMacroSplits = {
-  lose:     { protein: 0.35, carbs: 0.35, fat: 0.30 },
-  maintain: { protein: 0.30, carbs: 0.40, fat: 0.30 },
-  build:    { protein: 0.30, carbs: 0.45, fat: 0.25 },
-};
-
-function calcBMR(weight, height, age, unit) {
-  let w = Number(weight), h = Number(height);
-  if (unit === 'imperial') {
-    w = w * 0.453592;   // lbs → kg
-    h = h * 2.54;       // inches → cm
-  }
-  return 10 * w + 6.25 * h - 5 * Number(age) + 5;
-}
-
-function calcCalories(form) {
-  const bmr = calcBMR(form.weight, form.height, form.age, form.unit);
-  const tdee = bmr * (activityMultipliers[form.activity] || 1.55);
-  return Math.round(tdee + (goalAdjustments[form.goal] || 0));
-}
-
-// Build a full targets object from a calorie number + macro % split
-function buildTargets(calories, split, water = 8) {
-  const proteinCal = calories * split.protein;
-  const carbsCal   = calories * split.carbs;
-  const fatCal     = calories * split.fat;
-  return {
-    calories,
-    protein: { g: Math.round(proteinCal / 4), cal: Math.round(proteinCal), pct: split.protein },
-    carbs:   { g: Math.round(carbsCal   / 4), cal: Math.round(carbsCal),   pct: split.carbs   },
-    fat:     { g: Math.round(fatCal      / 9), cal: Math.round(fatCal),     pct: split.fat     },
-    water,
-  };
-}
-
-// Derive a protein/carbs/fat percentage split from stored gram targets.
-function splitFromGrams(proteinG, carbsG, fatG) {
-  const proteinCal = proteinG * 4, carbsCal = carbsG * 4, fatCal = fatG * 9;
-  const total = proteinCal + carbsCal + fatCal;
-  if (!total) return goalMacroSplits.maintain;
-  return { protein: proteinCal / total, carbs: carbsCal / total, fat: fatCal / total };
-}
 
 // ─── Reusable bits ──────────────────────────────────────────────────────────────
 function Card({ children, style }) {
@@ -222,6 +167,53 @@ function MacroPreviewBar({ label, grams, calories, pct, color }) {
   );
 }
 
+// Shows the adaptive-target estimate, or an honest explanation of what's
+// still needed — mirrors the pattern engine's "log N more days" gating
+// rather than silently falling back to a guess.
+function AdaptiveTargetPanel({ loading, result, goal, onRefresh }) {
+  if (loading) {
+    return <p style={{ color: '#555', fontSize: '13px', textAlign: 'center', margin: 0 }}>Crunching your weight and food logs…</p>;
+  }
+  if (!result) {
+    return <p style={{ color: '#555', fontSize: '13px', textAlign: 'center', margin: 0 }}>—</p>;
+  }
+  if (!result.ready) {
+    const messages = {
+      'no-weight-logs': 'Log your weight from the dashboard to get started — adaptive targeting learns from your real weight trend over time.',
+      'not-enough-span': `Keep logging weight — ${result.daysNeeded} more day${result.daysNeeded === 1 ? '' : 's'} of spread before there's enough of a trend to work from.`,
+      'not-enough-logged-days': `Log food on ${result.daysNeeded} more day${result.daysNeeded === 1 ? '' : 's'} within your weight-logging window — the estimate needs to see what you're actually eating, not just the scale.`,
+    };
+    return (
+      <div style={{ textAlign: 'center' }}>
+        <p style={{ color: '#555', fontSize: '13px', margin: '0 0 10px' }}>
+          {messages[result.reason] || 'Not enough data yet to estimate this.'}
+        </p>
+        <p style={{ color: '#444', fontSize: '11px', margin: 0 }}>
+          Until then, this uses your Calculated target as a placeholder.
+        </p>
+      </div>
+    );
+  }
+  const { estimate } = result;
+  const trendDirection = estimate.weightChangeKg > 0 ? 'up' : estimate.weightChangeKg < 0 ? 'down' : 'flat';
+  const goalLabel = { lose: 'Lose weight', maintain: 'Stay balanced', build: 'Build muscle' }[goal] || 'your goal';
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <p style={{ color: '#555', fontSize: '13px', margin: '0 0 8px' }}>
+        Estimated maintenance: <span style={{ color: '#ccc', fontWeight: 600 }}>{estimate.tdee.toLocaleString()} kcal</span>, from your trend weight going {trendDirection} {Math.abs(estimate.weightChangeKg)}kg
+        over {estimate.spanDays} days while averaging {estimate.avgCalIn.toLocaleString()} kcal/day ({estimate.loggedDayCount} logged days).
+        Adjusted for your "{goalLabel}" goal to {result.target.toLocaleString()} kcal — this updates as you keep logging.
+      </p>
+      <button
+        onClick={onRefresh}
+        style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: '7px', padding: '5px 12px', color: '#8fbc8f', fontSize: '11px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+      >
+        Recalculate
+      </button>
+    </div>
+  );
+}
+
 // ─── Tabs ────────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'goals',    label: 'Goals & Targets' },
@@ -249,6 +241,19 @@ export default function Settings() {
   const [proteinPct, setProteinPct] = useState(30);
   const [fatPct, setFatPct] = useState(30);
 
+  const { compute: computeAdaptive } = useAdaptiveTarget();
+  const [adaptiveResult, setAdaptiveResult] = useState(null);
+  const [adaptiveLoading, setAdaptiveLoading] = useState(false);
+
+  const refreshAdaptive = async (goal) => {
+    setAdaptiveLoading(true);
+    try {
+      setAdaptiveResult(await computeAdaptive(goal));
+    } finally {
+      setAdaptiveLoading(false);
+    }
+  };
+
   // Sync form state once the real profile loads
   useEffect(() => {
     if (!profile) return;
@@ -266,24 +271,39 @@ export default function Settings() {
       setProteinPct(Math.round(split.protein * 100));
       setFatPct(Math.round(split.fat * 100));
     }
+    if (profile.calorie_mode) {
+      setCalMode(profile.calorie_mode);
+      if (profile.calorie_mode === 'adaptive') refreshAdaptive(profile.goal || 'maintain');
+    }
     if (profile.reminder_time) setReminderTimeInput(profile.reminder_time);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
   const carbPct = Math.max(0, 100 - proteinPct - fatPct);
 
-  // Live calorie + macro preview
+  // Live calorie + macro preview. Adaptive falls back to the calculated
+  // formula while the real estimate is loading or isn't ready yet, so
+  // the rest of the page (macro split, save button) always has a sane
+  // number to work with instead of needing its own separate null-state.
   const calculatedCal = calcCalories(form);
-  const calories = calMode === 'calculated' ? calculatedCal : customCal;
+  const calories = calMode === 'calculated' ? calculatedCal
+    : calMode === 'adaptive' ? (adaptiveResult?.ready ? adaptiveResult.target : calculatedCal)
+    : customCal;
   const split = { protein: proteinPct / 100, carbs: carbPct / 100, fat: fatPct / 100 };
   const preview = buildTargets(calories, split, profile?.water_target || 8);
 
-  // When goal changes in calculated mode, snap macros to that goal's recommended split
+  // When goal changes, snap macros to that goal's recommended split. In
+  // adaptive mode the goal also changes the target itself (same TDEE
+  // estimate, different deficit/surplus adjustment), so re-run it —
+  // otherwise the displayed target would silently keep the old goal's
+  // number until the next unrelated refresh.
   const applyGoalSplit = (goal) => {
     set('goal', goal);
     const s = goalMacroSplits[goal];
     setProteinPct(Math.round(s.protein * 100));
     setFatPct(Math.round(s.fat * 100));
+    if (calMode === 'adaptive') refreshAdaptive(goal);
   };
 
   const handleSave = async () => {
@@ -294,6 +314,7 @@ export default function Settings() {
       height: Number(form.height),
       goal: form.goal,
       activity: form.activity,
+      calorie_mode: calMode,
       calorie_target: preview.calories,
       protein_g: preview.protein.g,
       carbs_g: preview.carbs.g,
@@ -462,12 +483,17 @@ export default function Settings() {
                   {[
                     { value: 'calculated', label: 'Calculated' },
                     { value: 'custom',     label: 'Custom' },
+                    { value: 'adaptive',   label: 'Adaptive' },
                   ].map(m => {
                     const sel = calMode === m.value;
                     return (
                       <button
                         key={m.value}
-                        onClick={() => { setCalMode(m.value); if (m.value === 'custom') setCustomCal(calculatedCal); }}
+                        onClick={() => {
+                          setCalMode(m.value);
+                          if (m.value === 'custom') setCustomCal(calculatedCal);
+                          if (m.value === 'adaptive' && !adaptiveResult) refreshAdaptive(form.goal);
+                        }}
                         style={{
                           flex: 1, padding: '10px',
                           background: sel ? '#0f1a0f' : '#0f0f0f',
@@ -498,6 +524,8 @@ export default function Settings() {
                       <span>1,200</span><span>4,000</span>
                     </div>
                   </>
+                ) : calMode === 'adaptive' ? (
+                  <AdaptiveTargetPanel loading={adaptiveLoading} result={adaptiveResult} goal={form.goal} onRefresh={() => refreshAdaptive(form.goal)} />
                 ) : (
                   <p style={{ color: '#555', fontSize: '13px', textAlign: 'center', margin: 0 }}>
                     Calculated from your stats, goal and activity level. Switch to Custom to set it manually.
