@@ -18,6 +18,10 @@ create table if not exists public.profiles (
   water_target int default 8,
   onboarding_completed boolean default false,
   is_premium boolean default false,
+  reminder_enabled boolean default false,
+  reminder_time text default '19:00',
+  reminder_timezone text,
+  reminder_last_sent_date date,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -210,6 +214,29 @@ create policy "favourite_foods: insert own" on public.favourite_foods
 create policy "favourite_foods: update own" on public.favourite_foods
   for update using (auth.uid() = user_id);
 create policy "favourite_foods: delete own" on public.favourite_foods
+  for delete using (auth.uid() = user_id);
+
+-- ── push_subscriptions ──────────────────────────────────────────────────────
+-- Browser push subscriptions for reminder notifications. One row per
+-- device/browser (a user logged in on two devices gets two rows). Only
+-- ever written by the client for their own rows; only ever read by the
+-- send-reminders cron job, which uses the service-role key and so bypasses
+-- RLS entirely (it needs to read across all users, not just one).
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  endpoint text not null unique,
+  subscription jsonb not null,
+  created_at timestamptz default now()
+);
+
+alter table public.push_subscriptions enable row level security;
+
+create policy "push_subscriptions: select own" on public.push_subscriptions
+  for select using (auth.uid() = user_id);
+create policy "push_subscriptions: insert own" on public.push_subscriptions
+  for insert with check (auth.uid() = user_id);
+create policy "push_subscriptions: delete own" on public.push_subscriptions
   for delete using (auth.uid() = user_id);
 
 -- ── anonymous (guest) sign-ins ─────────────────────────────────────────────
