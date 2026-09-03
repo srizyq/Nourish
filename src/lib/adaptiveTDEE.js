@@ -30,12 +30,25 @@ const TREND_TAU_DAYS = 7;
 const MIN_TREND_SPAN_DAYS = 14;
 const MIN_LOGGED_CALORIE_DAYS = 10;
 
-function toKg(weight, unit) {
+// Exported so any UI plotting raw + trend weight together (Progress.jsx)
+// converts both through the same conversion, instead of the chart
+// plotting whatever unit each row happened to be logged in.
+export function toKg(weight, unit) {
   return unit === 'lb' ? Number(weight) * 0.453592 : Number(weight);
+}
+
+export function fromKg(kg, unit) {
+  return unit === 'lb' ? kg / 0.453592 : kg;
 }
 
 function daysBetween(dateA, dateB) {
   return Math.round((new Date(dateB + 'T00:00:00') - new Date(dateA + 'T00:00:00')) / 86400000);
+}
+
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return todayLocalDate(d);
 }
 
 // Gap-aware exponential smoothing: a weight logged after a long gap
@@ -114,4 +127,33 @@ export function computeAdaptiveTarget(weightLogs, dailyCalories, goal) {
 
   const target = Math.round(estimate.tdee + (GOAL_ADJUSTMENTS[goal] ?? 0));
   return { ready: true, estimate, target, computedAt: todayLocalDate() };
+}
+
+// A time series of TDEE re-estimates (a rolling 3-week window, stepping
+// forward weekly by default) instead of just the single current
+// snapshot — so a chart can show how estimated maintenance has actually
+// moved, the way MacroFactor's expenditure graph does. Windows with too
+// little data inside them are skipped rather than shown as a guess, so
+// the line only ever plots real, gated estimates.
+export function computeExpenditureHistory(weightLogs, dailyCalories, { windowDays = 21, stepDays = 7 } = {}) {
+  const trendPoints = computeTrendWeight(weightLogs);
+  if (trendPoints.length < 2) return [];
+
+  const firstDate = trendPoints[0].date;
+  const lastDate = trendPoints[trendPoints.length - 1].date;
+  const results = [];
+
+  let windowStart = firstDate;
+  while (true) {
+    const windowEnd = addDays(windowStart, windowDays);
+    if (windowEnd > lastDate) break;
+
+    const windowTrend = trendPoints.filter(p => p.date >= windowStart && p.date <= windowEnd);
+    const windowCalories = dailyCalories.filter(d => d.date >= windowStart && d.date <= windowEnd);
+    const estimate = estimateTDEE(windowTrend, windowCalories);
+    if (estimate) results.push({ date: windowEnd, tdee: estimate.tdee });
+
+    windowStart = addDays(windowStart, stepDays);
+  }
+  return results;
 }

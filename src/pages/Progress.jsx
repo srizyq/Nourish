@@ -9,6 +9,7 @@ import { useProfile } from "../hooks/useProfile";
 import { useHistory } from "../hooks/useHistory";
 import { useWeightLogs } from "../hooks/useWeightLogs";
 import { todayLocalDate, dateNDaysAgo, dateRange, streakFor, computeStreak } from "../lib/patterns";
+import { computeTrendWeight, computeExpenditureHistory, toKg, fromKg } from "../lib/adaptiveTDEE";
 import AppNav from "../components/AppNav";
 import LogCalendar from "../components/LogCalendar";
 
@@ -146,6 +147,18 @@ export default function Progress() {
     weightRangeDays ? dateNDaysAgo(weightRangeDays - 1) : null,
     today
   );
+  const weightUnit = profile?.unit === "imperial" ? "lb" : "kg";
+
+  // Expenditure history needs calorie data spanning the same window as
+  // the weight chart, which can run much longer than the 7/30/90-day
+  // stat range above — a separate fetch scoped to weightRange rather
+  // than reusing `dailyData`. "All time" has no real startDate in
+  // WEIGHT_RANGES; getFoodLogsForRange needs a concrete date, so it
+  // falls back to a 5-year lookback as a practical stand-in for "all".
+  const { dailyData: expenditureDailyData } = useHistory(
+    dateNDaysAgo((weightRangeDays || 1825) - 1),
+    today
+  );
 
   const calorieTarget = profile?.calorie_target || null;
   const proteinTarget = profile?.protein_g || null;
@@ -209,18 +222,64 @@ export default function Progress() {
     ],
   };
 
+  // Trend weight (smoothed) plotted alongside the raw daily entries —
+  // both converted through the same kg-based conversion into whatever
+  // unit the profile currently displays in, rather than the old
+  // behaviour of plotting each row's raw stored value regardless of
+  // which unit it was logged in (a real gap: anyone who ever switched
+  // metric/imperial would get a chart mixing the two on one axis).
+  const trendPoints = useMemo(() => computeTrendWeight(weightLogs), [weightLogs]);
+  const trendByDate = useMemo(() => new Map(trendPoints.map(p => [p.date, p.trend])), [trendPoints]);
+
   const weightLabels = weightLogs.map(w => new Date(w.logged_date + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short", ...(weightRangeDays > 365 ? { year: "2-digit" } : {}) }));
   const weightChartData = {
     labels: weightLabels,
+    datasets: [
+      {
+        label: "Weight",
+        data: weightLogs.map(w => Math.round(fromKg(toKg(w.weight, w.unit), weightUnit) * 10) / 10),
+        borderColor: C.green,
+        backgroundColor: C.green + "22",
+        fill: true,
+        tension: 0.3,
+        spanGaps: true,
+        pointRadius: weightLogs.length > 60 ? 0 : 3,
+      },
+      {
+        label: "Trend",
+        data: weightLogs.map(w => {
+          const t = trendByDate.get(w.logged_date);
+          return t != null ? Math.round(fromKg(t, weightUnit) * 10) / 10 : null;
+        }),
+        borderColor: C.blue,
+        backgroundColor: "transparent",
+        fill: false,
+        tension: 0.3,
+        spanGaps: true,
+        pointRadius: 0,
+        borderWidth: 2,
+      },
+    ],
+  };
+
+  // Expenditure history: a rolling re-estimate of maintenance calories
+  // over time (see lib/adaptiveTDEE.js), not just the single current
+  // snapshot Settings shows — needs calorie data spanning the same
+  // window as the weight chart above, which expenditureDailyData covers.
+  const expenditureHistory = useMemo(
+    () => computeExpenditureHistory(weightLogs, expenditureDailyData.map(d => ({ date: d.date, calories: d.calories }))),
+    [weightLogs, expenditureDailyData]
+  );
+  const expenditureChartData = {
+    labels: expenditureHistory.map(p => new Date(p.date + "T00:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "short" })),
     datasets: [{
-      label: "Weight",
-      data: weightLogs.map(w => Number(w.weight)),
-      borderColor: C.green,
-      backgroundColor: C.green + "22",
+      label: "Estimated maintenance",
+      data: expenditureHistory.map(p => p.tdee),
+      borderColor: C.purple,
+      backgroundColor: C.purple + "22",
       fill: true,
       tension: 0.3,
-      spanGaps: true,
-      pointRadius: weightLogs.length > 60 ? 0 : 3,
+      pointRadius: expenditureHistory.length > 20 ? 0 : 3,
     }],
   };
 
@@ -376,6 +435,19 @@ export default function Progress() {
               <div style={{ height: 220 }}><Line data={weightChartData} options={chartOptions} /></div>
             ) : (
               <EmptyChartBox icon="ti-scale" message="Log your weight from the dashboard to see a trend here" />
+            )}
+          </div>
+
+          {/* expenditure chart */}
+          <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 24 }}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS, marginBottom: 2 }}>Estimated maintenance</div>
+              <div style={{ fontSize: 12, color: C.textM }}>How your true maintenance calories have moved, based on your logged weight and food</div>
+            </div>
+            {weightLoading ? null : expenditureHistory.length > 1 ? (
+              <div style={{ height: 220 }}><Line data={expenditureChartData} options={chartOptions} /></div>
+            ) : (
+              <EmptyChartBox icon="ti-chart-line" message="Log weight and food consistently for a couple of weeks to see this trend" />
             )}
           </div>
 
