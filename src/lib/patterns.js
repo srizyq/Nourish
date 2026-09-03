@@ -31,39 +31,41 @@ function dateRange(startDate, endDate) {
 }
 
 // ── join food_logs + checkins into one row per calendar day ────────────────
+function emptyDay(date) {
+  return {
+    date, calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0, fibre_g: 0, sugar_g: 0,
+    proteinBeforeNoon_g: 0, mood: null, energy: null, loggedMeals: 0,
+    waterGlasses: null, breakfastLogged: false,
+  };
+}
+
 export function joinDailyData(foodLogs, checkins) {
   const byDate = new Map();
 
   for (const log of foodLogs) {
     const date = log.logged_date;
-    if (!byDate.has(date)) {
-      byDate.set(date, {
-        date, calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0,
-        proteinBeforeNoon_g: 0, mood: null, energy: null, loggedMeals: 0,
-      });
-    }
+    if (!byDate.has(date)) byDate.set(date, emptyDay(date));
     const row = byDate.get(date);
     row.calories += Number(log.calories) || 0;
     row.protein_g += Number(log.protein_g) || 0;
     row.carbs_g += Number(log.carbs_g) || 0;
     row.fat_g += Number(log.fat_g) || 0;
+    row.fibre_g += Number(log.fibre_g) || 0;
+    row.sugar_g += Number(log.sugar_g) || 0;
     row.loggedMeals += 1;
+    if (log.meal === 'breakfast') row.breakfastLogged = true;
     const hour = log.created_at ? new Date(log.created_at).getHours() : null;
     if (hour !== null && hour < 12) row.proteinBeforeNoon_g += Number(log.protein_g) || 0;
   }
 
   for (const c of checkins) {
     const date = c.checkin_date;
-    if (!byDate.has(date)) {
-      byDate.set(date, {
-        date, calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0,
-        proteinBeforeNoon_g: 0, mood: null, energy: null, loggedMeals: 0,
-      });
-    }
+    if (!byDate.has(date)) byDate.set(date, emptyDay(date));
     const row = byDate.get(date);
     row.mood = c.mood;
     row.energy = c.energy;
     row.moodScore = MOOD_SCORE[c.mood] ?? null;
+    row.waterGlasses = c.water_glasses ?? null;
   }
 
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
@@ -123,45 +125,102 @@ export function computeStreak(dailyData) {
 }
 
 // ── insight generation ──────────────────────────────────────────────────────
+// Every candidate declares `scale` — the metric's own range (energy is
+// 1-10, moodScore is 1-5) — so effect sizes across different metrics can
+// be compared on the same 0-1 footing when ranking (see generateInsights).
 const CANDIDATES = [
   {
-    metricKey: 'energy',
+    metricKey: 'energy', scale: 10,
     predicate: d => d.proteinBeforeNoon_g >= 30,
     icon: '⚡', title: 'Protein timing', accentColor: '#8fbc8f',
     body: (c) =>
       `You average ${c.withAvg.toFixed(1)}/10 energy on days you log 30g+ protein before noon, vs ${c.withoutAvg.toFixed(1)}/10 otherwise — a ${Math.abs(c.delta).toFixed(1)}-point ${c.delta >= 0 ? 'lift' : 'drop'} across ${c.withCount + c.withoutCount} logged days.`,
   },
   {
-    metricKey: 'moodScore',
+    metricKey: 'moodScore', scale: 5,
     predicate: d => isWeekend(d.date),
     icon: '📅', title: 'Weekday vs weekend', accentColor: '#6aabcf',
     body: (c) =>
       `Your mood runs ${c.delta >= 0 ? 'higher' : 'lower'} on weekends (${c.withAvg.toFixed(1)}/5) than weekdays (${c.withoutAvg.toFixed(1)}/5) — worth noticing if weekday routines are the lever you can actually pull.`,
   },
   {
-    metricKey: 'energy',
+    metricKey: 'energy', scale: 10,
     predicate: d => d.carbs_g > 0 && d.protein_g > 0 && d.carbs_g / Math.max(d.protein_g, 1) > 2.5,
     icon: '🍚', title: 'Carb-heavy days', accentColor: '#b48250',
     body: (c) =>
       `On carb-heavy days (carbs more than 2.5x your protein), energy averages ${c.withAvg.toFixed(1)}/10 vs ${c.withoutAvg.toFixed(1)}/10 on more balanced days.`,
   },
   {
-    metricKey: 'moodScore',
+    metricKey: 'moodScore', scale: 5,
     predicate: d => d.calories > 0 && d.calories < 1200,
     icon: '🍽️', title: 'Under-fuelling', accentColor: '#c07070',
     body: (c) =>
       `Days you log under 1,200 kcal average ${c.withAvg.toFixed(1)}/5 mood vs ${c.withoutAvg.toFixed(1)}/5 on fuller days — under-eating may be costing you more than the calorie deficit is worth.`,
   },
+  {
+    metricKey: 'energy', scale: 10,
+    predicate: d => d.fibre_g >= 25,
+    icon: '🌾', title: 'Fibre intake', accentColor: '#7fae5f',
+    body: (c) =>
+      `On days you log 25g+ fibre, energy averages ${c.withAvg.toFixed(1)}/10 vs ${c.withoutAvg.toFixed(1)}/10 on lower-fibre days — across ${c.withCount + c.withoutCount} logged days.`,
+  },
+  {
+    metricKey: 'energy', scale: 10,
+    predicate: d => d.waterGlasses != null && d.waterGlasses >= 6,
+    icon: '💧', title: 'Hydration', accentColor: '#6aabcf',
+    body: (c) =>
+      `Days you log 6+ glasses of water average ${c.withAvg.toFixed(1)}/10 energy vs ${c.withoutAvg.toFixed(1)}/10 on lower-hydration days.`,
+  },
+  {
+    metricKey: 'moodScore', scale: 5,
+    predicate: d => d.sugar_g >= 50,
+    icon: '🍬', title: 'Sugar intake', accentColor: '#d98fb0',
+    body: (c) =>
+      `On days you log 50g+ sugar, mood averages ${c.withAvg.toFixed(1)}/5 vs ${c.withoutAvg.toFixed(1)}/5 on lower-sugar days.`,
+  },
+  {
+    metricKey: 'energy', scale: 10,
+    predicate: d => d.breakfastLogged === true,
+    icon: '🌅', title: 'Breakfast', accentColor: '#e8c468',
+    body: (c) =>
+      `Days you log breakfast average ${c.withAvg.toFixed(1)}/10 energy vs ${c.withoutAvg.toFixed(1)}/10 on days you skip it.`,
+  },
 ];
 
+// A continuous dose-response pattern (protein vs energy across every
+// logged day, not just a binary split) using pearsonCorrelation — kept
+// deliberately conservative: needs 10+ days with both values present and
+// |r| >= 0.3, so a handful of noisy days can't manufacture a "trend".
+function proteinEnergyCorrelation(dailyData) {
+  const rows = dailyData.filter(d => d.protein_g > 0 && d.energy != null);
+  if (rows.length < 10) return null;
+  const r = pearsonCorrelation(rows.map(d => d.protein_g), rows.map(d => d.energy));
+  if (r == null || Math.abs(r) < 0.3) return null;
+  return {
+    icon: '🔗', title: 'Protein & energy', accentColor: '#9f97e8',
+    effectSize: Math.abs(r),
+    body: `Across ${rows.length} logged days, more protein tends to track with ${r >= 0 ? 'higher' : 'lower'} energy (r = ${r.toFixed(2)}) — not a guarantee, but a real trend in your own data.`,
+  };
+}
+
+// Ranks every qualifying candidate by effect size (each segment
+// comparison's delta normalized to its own metric's scale, so an energy
+// pattern and a mood pattern are ranked on the same 0-1 footing) instead
+// of returning whichever candidates happen to be declared first — the
+// strongest pattern in *this* user's data surfaces first, not a fixed
+// editorial order that's identical for everyone.
 export function generateInsights(dailyData, max = 3) {
-  const results = [];
+  const scored = [];
   for (const c of CANDIDATES) {
     const cmp = segmentComparison(dailyData, c.predicate, c.metricKey);
     if (!cmp) continue;
-    results.push({ icon: c.icon, title: c.title, accentColor: c.accentColor, body: c.body(cmp) });
-    if (results.length >= max) break;
+    scored.push({ icon: c.icon, title: c.title, accentColor: c.accentColor, body: c.body(cmp), effectSize: Math.abs(cmp.delta) / c.scale });
   }
+  const corr = proteinEnergyCorrelation(dailyData);
+  if (corr) scored.push(corr);
+
+  scored.sort((a, b) => b.effectSize - a.effectSize);
+  const results = scored.slice(0, max).map(({ icon, title, accentColor, body }) => ({ icon, title, accentColor, body }));
 
   if (results.length === 0) {
     const daysLogged = dailyData.filter(d => d.loggedMeals > 0).length;

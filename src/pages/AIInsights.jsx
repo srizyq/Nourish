@@ -109,7 +109,10 @@ export default function AIInsights() {
 
   const today = todayLocalDate();
   const { checkin, save: saveCheckin } = useCheckins(today);
-  const { dailyData, loading: historyLoading } = useHistory(dateNDaysAgo(30), today);
+  // 90 days (not 30) so the pattern engine's more specific candidates
+  // (fibre, hydration, sugar, breakfast) have a real chance to each reach
+  // their own 5-day-per-bucket minimum, not just the broadest ones.
+  const { dailyData, loading: historyLoading } = useHistory(dateNDaysAgo(90), today);
 
   const name = profile?.name || "there";
   const initials = (profile?.name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';

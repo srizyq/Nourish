@@ -335,7 +335,10 @@ export default function Dashboard() {
   const isPremium = !!profile?.is_premium;
   const { meals, hourlyGroups, deleteFood, updateFood } = useFoodLogs(today);
   const { checkin, save: saveCheckin } = useCheckins(today);
-  const { dailyData } = useHistory(dateNDaysAgo(30), today);
+  // 90 days (not 30) so the pattern engine's more specific candidates
+  // (fibre, hydration, sugar, breakfast) have a real chance to each reach
+  // their own 5-day-per-bucket minimum, not just the broadest ones.
+  const { dailyData } = useHistory(dateNDaysAgo(90), today);
   const weightUnit = profile?.unit === 'imperial' ? 'lb' : 'kg';
   const { logs: weightLogs, latest: latestWeight, logWeight } = useWeightLogs(dateNDaysAgo(29), today);
 
