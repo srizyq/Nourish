@@ -3,8 +3,25 @@ import { registerRoute } from 'workbox-routing';
 import { StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';
+import { clientsClaim } from 'workbox-core';
 
 precacheAndRoute(self.__WB_MANIFEST);
+
+// vite-plugin-pwa's `registerType: 'autoUpdate'` only actually auto-updates
+// if the service worker cooperates with two things: (1) it must listen for
+// the SKIP_WAITING message the app's registration script sends when it
+// detects a new version, and call self.skipWaiting() — without this, a new
+// worker installs but sits "waiting" indefinitely, since the spec default
+// only activates a waiting worker once every open tab/window for this
+// origin has been fully closed (unreliable to guarantee on a phone, even
+// after force-quitting the app — this was the actual cause of "I updated
+// but it didn't take effect" reports); (2) clientsClaim() so the newly
+// activated worker takes control of already-open pages immediately instead
+// of waiting for their next full navigation.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+});
+clientsClaim();
 
 registerRoute(
   ({ url }) => url.origin === 'https://fonts.googleapis.com',
