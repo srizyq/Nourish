@@ -3,9 +3,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useProfile } from '../hooks/useProfile';
 import { useFoodLogs } from '../hooks/useFoodLogs';
 import { todayLocalDate } from '../lib/patterns';
+import { hourToHHMM } from '../lib/mealTime';
 import AppNav from '../components/AppNav';
 import LogItemRow from '../components/LogItemRow';
 import HourlyTimeline from '../components/HourlyTimeline';
+import DaySelector from '../components/DaySelector';
 import { round1 } from '../lib/format';
 
 const MEAL_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snacks: 'Snacks' };
@@ -27,15 +29,6 @@ export default function DailyLog() {
   const [open, setOpen] = useState({ breakfast: true, lunch: true, dinner: true, snacks: true });
   const [expandedId, setExpandedId] = useState(null);
 
-  function shiftDate(days) {
-    const d = new Date(selectedDate + 'T00:00:00');
-    d.setDate(d.getDate() + days);
-    const next = todayLocalDate(d);
-    if (next > today) return; // no browsing into the future
-    setSelectedDate(next);
-    setExpandedId(null);
-  }
-
   const initials = (profile?.name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
   const totalCal = Object.values(meals).flat().reduce((s, i) => s + i.cal, 0);
   const dateStr = isToday
@@ -55,24 +48,19 @@ export default function DailyLog() {
         </div>
 
         <div className="page-pad" style={{ maxWidth: 700 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button onClick={() => shiftDate(-1)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, display: 'flex', padding: 2 }} aria-label="Previous day">
-                  <i className="ti ti-chevron-left" />
-                </button>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', minWidth: 90, textAlign: 'center' }}>{dateStr}</div>
-                <button onClick={() => shiftDate(1)} disabled={isToday} style={{ background: 'none', border: 'none', color: isToday ? 'var(--border-strong)' : 'var(--text-muted)', cursor: isToday ? 'default' : 'pointer', fontSize: 16, display: 'flex', padding: 2 }} aria-label="Next day">
-                  <i className="ti ti-chevron-right" />
-                </button>
+          <div style={{ marginBottom: 20 }}>
+            <DaySelector selectedDate={selectedDate} onSelect={(d) => { setSelectedDate(d); setExpandedId(null); }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{dateStr}</div>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, color: 'var(--accent)' }}>{Math.round(totalCal).toLocaleString()} kcal logged</div>
               </div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: 'var(--accent)', textAlign: 'center' }}>{Math.round(totalCal).toLocaleString()} kcal logged</div>
+              {!isPremium && (
+                <div title="Hourly timeline — a Pro feature" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 20, padding: '5px 12px', fontSize: 11, color: 'var(--text-muted)' }}>
+                  <i className="ti ti-lock" style={{ fontSize: 12 }} /> Hourly timeline (Pro)
+                </div>
+              )}
             </div>
-            {!isPremium && (
-              <div title="Hourly timeline — a Pro feature" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 20, padding: '5px 12px', fontSize: 11, color: 'var(--text-muted)' }}>
-                <i className="ti ti-lock" style={{ fontSize: 12 }} /> Hourly timeline (Pro)
-              </div>
-            )}
           </div>
 
           {loading ? null : isPremium ? (
@@ -80,7 +68,7 @@ export default function DailyLog() {
               segments={dayTimeline}
               onDelete={deleteFood}
               onSave={updateFood}
-              onNavigateAdd={() => navigate('/food', { state: { date: selectedDate } })}
+              onNavigateAdd={(hour) => navigate('/food', { state: { date: selectedDate, presetTime: hourToHHMM(hour) } })}
               emptyMessage={isToday ? 'Nothing logged today yet.' : 'Nothing logged this day.'}
             />
           ) : (

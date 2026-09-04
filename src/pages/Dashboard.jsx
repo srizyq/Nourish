@@ -17,6 +17,7 @@ import LogItemRow from '../components/LogItemRow';
 import LogCalendar from '../components/LogCalendar';
 import HourlyTimeline from '../components/HourlyTimeline';
 import { round1 } from '../lib/format';
+import { hourToHHMM } from '../lib/mealTime';
 
 // Accent/water-blue/ai-purple are the same hex in both themes by design.
 const ACCENT = '#8fbc8f';
@@ -662,7 +663,7 @@ export default function Dashboard() {
                 segments={dayTimeline}
                 onDelete={deleteFood}
                 onSave={updateFood}
-                onNavigateAdd={() => navigate('/food')}
+                onNavigateAdd={(hour) => navigate('/food', { state: { presetTime: hourToHHMM(hour) } })}
               />
             ) : (
               <MealLog

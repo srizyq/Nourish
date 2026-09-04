@@ -918,7 +918,9 @@ export default function FoodSearch() {
     return auto.charAt(0).toUpperCase() + auto.slice(1);
   });
   // Pro users log against a real clock time instead of a meal category.
-  const [activeTime, setActiveTime] = useState(() => currentTimeHHMM());
+  // The hourly timeline's per-hour "+" links here with { presetTime:
+  // "HH:00" } so logging lands at the hour you tapped instead of "now".
+  const [activeTime, setActiveTime] = useState(() => location.state?.presetTime || currentTimeHHMM());
   const [expandedId, setExpandedId] = useState(null);
   const [mealDropdownOpen, setMealDropdownOpen] = useState(false);
   const [toast, setToast] = useState(null);

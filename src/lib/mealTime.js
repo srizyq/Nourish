@@ -36,6 +36,13 @@ export function formatHourLabel(hour) {
   return `${h12}${hour < 12 ? 'am' : 'pm'}`;
 }
 
+// The hour's own on-the-hour time as "HH:MM" — used to preset the add-food
+// flow's time field when jumping there from a specific hour on the
+// timeline, rather than always defaulting to "right now".
+export function hourToHHMM(hour) {
+  return `${String(hour).padStart(2, '0')}:00`;
+}
+
 export function formatTime12h(hhmm) {
   const [h, m] = (hhmm || '').split(':').map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
