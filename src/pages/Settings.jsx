@@ -8,6 +8,7 @@ import { pushSupported } from '../lib/pushNotifications';
 import { supabase } from '../lib/supabase';
 import { goalMacroSplits, calcCalories, buildTargets, splitFromGrams } from '../lib/calorieTargets';
 import { useClosingTransition } from '../hooks/useClosingTransition';
+import { useTheme } from '../hooks/useTheme';
 import AppNav from '../components/AppNav';
 
 // ─── Reusable bits ──────────────────────────────────────────────────────────────
@@ -229,6 +230,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { profile, save: saveProfile } = useProfile();
+  const { theme, setTheme } = useTheme();
   const reminders = useReminders();
   const [reminderTimeInput, setReminderTimeInput] = useState(reminders.time);
   const [reminderError, setReminderError] = useState(null);
@@ -673,6 +675,29 @@ export default function Settings() {
                 >
                   {isGuest ? 'Exit guest session' : 'Log out'}
                 </button>
+              </Card>
+
+              <Card style={{ marginBottom: 0 }}>
+                <SectionLabel>Appearance</SectionLabel>
+                <FieldRow label="Theme" hint={theme === 'light' ? 'Light — matches most of the day' : 'Dark — easier on the eyes at night'}>
+                  <div style={{ display: 'flex', gap: 6, background: '#0f0f0f', border: '1px solid #2a2a2a', borderRadius: 20, padding: 2 }}>
+                    {[{ id: 'dark', label: 'Dark', icon: 'ti-moon' }, { id: 'light', label: 'Light', icon: 'ti-sun' }].map(opt => (
+                      <button
+                        key={opt.id}
+                        onClick={() => setTheme(opt.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 18, border: 'none',
+                          background: theme === opt.id ? '#8fbc8f' : 'transparent',
+                          color: theme === opt.id ? '#0f0f0f' : '#888',
+                          fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                        }}
+                      >
+                        <i className={`ti ${opt.icon}`} style={{ fontSize: 14 }} />
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </FieldRow>
               </Card>
             </div>
           )}

@@ -2,14 +2,18 @@ import { useState, useEffect } from 'react';
 import { round1 } from '../lib/format';
 import { scaleFood, UNITS, amountToServings } from '../lib/foodMath';
 
+// Shared between Dashboard (theme-converted) and the full /log page (not
+// yet converted) — same reasoning as WeekBars in Progress.jsx: uses
+// var()s + theme-invariant accent literals so it's correct on Dashboard
+// today, at the cost of a contained mismatch on /log until that page's
+// own conversion. It's low-impact there since this only renders when a
+// row is actually expanded, not on page load.
 const C = {
-  border: '#1e1e1e', border2: '#2a2a2a',
   green: '#8fbc8f', blue: '#6aabcf', purple: '#9f97e8',
-  textP: '#e8e8e8', textS: '#ccc', textM: '#555',
 };
 
-const fieldStyle = { width: '100%', background: '#0f0f0f', border: `1px solid ${C.border2}`, borderRadius: 7, padding: '7px 10px', color: C.textP, fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
-const labelStyle = { fontSize: 11, color: C.textM, marginBottom: 4, display: 'block' };
+const fieldStyle = { width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 7, padding: '7px 10px', color: 'var(--text-primary)', fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
+const labelStyle = { fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' };
 
 // Plain text macro readout — matches the style used everywhere else in the
 // app (e.g. FoodCard's add-food preview) instead of a bordered box.
@@ -17,7 +21,7 @@ function MacroReadout({ value, unit, label, color }) {
   return (
     <div style={{ textAlign: 'center' }}>
       <div style={{ fontSize: 16, fontWeight: 600, color }}>{value}{unit}</div>
-      <div style={{ fontSize: 11, color: C.textM, marginTop: 2 }}>{label}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{label}</div>
     </div>
   );
 }
@@ -82,35 +86,35 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
   }
 
   return (
-    <div style={{ borderBottom: `1px solid ${C.border}` }}>
+    <div style={{ borderBottom: '1px solid var(--border-default)' }}>
       <div onClick={onToggle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 18px', cursor: 'pointer' }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ color: C.textS, fontSize: 14 }}>{item.name}</div>
-          <div style={{ color: C.textM, fontSize: 12, marginTop: 2 }}>P {round1(item.protein)}g · C {round1(item.carbs)}g · F {round1(item.fat)}g</div>
+          <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>{item.name}</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>P {round1(item.protein)}g · C {round1(item.carbs)}g · F {round1(item.fat)}g</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <span style={{ color: C.green, fontSize: 14, fontWeight: 500 }}>{Math.round(item.cal)}</span>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ background: 'none', border: 'none', color: C.border2, cursor: 'pointer', fontSize: 15, padding: '2px 4px' }}>×</button>
-          <span style={{ color: C.border2, fontSize: 12, display: 'inline-block', transition: 'transform 220ms cubic-bezier(0.77, 0, 0.175, 1)', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ background: 'none', border: 'none', color: 'var(--border-default)', cursor: 'pointer', fontSize: 15, padding: '2px 4px' }}>×</button>
+          <span style={{ color: 'var(--border-default)', fontSize: 12, display: 'inline-block', transition: 'transform 220ms cubic-bezier(0.77, 0, 0.175, 1)', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateRows: isExpanded ? '1fr' : '0fr', transition: 'grid-template-rows 220ms cubic-bezier(0.77, 0, 0.175, 1)' }}>
         <div style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '4px 18px 16px', background: '#111' }}>
+        <div style={{ padding: '4px 18px 16px', background: 'var(--bg-subtle)' }}>
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>{hasKnownWeight ? `Amount (currently ${item.servingGrams}g)` : 'Amount ("1 serving" = what\'s currently logged)'}</label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <input style={{ ...fieldStyle, width: 90 }} type="number" min="0" step="any" value={amount} onChange={e => setAmount(e.target.value)} />
-              <div style={{ display: 'flex', background: '#0f0f0f', border: `1px solid ${C.border2}`, borderRadius: 20, padding: 2 }}>
+              <div style={{ display: 'flex', background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 20, padding: 2 }}>
                 {availableUnits.map(u => (
                   <button
                     key={u.id}
                     type="button"
                     onClick={() => setUnit(u.id)}
                     style={{
-                      background: unit === u.id ? '#2a3a2a' : 'transparent', border: 'none', borderRadius: 18,
+                      background: unit === u.id ? 'var(--accent-bg)' : 'transparent', border: 'none', borderRadius: 18,
                       padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                      color: unit === u.id ? C.green : C.textM, transition: 'background 0.15s, color 0.15s',
+                      color: unit === u.id ? C.green : 'var(--text-muted)', transition: 'background 0.15s, color 0.15s',
                     }}
                   >
                     {u.label}
@@ -118,9 +122,9 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
                 ))}
               </div>
             </div>
-            {!hasKnownWeight && <div style={{ fontSize: 11, color: C.textM, marginTop: 4 }}>No serving size on record for this item — only relative scaling is available (1 = what's currently logged). Delete and re-add it via search for gram-accurate editing.</div>}
+            {!hasKnownWeight && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>No serving size on record for this item — only relative scaling is available (1 = what's currently logged). Delete and re-add it via search for gram-accurate editing.</div>}
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 14, borderBottom: '1px solid var(--border-default)' }}>
             <MacroReadout value={preview.cal} unit="" label="Calories" color={C.green} />
             <MacroReadout value={round1(preview.protein)} unit="g" label="Protein" color={C.green} />
             <MacroReadout value={round1(preview.carbs)} unit="g" label="Carbs" color={C.blue} />
@@ -130,11 +134,11 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
             <button
               onClick={handleSave}
               disabled={saving || !servings}
-              style={{ background: saving || !servings ? '#2a2a2a' : C.green, border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: saving || !servings ? '#666' : '#0f0f0f', cursor: saving || !servings ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
+              style={{ background: saving || !servings ? 'var(--border-default)' : C.green, border: 'none', borderRadius: 8, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: saving || !servings ? 'var(--text-muted)' : '#0f0f0f', cursor: saving || !servings ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}
             >
               {saving ? 'Saving…' : 'Save changes'}
             </button>
-            {error && <span style={{ color: '#c07070', fontSize: 12 }}>{error}</span>}
+            {error && <span style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</span>}
           </div>
         </div>
         </div>

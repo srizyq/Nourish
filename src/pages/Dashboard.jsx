@@ -22,6 +22,17 @@ import { WeekBars } from './Progress';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
+// Chart.js renders to canvas, which can't resolve CSS custom properties
+// (`var(--x)`) the way DOM elements can — it needs an actual color
+// string at render time. That's fine here: accent/water-blue/ai-purple
+// are deliberately the SAME hex in both themes (keeping the existing
+// color scheme was the explicit ask), so hardcoding them in chart
+// configs below is correct, not a theming gap — only backgrounds,
+// borders, and text (all real DOM/CSS) need var() for theme-awareness.
+const ACCENT = '#8fbc8f';
+const WATER_BLUE = '#6aabcf';
+const AI_PURPLE = '#9f97e8';
+
 // ─── Daily Nutrition ───────────────────────────────────────────────────────
 // "eaten" shows the raw logged value, "remaining" shows target minus logged
 // (negative once over budget, labelled accordingly), "percent" shows logged
@@ -38,17 +49,17 @@ function displayAmount(mode, value, target, unit) {
 function MacroTile({ label, value, target, color, icon, mode }) {
   const pct = target ? Math.min((value / target) * 100, 100) : 0;
   return (
-    <div style={{ background: '#181818', borderRadius: 10, padding: 12 }}>
+    <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-default)', borderRadius: 10, padding: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         <i className={`ti ${icon}`} style={{ color, fontSize: 13 }} />
-        <span style={{ color: '#666', fontSize: 11 }}>{label}</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{label}</span>
       </div>
-      <div style={{ color: '#e8e8e8', fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
+      <div style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
         {mode === 'eaten'
-          ? <>{round1(value)}{target ? <span style={{ color: '#444', fontSize: 11, fontWeight: 400 }}>/{target}g</span> : 'g'}</>
+          ? <>{round1(value)}{target ? <span style={{ color: 'var(--text-hint)', fontSize: 11, fontWeight: 400 }}>/{target}g</span> : 'g'}</>
           : displayAmount(mode, value, target, 'g')}
       </div>
-      <div style={{ height: 4, background: '#1e1e1e', borderRadius: 99 }}>
+      <div style={{ height: 4, background: 'var(--border-default)', borderRadius: 99 }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.8s ease' }} />
       </div>
     </div>
@@ -67,29 +78,27 @@ function NutritionCard({ consumed, target, protein, carbs, fat, targets, onClick
   return (
     <div
       onClick={onClick}
-      style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: 16, padding: 22, cursor: 'pointer', transition: 'border-color 0.15s' }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = '#3a5a3a'}
-      onMouseLeave={e => e.currentTarget.style.borderColor = '#1e1e1e'}
+      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 16, padding: 22, cursor: 'pointer' }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <span style={{ color: '#666', fontSize: 13, fontWeight: 500 }}>Daily Nutrition</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>Daily Nutrition</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div onClick={e => e.stopPropagation()} style={{ display: 'flex', background: '#0f0f0f', border: '1px solid #1e1e1e', borderRadius: 20, padding: 2 }}>
+          <div onClick={e => e.stopPropagation()} style={{ display: 'flex', background: 'var(--pill-track)', borderRadius: 20, padding: 2 }}>
             {NUTRITION_MODES.map(m => (
               <button
                 key={m.id}
                 onClick={() => setMode(m.id)}
                 style={{
-                  background: mode === m.id ? '#2a3a2a' : 'transparent', border: 'none', borderRadius: 18,
+                  background: mode === m.id ? 'var(--pill-bg)' : 'transparent', border: 'none', borderRadius: 18,
                   padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                  color: mode === m.id ? '#8fbc8f' : '#555', transition: 'background 0.15s, color 0.15s',
+                  color: mode === m.id ? 'var(--pill-text)' : 'var(--text-muted)', transition: 'background 0.15s, color 0.15s',
                 }}
               >
                 {m.label}
               </button>
             ))}
           </div>
-          <span style={{ color: '#444', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ color: 'var(--text-hint)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
             Nutrients <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
           </span>
         </div>
@@ -97,20 +106,20 @@ function NutritionCard({ consumed, target, protein, carbs, fat, targets, onClick
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
         {mode === 'eaten' ? (
           <>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 700, color: '#e8e8e8' }}>{Math.round(consumed).toLocaleString()}</span>
-            <span style={{ color: '#555', fontSize: 14 }}>/ {target.toLocaleString()} kcal</span>
+            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 700, color: 'var(--text-primary)' }}>{Math.round(consumed).toLocaleString()}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>/ {target.toLocaleString()} kcal</span>
           </>
         ) : (
-          <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 700, color: '#e8e8e8' }}>{displayAmount(mode, consumed, target, ' kcal')}</span>
+          <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 700, color: 'var(--text-primary)' }}>{displayAmount(mode, consumed, target, ' kcal')}</span>
         )}
       </div>
-      <div style={{ height: 8, background: '#1e1e1e', borderRadius: 99, marginBottom: 20 }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: '#8fbc8f', borderRadius: 99, transition: 'width 0.8s ease' }} />
+      <div style={{ height: 8, background: 'var(--border-default)', borderRadius: 99, marginBottom: 20 }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 99, transition: 'width 0.8s ease' }} />
       </div>
       <div className="grid-3">
-        <MacroTile label="Protein" value={protein} target={targets.protein} color="#8fbc8f" icon="ti-meat" mode={mode} />
-        <MacroTile label="Carbs" value={carbs} target={targets.carbs} color="#6aabcf" icon="ti-bread" mode={mode} />
-        <MacroTile label="Fat" value={fat} target={targets.fat} color="#9f97e8" icon="ti-droplet" mode={mode} />
+        <MacroTile label="Protein" value={protein} target={targets.protein} color={ACCENT} icon="ti-meat" mode={mode} />
+        <MacroTile label="Carbs" value={carbs} target={targets.carbs} color={WATER_BLUE} icon="ti-bread" mode={mode} />
+        <MacroTile label="Fat" value={fat} target={targets.fat} color={AI_PURPLE} icon="ti-droplet" mode={mode} />
       </div>
     </div>
   );
@@ -126,8 +135,8 @@ function WeightCard({ weightLogs, latest, unit, onLog, navigate }) {
     labels: weightLogs.map(w => w.logged_date),
     datasets: [{
       data: weightLogs.map(w => Number(w.weight)),
-      borderColor: '#8fbc8f',
-      backgroundColor: '#8fbc8f22',
+      borderColor: ACCENT,
+      backgroundColor: ACCENT + '22',
       fill: true,
       tension: 0.3,
       pointRadius: 0,
@@ -154,30 +163,30 @@ function WeightCard({ weightLogs, latest, unit, onLog, navigate }) {
   }
 
   return (
-    <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: 16, padding: 20 }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 16, padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ color: '#666', fontSize: 13, fontWeight: 500 }}>Weight</span>
-        <button onClick={() => setShowInput(s => !s)} style={{ background: 'none', border: 'none', color: '#8fbc8f', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>Weight</span>
+        <button onClick={() => setShowInput(s => !s)} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
           {showInput ? 'Cancel' : '+ Log'}
         </button>
       </div>
-      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 700, color: '#e8e8e8', marginBottom: 14 }}>
+      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>
         {latest ? `${latest.weight}${latest.unit}` : '—'}
       </div>
       {showInput ? (
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <input
             type="number" value={value} onChange={e => setValue(e.target.value)} placeholder={`Weight (${unit})`}
-            style={{ flex: 1, background: '#181818', border: '1px solid #2a2a2a', borderRadius: 7, padding: '7px 10px', color: '#e8e8e8', fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
+            style={{ flex: 1, background: 'var(--bg-subtle)', border: '1px solid var(--border-default)', borderRadius: 7, padding: '7px 10px', color: 'var(--text-primary)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
           />
-          <button onClick={submit} disabled={!value || saving} style={{ background: !value || saving ? '#2a2a2a' : '#8fbc8f', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: !value || saving ? '#666' : '#0f0f0f', cursor: !value || saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>Save</button>
+          <button onClick={submit} disabled={!value || saving} style={{ background: !value || saving ? 'var(--border-default)' : 'var(--accent)', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: !value || saving ? 'var(--text-muted)' : '#0f0f0f', cursor: !value || saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>Save</button>
         </div>
       ) : weightLogs.length > 1 ? (
         <div style={{ height: 60 }}><Line data={chartData} options={chartOptions} /></div>
       ) : (
-        <div style={{ fontSize: 12, color: '#444' }}>Log your weight to see a trend here</div>
+        <div style={{ fontSize: 12, color: 'var(--text-hint)' }}>Log your weight to see a trend here</div>
       )}
-      <button onClick={() => navigate('/progress')} style={{ background: 'none', border: 'none', color: '#444', fontSize: 11, cursor: 'pointer', marginTop: 12, padding: 0, fontFamily: 'inherit' }}>View full history →</button>
+      <button onClick={() => navigate('/progress')} style={{ background: 'none', border: 'none', color: 'var(--text-hint)', fontSize: 11, cursor: 'pointer', marginTop: 12, padding: 0, fontFamily: 'inherit' }}>View full history →</button>
     </div>
   );
 }
@@ -187,11 +196,11 @@ function WaterTracker({ glasses, setGlasses, target = 8 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
       {Array.from({ length: target }).map((_, i) => (
-        <button key={i} onClick={() => setGlasses(i < glasses ? i : i + 1)} style={{ width: '28px', height: '28px', borderRadius: '6px', border: `1px solid ${i < glasses ? '#2a4a6a' : '#1e1e1e'}`, background: i < glasses ? '#6aabcf22' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', transition: 'background 0.15s, border-color 0.15s, color 0.15s', color: i < glasses ? '#6aabcf' : '#2a2a2a' }}>
+        <button key={i} onClick={() => setGlasses(i < glasses ? i : i + 1)} style={{ width: '28px', height: '28px', borderRadius: '6px', border: `1px solid ${i < glasses ? WATER_BLUE : 'var(--border-default)'}`, background: i < glasses ? WATER_BLUE + '22' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', transition: 'background 0.15s, border-color 0.15s, color 0.15s', color: i < glasses ? WATER_BLUE : 'var(--border-default)' }}>
           💧
         </button>
       ))}
-      <span style={{ color: '#444', fontSize: '12px', marginLeft: '4px' }}>{glasses}/{target}</span>
+      <span style={{ color: 'var(--text-hint)', fontSize: '12px', marginLeft: '4px' }}>{glasses}/{target}</span>
     </div>
   );
 }
@@ -209,21 +218,21 @@ function MoodCheckin({ mood, setMood, energy, setEnergy }) {
     <div>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
         {moods.map(m => (
-          <button key={m.id} onClick={() => setMood(m.id)} title={m.label} style={{ flex: 1, padding: '8px 4px', borderRadius: '8px', border: `1px solid ${mood === m.id ? '#3a5a3a' : '#1e1e1e'}`, background: mood === m.id ? '#0f1a0f' : 'transparent', cursor: 'pointer', fontSize: '20px', transition: 'background 0.15s, border-color 0.15s' }}>
+          <button key={m.id} onClick={() => setMood(m.id)} title={m.label} style={{ flex: 1, padding: '8px 4px', borderRadius: '8px', border: `1px solid ${mood === m.id ? 'var(--border-active)' : 'var(--border-default)'}`, background: mood === m.id ? 'var(--accent-bg)' : 'transparent', cursor: 'pointer', fontSize: '20px', transition: 'background 0.15s, border-color 0.15s' }}>
             {m.emoji}
           </button>
         ))}
       </div>
       <div>
-        <div style={{ color: '#444', fontSize: '11px', marginBottom: '6px' }}>Energy level</div>
+        <div style={{ color: 'var(--text-hint)', fontSize: '11px', marginBottom: '6px' }}>Energy level</div>
         <div style={{ display: 'flex', gap: '4px' }}>
           {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
-            <button key={n} onClick={() => setEnergy(n)} style={{ flex: 1, height: '6px', borderRadius: '99px', border: 'none', background: n <= energy ? '#8fbc8f' : '#1e1e1e', cursor: 'pointer', transition: 'background 0.15s', padding: 0 }} />
+            <button key={n} onClick={() => setEnergy(n)} style={{ flex: 1, height: '6px', borderRadius: '99px', border: 'none', background: n <= energy ? 'var(--accent)' : 'var(--border-default)', cursor: 'pointer', transition: 'background 0.15s', padding: 0 }} />
           ))}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-          <span style={{ color: '#333', fontSize: '10px' }}>low</span>
-          <span style={{ color: '#333', fontSize: '10px' }}>high</span>
+          <span style={{ color: 'var(--text-hint)', fontSize: '10px' }}>low</span>
+          <span style={{ color: 'var(--text-hint)', fontSize: '10px' }}>high</span>
         </div>
       </div>
     </div>
@@ -250,21 +259,21 @@ function MealLog({ groups, onDelete, onSave, onNavigateFood }) {
         const fat = round1(items.reduce((s, i) => s + i.fat, 0));
         const isOpen = open[key];
         return (
-          <div key={key} style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', overflow: 'hidden' }}>
+          <div key={key} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-default)', borderRadius: '12px', overflow: 'hidden' }}>
             <button onClick={() => setOpen(o => ({ ...o, [key]: !o[key] }))} style={{ width: '100%', background: 'none', border: 'none', padding: '14px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ textAlign: 'left' }}>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: '14px', color: '#ccc' }}>{label}</div>
-                {items.length > 0 && <div style={{ color: '#555', fontSize: '12px', marginTop: 2 }}>P {protein}g · C {carbs}g · F {fat}g</div>}
+                <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: '14px', color: 'var(--text-secondary)' }}>{label}</div>
+                {items.length > 0 && <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: 2 }}>P {protein}g · C {carbs}g · F {fat}g</div>}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ color: '#555', fontSize: '13px' }}>{total} kcal</span>
-                <span style={{ color: '#444', fontSize: '12px', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{total} kcal</span>
+                <span style={{ color: 'var(--text-hint)', fontSize: '12px', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
               </div>
             </button>
             {isOpen && (
-              <div style={{ borderTop: '1px solid #1e1e1e' }}>
+              <div style={{ borderTop: '1px solid var(--border-default)' }}>
                 {items.length === 0 ? (
-                  <p style={{ color: '#333', fontSize: '13px', padding: '12px 16px' }}>Nothing logged yet</p>
+                  <p style={{ color: 'var(--text-hint)', fontSize: '13px', padding: '12px 16px' }}>Nothing logged yet</p>
                 ) : (
                   items.map((item) => (
                     <LogItemRow
@@ -277,7 +286,7 @@ function MealLog({ groups, onDelete, onSave, onNavigateFood }) {
                     />
                   ))
                 )}
-                <button onClick={() => onNavigateFood(key)} style={{ width: '100%', background: 'none', border: 'none', color: '#3a5a3a', fontSize: '13px', cursor: 'pointer', padding: '10px 16px', textAlign: 'left', transition: 'color 0.15s' }} onMouseEnter={e => e.target.style.color = '#8fbc8f'} onMouseLeave={e => e.target.style.color = '#3a5a3a'}>
+                <button onClick={() => onNavigateFood(key)} style={{ width: '100%', background: 'none', border: 'none', color: 'var(--accent-dark)', fontSize: '13px', cursor: 'pointer', padding: '10px 16px', textAlign: 'left', transition: 'color 0.15s' }} onMouseEnter={e => e.target.style.color = 'var(--accent)'} onMouseLeave={e => e.target.style.color = 'var(--accent-dark)'}>
                   + Add food
                 </button>
               </div>
@@ -294,15 +303,15 @@ function GuestBanner({ daysRemaining, onSave }) {
   const [visible, setVisible] = useState(true);
   if (!visible) return null;
   return (
-    <div style={{ background: '#0f1a0f', border: '1px solid #1e3a1e', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', gap: '12px' }}>
+    <div style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', gap: '12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <span style={{ color: '#8fbc8f', fontSize: '14px' }}>🌿</span>
-        <span style={{ color: '#ccc', fontSize: '13px' }}>
-          Guest mode — <span style={{ color: '#8fbc8f', fontWeight: 600 }}>{daysRemaining} days</span> remaining.
-          <button onClick={onSave} style={{ background: 'none', border: 'none', color: '#8fbc8f', fontSize: '13px', cursor: 'pointer', marginLeft: '4px', padding: 0, textDecoration: 'underline' }}>Save your data →</button>
+        <span style={{ color: 'var(--accent)', fontSize: '14px' }}>🌿</span>
+        <span style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+          Guest mode — <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{daysRemaining} days</span> remaining.
+          <button onClick={onSave} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '13px', cursor: 'pointer', marginLeft: '4px', padding: 0, textDecoration: 'underline' }}>Save your data →</button>
         </span>
       </div>
-      <button onClick={() => setVisible(false)} style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', fontSize: '16px', flexShrink: 0 }}>×</button>
+      <button onClick={() => setVisible(false)} style={{ background: 'none', border: 'none', color: 'var(--text-hint)', cursor: 'pointer', fontSize: '16px', flexShrink: 0 }}>×</button>
     </div>
   );
 }
@@ -316,9 +325,9 @@ function ShortcutRow({ navigate }) {
   return (
     <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
       {shortcuts.map((s, i) => (
-        <button key={i} onClick={s.action} style={{ flex: 1, maxWidth: 160, background: '#141414', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '14px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', transition: 'border-color 0.15s' }} onMouseEnter={e => e.currentTarget.style.borderColor = '#3a5a3a'} onMouseLeave={e => e.currentTarget.style.borderColor = '#1e1e1e'}>
+        <button key={i} onClick={s.action} style={{ flex: 1, maxWidth: 160, background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)', borderRadius: '12px', padding: '14px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '20px', lineHeight: 1 }}>{s.icon}</span>
-          <span style={{ color: '#666', fontSize: '11px', fontWeight: 500 }}>{s.label}</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 500 }}>{s.label}</span>
         </button>
       ))}
     </div>
@@ -415,21 +424,21 @@ export default function Dashboard() {
   const dateStr = now.toLocaleDateString('en-AU', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0f0f0f', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)', fontFamily: "'DM Sans', sans-serif" }}>
       <AppNav active="dashboard" initials={initials} />
 
       <div className="app-content-pad" style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
         {/* Top bar */}
-        <div className="page-pad-top" style={{ minHeight: 52, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px 12px', paddingTop: 10, paddingBottom: 10, borderBottom: '1px solid #1e1e1e', position: 'sticky', top: 0, background: '#0f0f0f', zIndex: 10 }}>
+        <div className="page-pad-top" style={{ minHeight: 52, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px 12px', paddingTop: 10, paddingBottom: 10, borderBottom: '1px solid var(--border-default)', position: 'sticky', top: 0, background: 'var(--bg-primary)', zIndex: 10 }}>
           <div>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: '16px', fontWeight: 600, color: '#e8e8e8' }}>{greeting}, {name} 👋</span>
-            <span style={{ color: '#444', fontSize: '13px', marginLeft: '12px' }}>{dateStr}</span>
+            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>{greeting}, {name} 👋</span>
+            <span style={{ color: 'var(--text-hint)', fontSize: '13px', marginLeft: '12px' }}>{dateStr}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '20px', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '20px', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '13px' }}>🔥</span>
-              <span style={{ color: '#e8e8e8', fontSize: '13px', fontWeight: 600 }}>{streak}</span>
-              <span style={{ color: '#444', fontSize: '12px' }}>day streak</span>
+              <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>{streak}</span>
+              <span style={{ color: 'var(--text-hint)', fontSize: '12px' }}>day streak</span>
             </div>
           </div>
         </div>
@@ -454,11 +463,11 @@ export default function Dashboard() {
 
           {/* Progress: weight + this week's calories + logging calendar */}
           <div style={{ marginBottom: '16px' }}>
-            <div style={{ color: '#666', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Progress</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Progress</div>
             <div className="grid-3">
               <WeightCard weightLogs={weightLogs} latest={latestWeight} unit={weightUnit} onLog={(w, u) => logWeight(today, w, u)} navigate={navigate} />
-              <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '20px' }}>
-                <div style={{ color: '#666', fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>This week's calories</div>
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>This week's calories</div>
                 <WeekBars days={weekDays} calorieTarget={calorieTarget} />
               </div>
               <LogCalendar
@@ -477,19 +486,17 @@ export default function Dashboard() {
           {/* AI Insights */}
           <div
             onClick={() => navigate('/insights')}
-            style={{ background: '#0f1a0f', border: '1px solid #1e3a1e', borderRadius: '16px', padding: '20px', marginBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: '16px', cursor: 'pointer', transition: 'border-color 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = '#3a5a3a'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = '#1e3a1e'}
+            style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '16px', padding: '20px', marginBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: '16px', cursor: 'pointer' }}
           >
-            <div style={{ width: '36px', height: '36px', background: '#4a7a4a22', border: '1px solid #3a5a3a', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <i className="ti ti-sparkles" style={{ fontSize: 16, color: '#8fbc8f' }} />
+            <div style={{ width: '36px', height: '36px', background: 'var(--accent-dark)', opacity: 1, border: '1px solid var(--accent-border)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <i className="ti ti-sparkles" style={{ fontSize: 16, color: 'var(--accent)' }} />
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ color: '#4a7a4a', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>AI Insights</span>
-                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: '#4a7a4a' }} />
+                <span style={{ color: 'var(--accent-dark)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>AI Insights</span>
+                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: 'var(--accent-dark)' }} />
               </div>
-              <p style={{ color: '#ccc', fontSize: '14px', lineHeight: 1.6, margin: '6px 0 0' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.6, margin: '6px 0 0' }}>
                 {insight?.body || 'Start logging your meals to get personalised tips based on your patterns.'}
               </p>
             </div>
@@ -497,29 +504,29 @@ export default function Dashboard() {
 
           {/* Check in: water + mood */}
           <div style={{ marginBottom: '16px' }}>
-            <div style={{ color: '#666', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Check in</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Check in</div>
             <div className="grid-2">
-              <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '20px' }}>
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                  <span style={{ color: '#666', fontSize: '13px', fontWeight: 500 }}>Water</span>
-                  <span style={{ color: '#6aabcf', fontSize: '13px', fontWeight: 600 }}>{glasses}/8 glasses</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500 }}>Water</span>
+                  <span style={{ color: WATER_BLUE, fontSize: '13px', fontWeight: 600 }}>{glasses}/8 glasses</span>
                 </div>
                 <WaterTracker glasses={glasses} setGlasses={setGlasses} />
               </div>
-              <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '20px' }}>
-                <span style={{ color: '#666', fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '14px' }}>How are you feeling?</span>
+              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '14px' }}>How are you feeling?</span>
                 <MoodCheckin mood={mood} setMood={setMood} energy={energy} setEnergy={setEnergy} />
               </div>
             </div>
           </div>
 
           {/* Daily food log */}
-          <div style={{ background: '#141414', border: '1px solid #1e1e1e', borderRadius: '16px', padding: '20px' }}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <span onClick={() => navigate('/log')} style={{ color: '#666', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span onClick={() => navigate('/log')} style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                 Daily food log <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
               </span>
-              <span style={{ color: '#8fbc8f', fontSize: '13px', fontWeight: 600 }}>{Math.round(consumed)} kcal logged</span>
+              <span style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: 600 }}>{Math.round(consumed)} kcal logged</span>
             </div>
             <MealLog
               groups={isPremium

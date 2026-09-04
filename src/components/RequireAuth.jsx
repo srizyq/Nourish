@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { ThemeProvider } from '../context/ThemeProvider';
 
 export default function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -21,5 +22,7 @@ export default function RequireAuth({ children }) {
 
   if (!user) return <Navigate to="/onboarding/step1" replace />;
 
-  return children;
+  // Every authenticated page gets theme context from here — nothing
+  // outside RequireAuth (marketing, onboarding, login) is theme-aware.
+  return <ThemeProvider>{children}</ThemeProvider>;
 }

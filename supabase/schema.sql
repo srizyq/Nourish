@@ -19,6 +19,7 @@ create table if not exists public.profiles (
   water_target int default 8,
   onboarding_completed boolean default false,
   is_premium boolean default false,
+  theme text check (theme in ('light', 'dark')) default 'dark',
   reminder_enabled boolean default false,
   reminder_time text default '19:00',
   reminder_timezone text,

@@ -92,6 +92,11 @@ function StreakItem({ icon, iconBg, iconColor, name, count }) {
 }
 
 // ── week-at-a-glance bars ────────────────────────────────────────────────
+// Rendered on both Progress (not yet theme-converted, still uses the
+// literal `C` tokens below it in this file) and Dashboard (which is
+// theme-converted) — deliberately uses var()s + theme-invariant literals
+// here rather than the local `C` object, so it renders correctly on
+// Dashboard today without needing the rest of this file converted first.
 export function WeekBars({ days, calorieTarget }) {
   const max = Math.max(calorieTarget || 0, ...days.map(d => d.calories), 1);
   return (
@@ -104,7 +109,7 @@ export function WeekBars({ days, calorieTarget }) {
             <div key={d.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: 100 }}>
               <div style={{
                 width: "100%", height: `${pct}%`, borderRadius: "4px 4px 0 0",
-                background: d.calories === 0 ? C.border : onTarget ? C.green : C.blue,
+                background: d.calories === 0 ? "var(--border-default)" : onTarget ? "#8fbc8f" : "#6aabcf",
                 transition: "height 0.5s ease",
               }} />
             </div>
@@ -113,7 +118,7 @@ export function WeekBars({ days, calorieTarget }) {
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
         {days.map((d) => (
-          <div key={d.date} style={{ flex: 1, textAlign: "center", fontSize: 10, color: C.textM }}>
+          <div key={d.date} style={{ flex: 1, textAlign: "center", fontSize: 10, color: "var(--text-muted)" }}>
             {new Date(d.date + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short" })}
           </div>
         ))}
