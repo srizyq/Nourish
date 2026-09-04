@@ -28,27 +28,6 @@ const AI_PURPLE = '#9f97e8';
 // this is a chart of actual logged calories, not an estimate). ──────────
 const CHART_RANGES = [{ id: '1W', days: 7 }, { id: '1M', days: 30 }, { id: '3M', days: 90 }];
 
-// Catmull-Rom-to-bezier smoothing, standard technique for turning a
-// polyline into a smooth curve that still passes through every real data
-// point (no interpolation dishonesty, just rounded joins instead of sharp
-// mechanical angles at each day). Returns just the "C ..." curve commands
-// — callers prepend their own "M x,y" start point.
-function smoothCurveCommands(pts) {
-  let d = '';
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i === 0 ? 0 : i - 1];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1];
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
-    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
-    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
-    d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
-  }
-  return d;
-}
-
 // One tap adds 250ml (one "glass" in the underlying water_glasses count —
 // no schema change, this is purely a display/interaction relabel). Holding
 // the tile for ~500ms removes the most recent addition instead, since the
@@ -118,21 +97,43 @@ function WaterTile({ glasses, setGlasses }) {
   );
 }
 
+// Fixed CSS height of the chart — the viewBox's height is set to match
+// this exactly (see chartWidth below), so preserveAspectRatio="none" has
+// nothing to stretch. A mismatched viewBox aspect ratio was the actual
+// cause of the chart looking "distorted" — not the line style — since
+// non-uniform scaling exaggerates the vertical axis relative to the
+// horizontal one on every device where the two ratios don't line up.
+const CHART_HEIGHT = 110;
+
 function DashboardHero({ consumed, target, chartDays, chartRange, setChartRange, onChartClick, latestWeight, onWeightClick, glasses, setGlasses }) {
+  // Measure the chart's actual rendered width so the SVG viewBox can match
+  // it 1:1 in pixels, instead of guessing a fixed width and letting the
+  // browser stretch it to fit (see CHART_HEIGHT note above).
+  const chartRef = useRef(null);
+  const [chartWidth, setChartWidth] = useState(300);
+  useEffect(() => {
+    const el = chartRef.current;
+    if (!el) return;
+    const measure = () => setChartWidth(el.clientWidth || 300);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const max = Math.max(target, ...chartDays.map(d => d.calories), 1);
   const min = Math.min(...chartDays.map(d => d.calories), target);
   const span = max - min || 1;
-  const norm = (v) => 70 - ((v - min) / span) * 60 - 5;
-  const w = 600;
+  const topPad = 10;
+  const baseline = CHART_HEIGHT - 10;
+  const norm = (v) => baseline - ((v - min) / span) * (baseline - topPad);
+  const w = chartWidth;
   const points = chartDays.map((d, i) => [
     (i / Math.max(1, chartDays.length - 1)) * w,
     norm(d.calories),
   ]);
-  const curveCmds = points.length > 1 ? smoothCurveCommands(points) : '';
-  const linePath = points.length > 1 ? `M ${points[0][0]},${points[0][1]}${curveCmds}` : '';
-  const areaPath = points.length > 1
-    ? `M 0,70 L ${points[0][0]},${points[0][1]}${curveCmds} L ${w},70 Z`
-    : '';
+  const linePts = points.map(p => p.join(',')).join(' ');
+  const areaPts = `0,${baseline} ${linePts} ${w},${baseline}`;
   const showDots = chartDays.length <= 10;
 
   // A handful of evenly-spaced labels regardless of range, so 90 days
@@ -167,9 +168,9 @@ function DashboardHero({ consumed, target, chartDays, chartRange, setChartRange,
           </div>
         </div>
 
-        <svg viewBox={`0 0 ${w} 78`} style={{ width: '100%', height: 110, marginTop: 10 }} preserveAspectRatio="none">
-          <path d={areaPath} fill="var(--accent)" opacity="0.08" />
-          <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <svg ref={chartRef} viewBox={`0 0 ${w} ${CHART_HEIGHT}`} style={{ width: '100%', height: CHART_HEIGHT, marginTop: 10, display: 'block' }}>
+          <polygon points={areaPts} fill="var(--accent)" opacity="0.08" />
+          <polyline points={linePts} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           {showDots && points.map(([x, y], i) => (
             <circle key={i} cx={x} cy={y} r={i === points.length - 1 ? 4 : 2.5} fill={i === points.length - 1 ? 'var(--accent)' : 'var(--bg-card)'} stroke="var(--accent)" strokeWidth="1.5" />
           ))}
