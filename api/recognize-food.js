@@ -29,6 +29,28 @@ If the photo doesn't clearly show food, reply with exactly: {"error": "No food d
 
 Macros are grams, calories are kcal, all rounded to whole numbers except macros can have one decimal. This is a best-effort visual estimate, not a lab measurement — use your best judgement on typical portion sizes and preparation (e.g. oil/butter used in cooking, dressing on a salad).`;
 
+// Correction mode — the user is looking at the same photo and telling us
+// what's actually wrong with a first-pass estimate (wrong food, wrong
+// portion, etc.), so the prompt carries that estimate plus their comment
+// as context instead of asking Claude to start blind. Free-form —
+// correcting the food identity and correcting the portion size both flow
+// through the same field, since the model can tell which the user means.
+function correctionPrompt(previousResult, comment) {
+  return `You're looking at a photo of food. A first-pass estimate was made, and the user has reviewed it and left a correction.
+
+Previous estimate: ${JSON.stringify(previousResult)}
+User's correction: "${comment}"
+
+Re-identify the food and re-estimate its nutrition, taking the user's correction as ground truth (e.g. if they say it's actually a different food, or a different portion size, trust that over the photo's first impression).
+
+Reply with ONLY a JSON object (no other text, no markdown code fence) in exactly this shape:
+{"name": "short food name", "portion": "estimated portion, e.g. '1 medium bowl (~350g)'", "cal": number, "protein": number, "carbs": number, "fat": number, "confidence": "low" | "medium" | "high"}
+
+If the correction makes it clear this isn't food at all, reply with exactly: {"error": "No food detected in this photo."}
+
+Macros are grams, calories are kcal, all rounded to whole numbers except macros can have one decimal.`;
+}
+
 // "Same billing period" is just "same calendar month" — simplest thing
 // that resets on its own with no cron job, at the cost of everyone's
 // free scans resetting on the 1st rather than on their own signup
@@ -74,11 +96,18 @@ export default async function handler(req, res) {
     return;
   }
 
+  const { image, mediaType, correction, previousResult } = req.body || {};
+
+  // A correction re-analyzes a scan the user already paid a cap-count
+  // for, so it doesn't cost another one — the cap check/increment below
+  // is skipped entirely for correction calls, not just the increment.
+  const isCorrection = typeof correction === 'string' && correction.trim().length > 0;
+
   const today = new Date().toISOString().slice(0, 10);
   const inSamePeriod = samePeriod(profile.photo_scans_period_start, today);
   const usedSoFar = inSamePeriod ? profile.photo_scans_used : 0;
 
-  if (!profile.is_premium && usedSoFar >= FREE_MONTHLY_SCAN_LIMIT) {
+  if (!isCorrection && !profile.is_premium && usedSoFar >= FREE_MONTHLY_SCAN_LIMIT) {
     res.status(403).json({
       error: `You've used all ${FREE_MONTHLY_SCAN_LIMIT} free photo scans this month — upgrade to Pro for unlimited scans.`,
       limitReached: true,
@@ -86,7 +115,6 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { image, mediaType } = req.body || {};
   if (!image) {
     res.status(400).json({ error: 'Missing image' });
     return;
@@ -105,7 +133,7 @@ export default async function handler(req, res) {
           role: 'user',
           content: [
             { type: 'image', source: { type: 'base64', media_type: mediaType, data: image } },
-            { type: 'text', text: PROMPT },
+            { type: 'text', text: isCorrection ? correctionPrompt(previousResult, correction) : PROMPT },
           ],
         },
       ],
@@ -115,8 +143,9 @@ export default async function handler(req, res) {
     // an Anthropic call, regardless of what it returned (a real result, a
     // "no food detected", or an unparseable reply below) — not counted if
     // we rejected the request before ever calling Anthropic (missing
-    // image, wrong type, or already over the limit above).
-    if (!profile.is_premium) {
+    // image, wrong type, or already over the limit above), or if this is
+    // a free correction re-analysis of a scan that already counted.
+    if (!isCorrection && !profile.is_premium) {
       await supabase.from('profiles')
         .update({ photo_scans_used: usedSoFar + 1, photo_scans_period_start: today })
         .eq('id', userId);

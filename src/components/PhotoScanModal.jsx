@@ -41,6 +41,12 @@ export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaul
   const [meal, setMeal] = useState(defaultMeal);
   const [time, setTime] = useState(defaultTime);
   const [adding, setAdding] = useState(false);
+  const [comment, setComment] = useState('');
+  const [correcting, setCorrecting] = useState(false);
+  // Separate from the main `error`/`limitReached` pair so a failed
+  // correction attempt doesn't blow away the perfectly good result
+  // already on screen — it shows inline near the comment box instead.
+  const [correctionError, setCorrectionError] = useState(null);
   const { closing, close } = useClosingTransition(onClose);
 
   async function handleFile(file) {
@@ -48,6 +54,8 @@ export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaul
     setError(null);
     setLimitReached(false);
     setResult(null);
+    setComment('');
+    setCorrectionError(null);
     setAnalyzing(true);
     try {
       const { dataUrl, base64 } = await resizeImage(file);
@@ -76,11 +84,48 @@ export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaul
     }
   }
 
+  // Re-sends the same photo (already held in `preview` as a data URL)
+  // plus the user's correction and the previous estimate, so Claude
+  // corrects from context instead of guessing blind again. Free and
+  // unlimited by design — see api/recognize-food.js's `isCorrection`
+  // branch, which skips the scan cap entirely for these calls.
+  async function handleCorrect() {
+    if (!comment.trim() || !result || !preview) return;
+    setCorrecting(true);
+    setCorrectionError(null);
+    try {
+      const base64 = preview.split(',')[1];
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/recognize-food', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ image: base64, mediaType: 'image/jpeg', correction: comment.trim(), previousResult: result }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setCorrectionError(data.error || "Couldn't apply that correction. Try again.");
+        return;
+      }
+      setResult(data);
+      setComment('');
+    } catch (err) {
+      console.error(err);
+      setCorrectionError("Couldn't apply that correction. Check your connection and try again.");
+    } finally {
+      setCorrecting(false);
+    }
+  }
+
   function reset() {
     setPreview(null);
     setResult(null);
     setError(null);
     setLimitReached(false);
+    setComment('');
+    setCorrectionError(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
@@ -188,6 +233,43 @@ export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaul
               <p style={{ fontSize: 11, color: '#555', margin: '0 0 14px', lineHeight: 1.5 }}>
                 This is a visual estimate, not verified nutrition data — review before adding, and adjust later if it's off.
               </p>
+
+              {/* Always visible, not gated behind a "this is wrong" toggle —
+                  correcting is free (doesn't cost a scan) and can be done
+                  as many times as needed; each correction re-sends the
+                  same photo + this comment + the current estimate. */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 11, color: '#777', marginBottom: 5, display: 'block' }}>Not quite right? Tell it what's wrong</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="text"
+                    value={comment}
+                    onChange={e => setComment(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleCorrect(); }}
+                    placeholder="e.g. it's chicken not fish, or it's 1.5 servings"
+                    disabled={correcting}
+                    style={{ flex: 1, background: '#181818', border: '1px solid #2a2a2a', borderRadius: 7, padding: '9px 12px', color: '#e8e8e8', fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
+                  />
+                  <button
+                    onClick={handleCorrect}
+                    disabled={!comment.trim() || correcting}
+                    style={{
+                      background: !comment.trim() || correcting ? '#2a2a2a' : '#0f1a0f',
+                      border: `1px solid ${!comment.trim() || correcting ? '#2a2a2a' : '#3a5a3a'}`,
+                      borderRadius: 7, padding: '9px 14px', fontSize: 13, fontWeight: 600,
+                      color: !comment.trim() || correcting ? '#666' : '#8fbc8f',
+                      cursor: !comment.trim() || correcting ? 'not-allowed' : 'pointer',
+                      fontFamily: "'DM Sans', sans-serif", whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {correcting ? 'Fixing…' : 'Recalculate'}
+                  </button>
+                </div>
+                {correctionError && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: '#c07070' }}>{correctionError}</div>
+                )}
+              </div>
+
               <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                 {isPremium ? (
                   <input type="time" value={time} onChange={e => setTime(e.target.value)} style={{ flex: 1, background: '#181818', border: '1px solid #2a2a2a', borderRadius: 7, padding: '7px 10px', color: '#ccc', fontSize: 13, outline: 'none', fontFamily: 'inherit' }} />
