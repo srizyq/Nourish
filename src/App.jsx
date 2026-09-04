@@ -12,7 +12,6 @@ import Dashboard from './pages/Dashboard'
 import FoodSearch from "./pages/FoodSearch";
 import Progress from "./pages/Progress";
 import AIInsights from "./pages/AIInsights";
-import MealPlans from './pages/MealPlans'
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Nutrients from "./pages/Nutrients";
@@ -37,7 +36,6 @@ export default function App() {
           <Route path="/nutrients" element={<RequireAuth><Nutrients /></RequireAuth>} />
           <Route path="/log" element={<RequireAuth><DailyLog /></RequireAuth>} />
           <Route path="/insights" element={<RequireAuth><AIInsights /></RequireAuth>} />
-          <Route path="/meals" element={<RequireAuth><MealPlans /></RequireAuth>} />
           <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
           <Route path="/prototypes/dashboard-redesign" element={<DashboardRedesignHarness />} />

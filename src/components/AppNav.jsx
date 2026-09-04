@@ -1,25 +1,41 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LogoMark from './LogoMark';
+import QuickActionSheet from './QuickActionSheet';
 
-const NAV_ITEMS = [
+// Desktop sidebar keeps the fuller set of primary pages. Mobile trims to
+// the 4 highest-frequency destinations plus a center "+" for everything
+// else — Meal Plans was a real nav item here until it was removed as a
+// feature entirely (static/demo page, never backed by real data); AI
+// Insights loses its own mobile slot in favour of a Dashboard shortcut
+// instead, since it's a lower-frequency destination than logging itself.
+const DESKTOP_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: 'ti-layout-dashboard', path: '/dashboard' },
   { id: 'food', label: 'Food search', icon: 'ti-search', path: '/food' },
   { id: 'progress', label: 'Progress', icon: 'ti-chart-line', path: '/progress' },
-  { id: 'meals', label: 'Meal plans', icon: 'ti-calendar', path: '/meals' },
   { id: 'insights', label: 'AI insights', icon: 'ti-sparkles', path: '/insights' },
 ];
 
-// Desktop: left sidebar. Mobile/tablet (<=860px): bottom nav — same items,
-// CSS media queries control which one renders, not JS, so it responds to
-// real viewport width without a resize listener.
+const MOBILE_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'ti-layout-dashboard', path: '/dashboard' },
+  { id: 'log', label: 'Daily log', icon: 'ti-clipboard-list', path: '/log' },
+];
+const MOBILE_ITEMS_RIGHT = [
+  { id: 'progress', label: 'Progress', icon: 'ti-chart-line', path: '/progress' },
+];
+
+// Desktop: left sidebar. Mobile/tablet (<=860px): bottom nav — CSS media
+// queries control which one renders, not JS, so it responds to real
+// viewport width without a resize listener.
 export default function AppNav({ active, initials }) {
   const navigate = useNavigate();
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
     <>
       <nav className="app-sidebar">
         <LogoMark size={28} />
-        {NAV_ITEMS.map(item => (
+        {DESKTOP_ITEMS.map(item => (
           <button
             key={item.id}
             className={`app-nav-icon${active === item.id ? ' is-active' : ''}`}
@@ -40,7 +56,25 @@ export default function AppNav({ active, initials }) {
       </nav>
 
       <nav className="app-bottom-nav">
-        {NAV_ITEMS.map(item => (
+        {MOBILE_ITEMS.map(item => (
+          <button
+            key={item.id}
+            className={`app-bottom-icon${active === item.id ? ' is-active' : ''}`}
+            title={item.label}
+            onClick={() => navigate(item.path)}
+          >
+            <i className={`ti ${item.icon}`} />
+          </button>
+        ))}
+        <button
+          className="app-bottom-add"
+          title="Quick add"
+          aria-label="Quick add"
+          onClick={() => setSheetOpen(true)}
+        >
+          <i className="ti ti-plus" />
+        </button>
+        {MOBILE_ITEMS_RIGHT.map(item => (
           <button
             key={item.id}
             className={`app-bottom-icon${active === item.id ? ' is-active' : ''}`}
@@ -58,6 +92,8 @@ export default function AppNav({ active, initials }) {
           <i className="ti ti-settings" />
         </button>
       </nav>
+
+      {sheetOpen && <QuickActionSheet onClose={() => setSheetOpen(false)} />}
     </>
   );
 }

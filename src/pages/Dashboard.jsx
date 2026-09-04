@@ -612,7 +612,12 @@ export default function Dashboard() {
 
           {/* Insights & Data */}
           <div style={{ border: '1px solid var(--border-strong)', borderRadius: 16, padding: 20, marginBottom: '16px' }}>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, letterSpacing: '0.04em' }}>INSIGHTS &amp; DATA</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>INSIGHTS &amp; DATA</span>
+              <span onClick={() => navigate('/insights')} style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
+                View patterns <i className="ti ti-chevron-right" style={{ fontSize: 12 }} />
+              </span>
+            </div>
             <div
               onClick={() => navigate('/insights')}
               style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 14, display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}
@@ -639,11 +644,16 @@ export default function Dashboard() {
 
           {/* Daily food log */}
           <div style={{ border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
               <span onClick={() => navigate('/log')} style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                 Daily food log <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
               </span>
               <span style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: 600 }}>{Math.round(consumed)} kcal logged</span>
+            </div>
+            <div style={{ marginBottom: '14px' }}>
+              <span onClick={() => navigate('/food', { state: { openSavedMeals: true } })} style={{ color: 'var(--text-hint)', fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <i className="ti ti-bookmark" style={{ fontSize: 12 }} /> Saved meals
+              </span>
             </div>
             {isPremium ? (
               <HourlyTimeline

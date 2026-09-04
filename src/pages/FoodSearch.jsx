@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useFoodLogs } from '../hooks/useFoodLogs';
 import { useRecentFoods } from '../hooks/useRecentFoods';
 import { useCustomFoods } from '../hooks/useCustomFoods';
@@ -589,13 +589,16 @@ function SavedMealsModal({ meals, loading, onClose, onLog, onDelete, onStartBuil
 // ─── Meal builder review — save what's been added to the builder cart as a
 //    named saved meal, and optionally log it right away ──────────────────
 
-function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal, defaultTime, selectedDate, isPremium }) {
+const FREE_SAVED_MEALS_LIMIT = 10;
+
+function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal, defaultTime, selectedDate, isPremium, savedMealsCount, onUpgrade }) {
   const [name, setName] = useState("");
   const [logNow, setLogNow] = useState(true);
   const [meal, setMeal] = useState(defaultMeal);
   const [time, setTime] = useState(defaultTime);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const atLimit = !isPremium && savedMealsCount >= FREE_SAVED_MEALS_LIMIT;
 
   const totals = items.reduce((t, it) => ({
     cal: t.cal + (Number(it.cal) || 0),
@@ -624,6 +627,15 @@ function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal, def
       {items.length === 0 ? (
         <div style={{ textAlign: "center", padding: "20px", color: "var(--text-hint)", fontSize: 13 }}>
           No items yet — close this, then tap "+ Add to meal" on any food.
+        </div>
+      ) : atLimit ? (
+        <div>
+          <div style={{ background: "#1a1508", border: "1px solid #4a3a1a", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "var(--gold)", marginBottom: 14 }}>
+            You've saved {FREE_SAVED_MEALS_LIMIT} free saved meals — upgrade to Pro for unlimited, or delete an old one to make room.
+          </div>
+          <button onClick={onUpgrade} style={{ width: "100%", background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 8, padding: "9px", fontSize: 13, color: "var(--accent)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+            Upgrade to Pro
+          </button>
         </div>
       ) : (
         <>
@@ -841,6 +853,7 @@ function Toast({ message, onDone }) {
 
 export default function FoodSearch() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { profile } = useProfile();
   const isPremium = !!profile?.is_premium;
   const today = todayLocalDate();
@@ -889,10 +902,12 @@ export default function FoodSearch() {
   const [toast, setToast] = useState(null);
   // Dashboard's "Scan barcode" shortcut links here with { openScan: true }
   // to jump straight into the scanner instead of landing on plain search.
+  // The quick-action sheet's "Scan photo" does the same with openPhotoScan.
   const [scanOpen, setScanOpen] = useState(!!location.state?.openScan);
-  const [photoScanOpen, setPhotoScanOpen] = useState(false);
+  const [photoScanOpen, setPhotoScanOpen] = useState(!!location.state?.openPhotoScan);
   const [createFoodOpen, setCreateFoodOpen] = useState(false);
-  const [savedMealsOpen, setSavedMealsOpen] = useState(false);
+  // Dashboard's "Saved meals" shortcut links here with { openSavedMeals: true }.
+  const [savedMealsOpen, setSavedMealsOpen] = useState(!!location.state?.openSavedMeals);
   const [builderMode, setBuilderMode] = useState(false);
   const [builderItems, setBuilderItems] = useState([]);
   const [builderReviewOpen, setBuilderReviewOpen] = useState(false);
@@ -1438,6 +1453,8 @@ export default function FoodSearch() {
           defaultMeal={activeMeal} selectedDate={selectedDate}
                       defaultTime={activeTime}
                       isPremium={isPremium}
+          savedMealsCount={savedMeals.rows.length}
+          onUpgrade={() => navigate('/settings')}
           onClose={() => setBuilderReviewOpen(false)}
           onRemove={(i) => setBuilderItems(prev => prev.filter((_, idx) => idx !== i))}
           onSave={handleSaveBuilderMeal}
