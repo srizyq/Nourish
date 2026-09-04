@@ -28,6 +28,27 @@ const AI_PURPLE = '#9f97e8';
 // this is a chart of actual logged calories, not an estimate). ──────────
 const CHART_RANGES = [{ id: '1W', days: 7 }, { id: '1M', days: 30 }, { id: '3M', days: 90 }];
 
+// Catmull-Rom-to-bezier smoothing, standard technique for turning a
+// polyline into a smooth curve that still passes through every real data
+// point (no interpolation dishonesty, just rounded joins instead of sharp
+// mechanical angles at each day). Returns just the "C ..." curve commands
+// — callers prepend their own "M x,y" start point.
+function smoothCurveCommands(pts) {
+  let d = '';
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i === 0 ? 0 : i - 1];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1];
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+
 // One tap adds 250ml (one "glass" in the underlying water_glasses count —
 // no schema change, this is purely a display/interaction relabel). Holding
 // the tile for ~500ms removes the most recent addition instead, since the
@@ -107,8 +128,11 @@ function DashboardHero({ consumed, target, chartDays, chartRange, setChartRange,
     (i / Math.max(1, chartDays.length - 1)) * w,
     norm(d.calories),
   ]);
-  const linePts = points.map(p => p.join(',')).join(' ');
-  const areaPts = `0,70 ${linePts} ${w},70`;
+  const curveCmds = points.length > 1 ? smoothCurveCommands(points) : '';
+  const linePath = points.length > 1 ? `M ${points[0][0]},${points[0][1]}${curveCmds}` : '';
+  const areaPath = points.length > 1
+    ? `M 0,70 L ${points[0][0]},${points[0][1]}${curveCmds} L ${w},70 Z`
+    : '';
   const showDots = chartDays.length <= 10;
 
   // A handful of evenly-spaced labels regardless of range, so 90 days
@@ -144,8 +168,8 @@ function DashboardHero({ consumed, target, chartDays, chartRange, setChartRange,
         </div>
 
         <svg viewBox={`0 0 ${w} 78`} style={{ width: '100%', height: 110, marginTop: 10 }} preserveAspectRatio="none">
-          <polygon points={areaPts} fill="var(--accent)" opacity="0.08" />
-          <polyline points={linePts} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={areaPath} fill="var(--accent)" opacity="0.08" />
+          <path d={linePath} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           {showDots && points.map(([x, y], i) => (
             <circle key={i} cx={x} cy={y} r={i === points.length - 1 ? 4 : 2.5} fill={i === points.length - 1 ? 'var(--accent)' : 'var(--bg-card)'} stroke="var(--accent)" strokeWidth="1.5" />
           ))}
@@ -160,20 +184,22 @@ function DashboardHero({ consumed, target, chartDays, chartRange, setChartRange,
           ))}
         </div>
 
-        <div onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', gap: 2, background: 'var(--pill-track)', borderRadius: 99, padding: 3 }}>
-          {CHART_RANGES.map(r => (
-            <button
-              key={r.id}
-              onClick={() => setChartRange(r.id)}
-              style={{
-                padding: '6px 14px', borderRadius: 99, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                background: chartRange === r.id ? 'var(--pill-bg)' : 'transparent',
-                color: chartRange === r.id ? 'var(--pill-text)' : 'var(--text-muted)',
-              }}
-            >
-              {r.id}
-            </button>
-          ))}
+        <div onClick={e => e.stopPropagation()} style={{ display: 'flex', justifyContent: 'center' }}>
+          <div style={{ display: 'inline-flex', gap: 2, background: 'var(--pill-track)', borderRadius: 99, padding: 3 }}>
+            {CHART_RANGES.map(r => (
+              <button
+                key={r.id}
+                onClick={() => setChartRange(r.id)}
+                style={{
+                  padding: '6px 14px', borderRadius: 99, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  background: chartRange === r.id ? 'var(--pill-bg)' : 'transparent',
+                  color: chartRange === r.id ? 'var(--pill-text)' : 'var(--text-muted)',
+                }}
+              >
+                {r.id}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
