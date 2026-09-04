@@ -711,6 +711,15 @@ export default function Settings() {
             </div>
           )}
 
+          {/* Required FatSecret Platform API attribution — must not be
+              reworded per their attribution policy. Settings is the one
+              screen every user always has access to, so it lives here now
+              that the marketing Landing page (its previous home) is gone. */}
+          <div className="page-pad-top" style={{ textAlign: 'center', paddingTop: 24, paddingBottom: 8 }}>
+            <a href="https://platform.fatsecret.com" target="_blank" rel="noreferrer" style={{ fontSize: 11, color: 'var(--text-hint)' }}>
+              Powered by fatsecret Platform API
+            </a>
+          </div>
         </div>
       </div>
 
