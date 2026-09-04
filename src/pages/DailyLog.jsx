@@ -7,11 +7,6 @@ import AppNav from '../components/AppNav';
 import LogItemRow from '../components/LogItemRow';
 import { round1 } from '../lib/format';
 
-const C = {
-  bg: '#0f0f0f', bgCard: '#141414', bgRow: '#181818', border: '#1e1e1e', border2: '#2a2a2a',
-  green: '#8fbc8f', blue: '#6aabcf', purple: '#9f97e8', textP: '#e8e8e8', textS: '#ccc', textM: '#555',
-};
-
 const MEAL_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snacks: 'Snacks' };
 
 export default function DailyLog() {
@@ -48,12 +43,12 @@ export default function DailyLog() {
     : new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: C.bg, fontFamily: "'DM Sans', sans-serif", color: C.textP }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)', fontFamily: "'DM Sans', sans-serif", color: 'var(--text-primary)' }}>
       <AppNav initials={initials} />
 
       <div className="app-content-pad" style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
-        <div className="page-pad-top" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 14, paddingBottom: 14, borderBottom: `1px solid ${C.border}`, position: 'sticky', top: 0, background: C.bg, zIndex: 10 }}>
-          <button onClick={() => navigate('/dashboard')} style={{ background: 'none', border: 'none', color: C.textM, cursor: 'pointer', fontSize: 18, display: 'flex' }}>
+        <div className="page-pad-top" style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 14, paddingBottom: 14, borderBottom: '1px solid var(--border-default)', position: 'sticky', top: 0, background: 'var(--bg-primary)', zIndex: 10 }}>
+          <button onClick={() => navigate('/dashboard')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, display: 'flex' }}>
             <i className="ti ti-arrow-left" />
           </button>
           <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16 }}>Daily log</span>
@@ -63,18 +58,18 @@ export default function DailyLog() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <button onClick={() => shiftDate(-1)} style={{ background: 'none', border: 'none', color: C.textM, cursor: 'pointer', fontSize: 16, display: 'flex', padding: 2 }} aria-label="Previous day">
+                <button onClick={() => shiftDate(-1)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, display: 'flex', padding: 2 }} aria-label="Previous day">
                   <i className="ti ti-chevron-left" />
                 </button>
-                <div style={{ fontSize: 13, color: C.textM, minWidth: 90, textAlign: 'center' }}>{dateStr}</div>
-                <button onClick={() => shiftDate(1)} disabled={isToday} style={{ background: 'none', border: 'none', color: isToday ? C.border2 : C.textM, cursor: isToday ? 'default' : 'pointer', fontSize: 16, display: 'flex', padding: 2 }} aria-label="Next day">
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', minWidth: 90, textAlign: 'center' }}>{dateStr}</div>
+                <button onClick={() => shiftDate(1)} disabled={isToday} style={{ background: 'none', border: 'none', color: isToday ? 'var(--border-strong)' : 'var(--text-muted)', cursor: isToday ? 'default' : 'pointer', fontSize: 16, display: 'flex', padding: 2 }} aria-label="Next day">
                   <i className="ti ti-chevron-right" />
                 </button>
               </div>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: C.green, textAlign: 'center' }}>{Math.round(totalCal).toLocaleString()} kcal logged</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: 'var(--accent)', textAlign: 'center' }}>{Math.round(totalCal).toLocaleString()} kcal logged</div>
             </div>
             {!isPremium && (
-              <div title="Hourly timeline — a Pro feature" style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.bgCard, border: `1px solid ${C.border2}`, borderRadius: 20, padding: '5px 12px', fontSize: 11, color: C.textM }}>
+              <div title="Hourly timeline — a Pro feature" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 20, padding: '5px 12px', fontSize: 11, color: 'var(--text-muted)' }}>
                 <i className="ti ti-lock" style={{ fontSize: 12 }} /> Hourly timeline (Pro)
               </div>
             )}
@@ -83,7 +78,7 @@ export default function DailyLog() {
           {loading ? null : isPremium ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {hourlyGroups.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 24, color: C.textM, fontSize: 13, background: C.bgCard, border: `1px dashed ${C.border2}`, borderRadius: 10 }}>
+                <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)', fontSize: 13, background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)', borderRadius: 10 }}>
                   {isToday ? 'Nothing logged today yet.' : 'Nothing logged this day.'}
                 </div>
               )}
@@ -94,19 +89,19 @@ export default function DailyLog() {
                 const hourFat = round1(items.reduce((s, i) => s + i.fat, 0));
                 const isOpen = openHours[hour] ?? true;
                 return (
-                  <div key={hour} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+                  <div key={hour} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
                     <button onClick={() => setOpenHours(o => ({ ...o, [hour]: !isOpen }))} style={{ width: '100%', background: 'none', border: 'none', padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 15, color: C.textS }}>{label}</div>
-                        <div style={{ color: C.textM, fontSize: 12, marginTop: 2 }}>P {hourProtein}g · C {hourCarbs}g · F {hourFat}g</div>
+                        <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 15, color: 'var(--text-secondary)' }}>{label}</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>P {hourProtein}g · C {hourCarbs}g · F {hourFat}g</div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ color: C.textM, fontSize: 13 }}>{hourTotal} kcal</span>
-                        <span style={{ color: C.border2, fontSize: 12, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{hourTotal} kcal</span>
+                        <span style={{ color: 'var(--border-strong)', fontSize: 12, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
                       </div>
                     </button>
                     {isOpen && (
-                      <div style={{ borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ borderTop: '1px solid var(--border-default)' }}>
                         {items.map(item => (
                           <LogItemRow
                             key={item.id}
@@ -122,7 +117,7 @@ export default function DailyLog() {
                   </div>
                 );
               })}
-              <button onClick={() => navigate('/food', { state: { date: selectedDate } })} style={{ background: 'none', border: `1px dashed ${C.border2}`, borderRadius: 12, color: '#3a5a3a', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
+              <button onClick={() => navigate('/food', { state: { date: selectedDate } })} style={{ background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 12, color: 'var(--accent-dark)', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
                 + Add food{!isToday ? ` to ${dateStr}` : ''}
               </button>
             </div>
@@ -135,21 +130,21 @@ export default function DailyLog() {
                 const mealFat = round1(items.reduce((s, i) => s + i.fat, 0));
                 const isOpen = open[mealKey];
                 return (
-                  <div key={mealKey} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 12, overflow: 'hidden' }}>
+                  <div key={mealKey} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
                     <button onClick={() => setOpen(o => ({ ...o, [mealKey]: !o[mealKey] }))} style={{ width: '100%', background: 'none', border: 'none', padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 15, color: C.textS }}>{MEAL_LABELS[mealKey]}</div>
-                        {items.length > 0 && <div style={{ color: C.textM, fontSize: 12, marginTop: 2 }}>P {mealProtein}g · C {mealCarbs}g · F {mealFat}g</div>}
+                        <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 15, color: 'var(--text-secondary)' }}>{MEAL_LABELS[mealKey]}</div>
+                        {items.length > 0 && <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>P {mealProtein}g · C {mealCarbs}g · F {mealFat}g</div>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ color: C.textM, fontSize: 13 }}>{mealTotal} kcal</span>
-                        <span style={{ color: C.border2, fontSize: 12, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{mealTotal} kcal</span>
+                        <span style={{ color: 'var(--border-strong)', fontSize: 12, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
                       </div>
                     </button>
                     {isOpen && (
-                      <div style={{ borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ borderTop: '1px solid var(--border-default)' }}>
                         {items.length === 0 ? (
-                          <p style={{ color: C.border2, fontSize: 13, padding: '14px 18px' }}>Nothing logged yet</p>
+                          <p style={{ color: 'var(--text-hint)', fontSize: 13, padding: '14px 18px' }}>Nothing logged yet</p>
                         ) : (
                           items.map(item => (
                             <LogItemRow
@@ -162,7 +157,7 @@ export default function DailyLog() {
                             />
                           ))
                         )}
-                        <button onClick={() => navigate('/food', { state: { openMeal: mealKey, date: selectedDate } })} style={{ width: '100%', background: 'none', border: 'none', color: '#3a5a3a', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
+                        <button onClick={() => navigate('/food', { state: { openMeal: mealKey, date: selectedDate } })} style={{ width: '100%', background: 'none', border: 'none', color: 'var(--accent-dark)', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
                           + Add food
                         </button>
                       </div>
