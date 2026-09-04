@@ -1114,7 +1114,7 @@ export default function FoodSearch() {
 
   async function logFood(food, meal, loggedAt) {
     await addFoodLog(food, meal, loggedAt);
-    refetchRecent();
+    refetchRecent(); lastLogged.refetch();
     setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ""}`);
     setExpandedId(null);
   }
@@ -1161,7 +1161,7 @@ export default function FoodSearch() {
       for (const it of items) {
         await addFoodLog(it, mealToLog, timeToLog);
       }
-      refetchRecent();
+      refetchRecent(); lastLogged.refetch();
     }
     setToast(`Saved "${name}"${mealToLog ? ` and logged to ${mealToLog}` : timeToLog ? ` and logged at ${formatTimeFromDate(timeToLog)}` : ""}`);
     cancelBuilder();
@@ -1176,7 +1176,7 @@ export default function FoodSearch() {
     for (const it of items) {
       await addFoodLog(it, isPremium ? null : activeMeal, loggedAt);
     }
-    refetchRecent();
+    refetchRecent(); lastLogged.refetch();
     setToast(`${savedMeal.name} logged${isPremium ? ` at ${formatTimeFromDate(loggedAt)}` : ` to ${activeMeal}`}`);
     setSavedMealsOpen(false);
   }
@@ -1441,7 +1441,7 @@ export default function FoodSearch() {
           defaultMeal={activeMeal} selectedDate={selectedDate}
           defaultTime={activeTime}
           isPremium={isPremium}
-          onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
+          onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); lastLogged.refetch(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
           onCreateCustom={() => { setScanOpen(false); setCreateFoodOpen(true); }}
           onSearchManually={() => { setScanOpen(false); setTimeout(() => inputRef.current?.focus(), 0); }}
         />
@@ -1454,7 +1454,7 @@ export default function FoodSearch() {
           defaultMeal={activeMeal} selectedDate={selectedDate}
           defaultTime={activeTime}
           isPremium={isPremium}
-          onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
+          onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); lastLogged.refetch(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
           onCreateCustom={() => { setPhotoScanOpen(false); setCreateFoodOpen(true); }}
           onSearchManually={() => { setPhotoScanOpen(false); setTimeout(() => inputRef.current?.focus(), 0); }}
         />
@@ -1465,7 +1465,7 @@ export default function FoodSearch() {
         <MenuScanModal
           onClose={() => setMenuScanOpen(false)}
           isPremium={isPremium}
-          onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
+          onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); lastLogged.refetch(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
           onSearchManually={() => { setMenuScanOpen(false); setTimeout(() => inputRef.current?.focus(), 0); }}
         />
       )}
