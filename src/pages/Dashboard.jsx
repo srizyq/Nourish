@@ -12,125 +12,179 @@ import { useCheckins } from '../hooks/useCheckins';
 import { useHistory } from '../hooks/useHistory';
 import { useWeightLogs } from '../hooks/useWeightLogs';
 import { useAdaptiveTarget } from '../hooks/useAdaptiveTarget';
+import { useFavouriteFoods } from '../hooks/useFavouriteFoods';
 import { todayLocalDate, dateNDaysAgo, dateRange, generateInsights, computeStreak } from '../lib/patterns';
 import { goalMacroSplits, buildTargets } from '../lib/calorieTargets';
+import { getCategoryStyle } from '../lib/foodCategories';
 import AppNav from '../components/AppNav';
 import LogItemRow from '../components/LogItemRow';
 import LogCalendar from '../components/LogCalendar';
 import { round1 } from '../lib/format';
-import { WeekBars } from './Progress';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
-// Chart.js renders to canvas, which can't resolve CSS custom properties
-// (`var(--x)`) the way DOM elements can — it needs an actual color
-// string at render time. That's fine here: accent/water-blue/ai-purple
-// are deliberately the SAME hex in both themes (keeping the existing
-// color scheme was the explicit ask), so hardcoding them in chart
-// configs below is correct, not a theming gap — only backgrounds,
-// borders, and text (all real DOM/CSS) need var() for theme-awareness.
+// Chart.js renders to canvas, which can't resolve CSS custom properties —
+// see the note in WeightCard below. Accent/water-blue/ai-purple are the
+// same hex in both themes by design, so hardcoding them here is correct,
+// not a theming gap.
 const ACCENT = '#8fbc8f';
 const WATER_BLUE = '#6aabcf';
 const AI_PURPLE = '#9f97e8';
 
-// ─── Daily Nutrition ───────────────────────────────────────────────────────
-// "eaten" shows the raw logged value, "remaining" shows target minus logged
-// (negative once over budget, labelled accordingly), "percent" shows logged
-// as a share of target — same underlying numbers, three ways to read them.
-function displayAmount(mode, value, target, unit) {
-  if (mode === 'percent') return target ? `${Math.round((value / target) * 100)}%` : '—';
-  if (mode === 'remaining') {
-    const left = round1(target - value);
-    return left >= 0 ? `${left}${unit} left` : `${round1(Math.abs(left))}${unit} over`;
-  }
-  return `${round1(value)}${unit}`;
-}
+// ─── Calorie hero — real weekly/monthly/quarterly trend, no decorative
+// elements without real data behind them (no fake "uncertainty band" —
+// this is a chart of actual logged calories, not an estimate). ──────────
+const CHART_RANGES = [{ id: '1W', days: 7 }, { id: '1M', days: 30 }, { id: '3M', days: 90 }];
 
-function MacroTile({ label, value, target, color, icon, mode }) {
-  const pct = target ? Math.min((value / target) * 100, 100) : 0;
+function CalorieHero({ consumed, target, chartDays, chartRange, setChartRange, onClick }) {
+  const max = Math.max(target, ...chartDays.map(d => d.calories), 1);
+  const min = Math.min(...chartDays.map(d => d.calories), target);
+  const span = max - min || 1;
+  const norm = (v) => 70 - ((v - min) / span) * 60 - 5;
+  const w = 600;
+  const points = chartDays.map((d, i) => [
+    (i / Math.max(1, chartDays.length - 1)) * w,
+    norm(d.calories),
+  ]);
+  const linePts = points.map(p => p.join(',')).join(' ');
+  const areaPts = `0,70 ${linePts} ${w},70`;
+  const showDots = chartDays.length <= 10;
+
+  // A handful of evenly-spaced labels regardless of range, so 90 days
+  // doesn't cram 90 labels under the axis.
+  const labelCount = Math.min(chartDays.length, chartRange === '1W' ? 7 : 5);
+  const labelStep = Math.max(1, Math.floor((chartDays.length - 1) / (labelCount - 1)));
+  const labelIdxs = new Set();
+  for (let i = 0; i < chartDays.length; i += labelStep) labelIdxs.add(i);
+  labelIdxs.add(chartDays.length - 1);
+
   return (
-    <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-default)', borderRadius: 10, padding: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-        <i className={`ti ${icon}`} style={{ color, fontSize: 13 }} />
-        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{label}</span>
-      </div>
-      <div style={{ color: 'var(--text-primary)', fontSize: 15, fontWeight: 600, marginBottom: 6 }}>
-        {mode === 'eaten'
-          ? <>{round1(value)}{target ? <span style={{ color: 'var(--text-hint)', fontSize: 11, fontWeight: 400 }}>/{target}g</span> : 'g'}</>
-          : displayAmount(mode, value, target, 'g')}
-      </div>
-      <div style={{ height: 4, background: 'var(--border-default)', borderRadius: 99 }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99, transition: 'width 0.8s ease' }} />
-      </div>
-    </div>
-  );
-}
-
-const NUTRITION_MODES = [
-  { id: 'eaten', label: 'Eaten' },
-  { id: 'remaining', label: 'Remaining' },
-  { id: 'percent', label: '%' },
-];
-
-function NutritionCard({ consumed, target, protein, carbs, fat, targets, onClick }) {
-  const [mode, setMode] = useState('eaten');
-  const pct = target ? Math.min((consumed / target) * 100, 100) : 0;
-  return (
-    <div
-      onClick={onClick}
-      style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 16, padding: 22, cursor: 'pointer' }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>Daily Nutrition</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div onClick={e => e.stopPropagation()} style={{ display: 'flex', background: 'var(--pill-track)', borderRadius: 20, padding: 2 }}>
-            {NUTRITION_MODES.map(m => (
-              <button
-                key={m.id}
-                onClick={() => setMode(m.id)}
-                style={{
-                  background: mode === m.id ? 'var(--pill-bg)' : 'transparent', border: 'none', borderRadius: 18,
-                  padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-                  color: mode === m.id ? 'var(--pill-text)' : 'var(--text-muted)', transition: 'background 0.15s, color 0.15s',
-                }}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-          <span style={{ color: 'var(--text-hint)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-            Nutrients <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
-          </span>
-        </div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-        {mode === 'eaten' ? (
-          <>
+    <div style={{ border: '1px solid var(--border-strong)', borderRadius: 16, padding: 20, cursor: 'pointer' }} onClick={onClick}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>TODAY</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
             <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 700, color: 'var(--text-primary)' }}>{Math.round(consumed).toLocaleString()}</span>
             <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>/ {target.toLocaleString()} kcal</span>
-          </>
-        ) : (
-          <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 700, color: 'var(--text-primary)' }}>{displayAmount(mode, consumed, target, ' kcal')}</span>
-        )}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>REMAINING</div>
+          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: 'var(--accent)' }}>
+            {round1(Math.max(0, target - consumed))}
+          </div>
+        </div>
       </div>
-      <div style={{ height: 8, background: 'var(--border-default)', borderRadius: 99, marginBottom: 20 }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: 'var(--accent)', borderRadius: 99, transition: 'width 0.8s ease' }} />
+
+      <svg viewBox={`0 0 ${w} 78`} style={{ width: '100%', height: 110, marginTop: 10 }} preserveAspectRatio="none">
+        <polygon points={areaPts} fill="var(--accent)" opacity="0.08" />
+        <polyline points={linePts} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {showDots && points.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r={i === points.length - 1 ? 4 : 2.5} fill={i === points.length - 1 ? 'var(--accent)' : 'var(--bg-card)'} stroke="var(--accent)" strokeWidth="1.5" />
+        ))}
+      </svg>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} onClick={e => e.stopPropagation()}>
+        {chartDays.map((d, i) => (
+          <span key={d.date} style={{ fontSize: 10, color: 'var(--text-hint)', visibility: labelIdxs.has(i) ? 'visible' : 'hidden' }}>
+            {chartRange === '1W'
+              ? new Date(d.date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short' })
+              : new Date(d.date + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+          </span>
+        ))}
       </div>
-      <div className="grid-3">
-        <MacroTile label="Protein" value={protein} target={targets.protein} color={ACCENT} icon="ti-meat" mode={mode} />
-        <MacroTile label="Carbs" value={carbs} target={targets.carbs} color={WATER_BLUE} icon="ti-bread" mode={mode} />
-        <MacroTile label="Fat" value={fat} target={targets.fat} color={AI_PURPLE} icon="ti-droplet" mode={mode} />
+
+      <div onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', gap: 2, background: 'var(--pill-track)', borderRadius: 99, padding: 3 }}>
+        {CHART_RANGES.map(r => (
+          <button
+            key={r.id}
+            onClick={() => setChartRange(r.id)}
+            style={{
+              padding: '6px 14px', borderRadius: 99, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              background: chartRange === r.id ? 'var(--pill-bg)' : 'transparent',
+              color: chartRange === r.id ? 'var(--pill-text)' : 'var(--text-muted)',
+            }}
+          >
+            {r.id}
+          </button>
+        ))}
       </div>
     </div>
   );
 }
 
-// ─── Progress (weight + week calories) ─────────────────────────────────────
+function MacroCell({ label, value, target, color }) {
+  return (
+    <div style={{ padding: '14px 16px' }}>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label.toUpperCase()}</div>
+      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 17, fontWeight: 700, color }}>
+        {round1(value)}<span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>g / {target}g</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Favourites — real starred foods with a real quick-add, same "always
+// log the default 1 serving" behaviour as the Food Search quick-add
+// button (Phase 4), not decorative. Nothing renders if there are none
+// yet, rather than showing empty/fake placeholders. ─────────────────────
+function FavouritesRow({ favourites, onQuickAdd }) {
+  const [addedId, setAddedId] = useState(null);
+  if (!favourites.length) return null;
+
+  function handleAdd(fav) {
+    const style = getCategoryStyle({ name: fav.name });
+    onQuickAdd(fav);
+    setAddedId(fav.id);
+    setTimeout(() => setAddedId(prev => (prev === fav.id ? null : prev)), 1100);
+    return style;
+  }
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, letterSpacing: '0.04em' }}>FAVOURITES</div>
+      <div style={{ display: 'flex', gap: 18, overflowX: 'auto' }}>
+        {favourites.map(fav => {
+          const style = getCategoryStyle({ name: fav.name });
+          const justAdded = addedId === fav.id;
+          return (
+            <div key={fav.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+              <div style={{ position: 'relative', width: 48, height: 48 }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: style.color + '1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, color: style.color }}>
+                  <i className={`ti ${style.icon}`} />
+                </div>
+                <button
+                  onClick={() => handleAdd(fav)}
+                  disabled={justAdded}
+                  title={`Quick add — 1 serving`}
+                  style={{
+                    position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: '50%',
+                    background: justAdded ? 'var(--accent-bg)' : 'var(--accent)', border: `2px solid ${justAdded ? 'var(--accent-border)' : 'var(--bg-primary)'}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: justAdded ? 'default' : 'pointer', padding: 0,
+                  }}
+                >
+                  <i className={`ti ${justAdded ? 'ti-check' : 'ti-plus'}`} style={{ fontSize: 10, color: justAdded ? 'var(--accent)' : '#0f0f0f' }} />
+                </button>
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', maxWidth: 60, overflow: 'hidden', textOverflow: 'ellipsis' }}>{fav.name}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Progress (weight) ──────────────────────────────────────────────────
 function WeightCard({ weightLogs, latest, unit, onLog, navigate }) {
   const [showInput, setShowInput] = useState(false);
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Chart.js renders to <canvas>, which can't resolve CSS custom
+  // properties the way DOM elements can — it needs an actual color
+  // string at paint time. That's fine here since accent is the same hex
+  // in both themes by design; only DOM backgrounds/borders/text below
+  // need var()s.
   const chartData = {
     labels: weightLogs.map(w => w.logged_date),
     datasets: [{
@@ -163,7 +217,7 @@ function WeightCard({ weightLogs, latest, unit, onLog, navigate }) {
   }
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 16, padding: 20 }}>
+    <div style={{ border: '1px solid var(--border-strong)', borderRadius: 16, padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>Weight</span>
         <button onClick={() => setShowInput(s => !s)} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -240,13 +294,7 @@ function MoodCheckin({ mood, setMood, energy, setEnergy }) {
 }
 
 // ─── Meal Log ─────────────────────────────────────────────────────────────────
-// `groups` is a uniform [{ key, label, items }] shape — either the four
-// meal categories (free tier) or hourly buckets (Pro), computed by the
-// caller so this component doesn't need to know which tier it's in.
 function MealLog({ groups, onDelete, onSave, onNavigateFood }) {
-  // Nothing auto-opens — the per-group macro line already covers the
-  // "doesn't look empty" concern without forcing any one group open
-  // regardless of what's actually in it.
   const [open, setOpen] = useState({});
   const [expandedId, setExpandedId] = useState(null);
 
@@ -316,20 +364,38 @@ function GuestBanner({ daysRemaining, onSave }) {
   );
 }
 
-// ─── Shortcut Cards ───────────────────────────────────────────────────────────
+// ─── Shortcut buttons ───────────────────────────────────────────────────────────
 function ShortcutRow({ navigate }) {
   const shortcuts = [
-    { label: 'Log food',  icon: '＋', action: () => navigate('/food') },
-    { label: 'Scan barcode', icon: '📷', action: () => navigate('/food', { state: { openScan: true } }) },
+    { label: 'Log food',  icon: 'ti-plus', action: () => navigate('/food') },
+    { label: 'Scan barcode', icon: 'ti-barcode', action: () => navigate('/food', { state: { openScan: true } }) },
   ];
   return (
-    <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+    <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
       {shortcuts.map((s, i) => (
-        <button key={i} onClick={s.action} style={{ flex: 1, maxWidth: 160, background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)', borderRadius: '12px', padding: '14px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '20px', lineHeight: 1 }}>{s.icon}</span>
-          <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 500 }}>{s.label}</span>
+        <button key={i} onClick={s.action} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border-strong)', borderRadius: '14px', padding: '15px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+          <i className={`ti ${s.icon}`} style={{ fontSize: 15, color: 'var(--text-primary)' }} />
+          <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>{s.label}</span>
         </button>
       ))}
+    </div>
+  );
+}
+
+// ─── Insights & Data ────────────────────────────────────────────────────────
+function ChangeRow({ label, value, trend }) {
+  const up = trend === 'up';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 0', borderBottom: '1px solid var(--border-default)' }}>
+      <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{value}</span>
+        {trend && (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--text-muted)' }}>
+            <i className={`ti ti-trending-${up ? 'up' : 'down'}`} style={{ fontSize: 12 }} />
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -342,17 +408,18 @@ export default function Dashboard() {
   const today = todayLocalDate();
   const { profile, save: saveProfile } = useProfile();
   const isPremium = !!profile?.is_premium;
-  const { meals, hourlyGroups, deleteFood, updateFood } = useFoodLogs(today);
+  const { meals, hourlyGroups, deleteFood, updateFood, addFood } = useFoodLogs(today);
   const { checkin, save: saveCheckin } = useCheckins(today);
   // 90 days (not 30) so the pattern engine's more specific candidates
   // (fibre, hydration, sugar, breakfast) have a real chance to each reach
-  // their own 5-day-per-bucket minimum, not just the broadest ones.
+  // their own 5-day-per-bucket minimum, not just the broadest ones — and
+  // so the calorie hero's 1M/3M views can be sliced from data already in
+  // hand instead of a second fetch.
   const { dailyData } = useHistory(dateNDaysAgo(90), today);
   const weightUnit = profile?.unit === 'imperial' ? 'lb' : 'kg';
-  const { logs: weightLogs, latest: latestWeight, logWeight } = useWeightLogs(dateNDaysAgo(29), today);
+  const { logs: weightLogs, latest: latestWeight, logWeight } = useWeightLogs(dateNDaysAgo(89), today);
+  const favourites = useFavouriteFoods();
 
-  // Logging calendar browses independently of anything else on the page,
-  // so it needs its own fetch scoped to whatever month is currently shown.
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
   const calMonthStart = todayLocalDate(calMonth);
   const calMonthEnd = todayLocalDate(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0));
@@ -368,13 +435,14 @@ export default function Dashboard() {
   };
   const calorieTarget = targets.calories;
 
+  const { compute: computeAdaptive } = useAdaptiveTarget();
+
   // No server-side cron for this — an adaptive target is only ever
   // "fresh as of last app open", recomputed once per mount here (the
   // most-visited page) and again whenever Settings' Adaptive tab is
   // opened. Only writes back when the new number actually differs, so a
   // string of dashboard visits in one sitting doesn't spam profile
   // updates for a value that hasn't changed.
-  const { compute: computeAdaptive } = useAdaptiveTarget();
   const adaptiveRefreshedRef = useRef(false);
   useEffect(() => {
     if (!profile || profile.calorie_mode !== 'adaptive' || adaptiveRefreshedRef.current) return;
@@ -392,6 +460,23 @@ export default function Dashboard() {
       });
     })();
   }, [profile, computeAdaptive, saveProfile]);
+
+  // Separate from the effect above — this one is purely for the "Avg.
+  // expenditure" row below and runs regardless of calorie_mode, so
+  // Calculated/Custom-mode users still see their real estimated
+  // maintenance if they've logged enough to support one. Gated by the
+  // same honesty rules as everywhere else the adaptive engine appears —
+  // omitted entirely (not faked) when there isn't enough data yet.
+  const [expenditureEstimate, setExpenditureEstimate] = useState(null);
+  const expenditureFetchedRef = useRef(false);
+  useEffect(() => {
+    if (!profile || expenditureFetchedRef.current) return;
+    expenditureFetchedRef.current = true;
+    (async () => {
+      const result = await computeAdaptive(profile.goal || 'maintain');
+      if (result.ready) setExpenditureEstimate(result.estimate.tdee);
+    })();
+  }, [profile, computeAdaptive]);
 
   const name = profile?.name || 'there';
   const isGuest = !!user?.is_anonymous;
@@ -417,59 +502,82 @@ export default function Dashboard() {
   const consumedFat     = allItems.reduce((s, i) => s + i.fat,     0);
 
   const byDate = new Map(dailyData.map(d => [d.date, d]));
-  const weekDays = dateRange(dateNDaysAgo(6), today).map(date => byDate.get(date) || { date, calories: 0 });
+
+  const [chartRange, setChartRange] = useState('1W');
+  const chartRangeDays = { '1W': 7, '1M': 30, '3M': 90 }[chartRange];
+  const chartDays = dateRange(dateNDaysAgo(chartRangeDays - 1), today).map(date => byDate.get(date) || { date, calories: 0 });
+
+  // Real 7-day weight change from actually-logged entries — omitted (not
+  // faked) if there isn't at least one weight log in each end of the
+  // window to compare.
+  const sevenDaysAgo = dateNDaysAgo(6);
+  const weightWindow = weightLogs.filter(w => w.logged_date >= sevenDaysAgo);
+  const weightTrendKg = weightWindow.length >= 2
+    ? (() => {
+        const toKg = (w) => w.unit === 'lb' ? Number(w.weight) * 0.453592 : Number(w.weight);
+        const sorted = [...weightWindow].sort((a, b) => a.logged_date.localeCompare(b.logged_date));
+        return toKg(sorted[sorted.length - 1]) - toKg(sorted[0]);
+      })()
+    : null;
 
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening';
   const dateStr = now.toLocaleDateString('en-AU', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  async function quickAddFavourite(fav) {
+    const food = {
+      name: fav.name, cal: fav.calories, protein: fav.protein_g, carbs: fav.carbs_g, fat: fav.fat_g,
+      fibre: fav.fibre_g, sodium: fav.sodium_mg, sugar: fav.sugar_g, servingGrams: fav.serving_grams,
+      source: 'favourite',
+    };
+    await addFood(food, isPremium ? null : 'snacks', isPremium ? new Date() : null);
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)', fontFamily: "'DM Sans', sans-serif" }}>
       <AppNav active="dashboard" initials={initials} />
 
       <div className="app-content-pad" style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
-        {/* Top bar */}
         <div className="page-pad-top" style={{ minHeight: 52, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px 12px', paddingTop: 10, paddingBottom: 10, borderBottom: '1px solid var(--border-default)', position: 'sticky', top: 0, background: 'var(--bg-primary)', zIndex: 10 }}>
           <div>
             <span style={{ fontFamily: "'Syne', sans-serif", fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>{greeting}, {name} 👋</span>
             <span style={{ color: 'var(--text-hint)', fontSize: '13px', marginLeft: '12px' }}>{dateStr}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '20px', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '13px' }}>🔥</span>
-              <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>{streak}</span>
-              <span style={{ color: 'var(--text-hint)', fontSize: '12px' }}>day streak</span>
-            </div>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '20px', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '13px' }}>🔥</span>
+            <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>{streak}</span>
+            <span style={{ color: 'var(--text-hint)', fontSize: '12px' }}>day streak</span>
           </div>
         </div>
 
-        {/* Content */}
         <div className="page-pad app-content-pad" style={{ maxWidth: '1100px' }}>
           {isGuest && <GuestBanner daysRemaining={daysRemaining} onSave={() => navigate('/settings')} />}
-          <ShortcutRow navigate={navigate} />
 
-          {/* Daily Nutrition */}
           <div style={{ marginBottom: '16px' }}>
-            <NutritionCard
+            <CalorieHero
               consumed={consumed}
               target={calorieTarget}
-              protein={consumedProtein}
-              carbs={consumedCarbs}
-              fat={consumedFat}
-              targets={{ protein: targets.protein.g, carbs: targets.carbs.g, fat: targets.fat.g }}
+              chartDays={chartDays}
+              chartRange={chartRange}
+              setChartRange={setChartRange}
               onClick={() => navigate('/nutrients')}
             />
           </div>
 
-          {/* Progress: weight + this week's calories + logging calendar */}
+          <div className="grid-3" style={{ border: '1px solid var(--border-strong)', borderRadius: 16, overflow: 'hidden', marginBottom: '20px', gap: 0 }}>
+            <div style={{ borderRight: '1px solid var(--border-default)' }}><MacroCell label="Protein" value={consumedProtein} target={targets.protein.g} color={ACCENT} /></div>
+            <div style={{ borderRight: '1px solid var(--border-default)' }}><MacroCell label="Carbs" value={consumedCarbs} target={targets.carbs.g} color={WATER_BLUE} /></div>
+            <MacroCell label="Fat" value={consumedFat} target={targets.fat.g} color={AI_PURPLE} />
+          </div>
+
+          <FavouritesRow favourites={favourites.rows} onQuickAdd={quickAddFavourite} />
+
+          <ShortcutRow navigate={navigate} />
+
+          {/* Progress: weight + logging calendar */}
           <div style={{ marginBottom: '16px' }}>
-            <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Progress</div>
-            <div className="grid-3">
+            <div className="grid-2">
               <WeightCard weightLogs={weightLogs} latest={latestWeight} unit={weightUnit} onLog={(w, u) => logWeight(today, w, u)} navigate={navigate} />
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
-                <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>This week's calories</div>
-                <WeekBars days={weekDays} calorieTarget={calorieTarget} />
-              </div>
               <LogCalendar
                 month={calMonth}
                 byDate={calByDate}
@@ -483,45 +591,53 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* AI Insights */}
-          <div
-            onClick={() => navigate('/insights')}
-            style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '16px', padding: '20px', marginBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: '16px', cursor: 'pointer' }}
-          >
-            <div style={{ width: '36px', height: '36px', background: 'var(--accent-dark)', opacity: 1, border: '1px solid var(--accent-border)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <i className="ti ti-sparkles" style={{ fontSize: 16, color: 'var(--accent)' }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ color: 'var(--accent-dark)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>AI Insights</span>
-                <i className="ti ti-chevron-right" style={{ fontSize: 14, color: 'var(--accent-dark)' }} />
-              </div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.6, margin: '6px 0 0' }}>
-                {insight?.body || 'Start logging your meals to get personalised tips based on your patterns.'}
-              </p>
-            </div>
-          </div>
-
           {/* Check in: water + mood */}
           <div style={{ marginBottom: '16px' }}>
             <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Check in</div>
             <div className="grid-2">
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
+              <div style={{ border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500 }}>Water</span>
                   <span style={{ color: WATER_BLUE, fontSize: '13px', fontWeight: 600 }}>{glasses}/8 glasses</span>
                 </div>
                 <WaterTracker glasses={glasses} setGlasses={setGlasses} />
               </div>
-              <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
+              <div style={{ border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
                 <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '14px' }}>How are you feeling?</span>
                 <MoodCheckin mood={mood} setMood={setMood} energy={energy} setEnergy={setEnergy} />
               </div>
             </div>
           </div>
 
+          {/* Insights & Data */}
+          <div style={{ border: '1px solid var(--border-strong)', borderRadius: 16, padding: 20, marginBottom: '16px' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, letterSpacing: '0.04em' }}>INSIGHTS &amp; DATA</div>
+            <div
+              onClick={() => navigate('/insights')}
+              style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: 12, padding: '14px 16px', marginBottom: 14, display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}
+            >
+              <i className="ti ti-sparkles" style={{ color: 'var(--accent)', fontSize: 15, marginTop: 2 }} />
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                {insight?.body || 'Start logging your meals to get personalised tips based on your patterns.'}
+              </div>
+            </div>
+            <div>
+              <ChangeRow label="Logging streak" value={`${streak} days`} trend="up" />
+              {weightTrendKg !== null && (
+                <ChangeRow
+                  label="Weight trend (7-day)"
+                  value={`${weightTrendKg >= 0 ? '+' : ''}${round1(weightUnit === 'lb' ? weightTrendKg / 0.453592 : weightTrendKg)} ${weightUnit}`}
+                  trend={weightTrendKg >= 0 ? 'up' : 'down'}
+                />
+              )}
+              {expenditureEstimate != null && (
+                <ChangeRow label="Estimated maintenance" value={`${expenditureEstimate.toLocaleString()} kcal`} />
+              )}
+            </div>
+          </div>
+
           {/* Daily food log */}
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
+          <div style={{ border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <span onClick={() => navigate('/log')} style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                 Daily food log <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
