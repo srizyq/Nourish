@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { addFoodLog, deleteFoodLog, updateFoodLog, getFoodLogsForDate } from '../lib/db';
-import { mealFromDate, groupItemsByHour } from '../lib/mealTime';
+import { mealFromDate, buildDayTimeline } from '../lib/mealTime';
 
 function mapRow(row) {
   return {
@@ -55,9 +55,10 @@ export function useFoodLogs(date) {
     return grouped;
   }, [items]);
 
-  // Pro users' daily log view — same items, grouped by the hour they were
-  // actually logged instead of by meal category.
-  const hourlyGroups = useMemo(() => groupItemsByHour(items), [items]);
+  // Pro users' daily log view — same items, but covering the full
+  // 12am–11pm day instead of by meal category, with empty stretches
+  // collapsed into expandable gap segments (see buildDayTimeline).
+  const dayTimeline = useMemo(() => buildDayTimeline(items), [items]);
 
   // mealName is optional — when omitted (Pro/time-based logging), the meal
   // category is derived from loggedAt purely so the food_logs row (which
@@ -104,5 +105,5 @@ export function useFoodLogs(date) {
     return updated;
   }, []);
 
-  return { logs, meals, hourlyGroups, loading, addFood, deleteFood, updateFood, refetch };
+  return { logs, meals, dayTimeline, loading, addFood, deleteFood, updateFood, refetch };
 }

@@ -48,20 +48,46 @@ export function formatTimeFromDate(d) {
   return formatTime12h(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
 }
 
-// Groups already-mapped log items (each carrying loggedAt/createdAt) into
-// hourly buckets, sorted chronologically, skipping hours with nothing in
-// them — used for the Pro "hourly" daily log view in place of the
-// breakfast/lunch/dinner/snacks grouping.
-export function groupItemsByHour(items) {
-  const buckets = new Map();
+// Full 12am–11pm coverage for the Pro hourly view, instead of
+// groupItemsByHour's "only show hours with something in them" (which
+// reads as basically empty for most of the day). Contiguous stretches of
+// empty hours collapse into a single 'gap' segment the UI can render as
+// one line that expands into individual hour rows on tap, rather than
+// listing 20+ empty hours by default.
+export function buildDayTimeline(items) {
+  const byHour = new Map();
   for (const item of items) {
     const ts = item.loggedAt || item.createdAt;
     if (!ts) continue;
     const hour = new Date(ts).getHours();
-    if (!buckets.has(hour)) buckets.set(hour, []);
-    buckets.get(hour).push(item);
+    if (!byHour.has(hour)) byHour.set(hour, []);
+    byHour.get(hour).push(item);
   }
-  return Array.from(buckets.entries())
-    .sort((a, b) => a[0] - b[0])
-    .map(([hour, hourItems]) => ({ hour, label: formatHourLabel(hour), items: hourItems }));
+
+  function makeGap(startHour, endHour) {
+    const label = startHour === endHour
+      ? formatHourLabel(startHour)
+      : `${formatHourLabel(startHour)} – ${formatHourLabel((endHour + 1) % 24)}`;
+    return {
+      type: 'gap',
+      id: `gap-${startHour}-${endHour}`,
+      startHour,
+      endHour,
+      label,
+      hours: Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i),
+    };
+  }
+
+  const segments = [];
+  let gapStart = null;
+  for (let hour = 0; hour < 24; hour++) {
+    if (byHour.has(hour)) {
+      if (gapStart !== null) { segments.push(makeGap(gapStart, hour - 1)); gapStart = null; }
+      segments.push({ type: 'hour', hour, label: formatHourLabel(hour), items: byHour.get(hour) });
+    } else if (gapStart === null) {
+      gapStart = hour;
+    }
+  }
+  if (gapStart !== null) segments.push(makeGap(gapStart, 23));
+  return segments;
 }

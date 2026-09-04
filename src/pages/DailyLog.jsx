@@ -5,6 +5,7 @@ import { useFoodLogs } from '../hooks/useFoodLogs';
 import { todayLocalDate } from '../lib/patterns';
 import AppNav from '../components/AppNav';
 import LogItemRow from '../components/LogItemRow';
+import HourlyTimeline from '../components/HourlyTimeline';
 import { round1 } from '../lib/format';
 
 const MEAL_LABELS = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner', snacks: 'Snacks' };
@@ -22,9 +23,8 @@ export default function DailyLog() {
     return requested && requested <= today ? requested : today;
   });
   const isToday = selectedDate === today;
-  const { meals, hourlyGroups, loading, deleteFood, updateFood } = useFoodLogs(selectedDate);
+  const { meals, dayTimeline, loading, deleteFood, updateFood } = useFoodLogs(selectedDate);
   const [open, setOpen] = useState({ breakfast: true, lunch: true, dinner: true, snacks: true });
-  const [openHours, setOpenHours] = useState({});
   const [expandedId, setExpandedId] = useState(null);
 
   function shiftDate(days) {
@@ -76,51 +76,13 @@ export default function DailyLog() {
           </div>
 
           {loading ? null : isPremium ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {hourlyGroups.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)', fontSize: 13, background: 'var(--bg-subtle)', border: '1px dashed var(--border-strong)', borderRadius: 10 }}>
-                  {isToday ? 'Nothing logged today yet.' : 'Nothing logged this day.'}
-                </div>
-              )}
-              {hourlyGroups.map(({ hour, label, items }) => {
-                const hourTotal = Math.round(items.reduce((s, i) => s + i.cal, 0));
-                const hourProtein = round1(items.reduce((s, i) => s + i.protein, 0));
-                const hourCarbs = round1(items.reduce((s, i) => s + i.carbs, 0));
-                const hourFat = round1(items.reduce((s, i) => s + i.fat, 0));
-                const isOpen = openHours[hour] ?? true;
-                return (
-                  <div key={hour} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
-                    <button onClick={() => setOpenHours(o => ({ ...o, [hour]: !isOpen }))} style={{ width: '100%', background: 'none', border: 'none', padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 15, color: 'var(--text-secondary)' }}>{label}</div>
-                        <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>P {hourProtein}g · C {hourCarbs}g · F {hourFat}g</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{hourTotal} kcal</span>
-                        <span style={{ color: 'var(--border-strong)', fontSize: 12, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▼</span>
-                      </div>
-                    </button>
-                    {isOpen && (
-                      <div style={{ borderTop: '1px solid var(--border-default)' }}>
-                        {items.map(item => (
-                          <LogItemRow
-                            key={item.id}
-                            item={item}
-                            isExpanded={expandedId === item.id}
-                            onToggle={() => setExpandedId(prev => (prev === item.id ? null : item.id))}
-                            onDelete={() => deleteFood(item.id)}
-                            onSave={async (fields) => { await updateFood(item.id, fields); setExpandedId(null); }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              <button onClick={() => navigate('/food', { state: { date: selectedDate } })} style={{ background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 12, color: 'var(--accent-dark)', fontSize: 13, cursor: 'pointer', padding: '12px 18px', textAlign: 'left' }}>
-                + Add food{!isToday ? ` to ${dateStr}` : ''}
-              </button>
-            </div>
+            <HourlyTimeline
+              segments={dayTimeline}
+              onDelete={deleteFood}
+              onSave={updateFood}
+              onNavigateAdd={() => navigate('/food', { state: { date: selectedDate } })}
+              emptyMessage={isToday ? 'Nothing logged today yet.' : 'Nothing logged this day.'}
+            />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {Object.entries(meals).map(([mealKey, items]) => {

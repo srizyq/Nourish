@@ -19,6 +19,7 @@ import { getCategoryStyle } from '../lib/foodCategories';
 import AppNav from '../components/AppNav';
 import LogItemRow from '../components/LogItemRow';
 import LogCalendar from '../components/LogCalendar';
+import HourlyTimeline from '../components/HourlyTimeline';
 import { round1 } from '../lib/format';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
@@ -408,7 +409,7 @@ export default function Dashboard() {
   const today = todayLocalDate();
   const { profile, save: saveProfile } = useProfile();
   const isPremium = !!profile?.is_premium;
-  const { meals, hourlyGroups, deleteFood, updateFood, addFood } = useFoodLogs(today);
+  const { meals, dayTimeline, deleteFood, updateFood, addFood } = useFoodLogs(today);
   const { checkin, save: saveCheckin } = useCheckins(today);
   // 90 days (not 30) so the pattern engine's more specific candidates
   // (fibre, hydration, sugar, breakfast) have a real chance to each reach
@@ -644,14 +645,21 @@ export default function Dashboard() {
               </span>
               <span style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: 600 }}>{Math.round(consumed)} kcal logged</span>
             </div>
-            <MealLog
-              groups={isPremium
-                ? hourlyGroups.map(g => ({ key: String(g.hour), label: g.label, items: g.items }))
-                : Object.entries(meals).map(([key, items]) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1), items }))}
-              onDelete={deleteFood}
-              onSave={updateFood}
-              onNavigateFood={(key) => navigate('/food', isPremium ? undefined : { state: { openMeal: key } })}
-            />
+            {isPremium ? (
+              <HourlyTimeline
+                segments={dayTimeline}
+                onDelete={deleteFood}
+                onSave={updateFood}
+                onNavigateAdd={() => navigate('/food')}
+              />
+            ) : (
+              <MealLog
+                groups={Object.entries(meals).map(([key, items]) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1), items }))}
+                onDelete={deleteFood}
+                onSave={updateFood}
+                onNavigateFood={(key) => navigate('/food', { state: { openMeal: key } })}
+              />
+            )}
           </div>
         </div>
       </div>
