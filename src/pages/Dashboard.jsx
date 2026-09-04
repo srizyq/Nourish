@@ -1,10 +1,6 @@
 // src/pages/Dashboard.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler,
-} from 'chart.js';
-import { Line } from 'react-chartjs-2';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
 import { useFoodLogs } from '../hooks/useFoodLogs';
@@ -22,12 +18,7 @@ import LogCalendar from '../components/LogCalendar';
 import HourlyTimeline from '../components/HourlyTimeline';
 import { round1 } from '../lib/format';
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
-
-// Chart.js renders to canvas, which can't resolve CSS custom properties —
-// see the note in WeightCard below. Accent/water-blue/ai-purple are the
-// same hex in both themes by design, so hardcoding them here is correct,
-// not a theming gap.
+// Accent/water-blue/ai-purple are the same hex in both themes by design.
 const ACCENT = '#8fbc8f';
 const WATER_BLUE = '#6aabcf';
 const AI_PURPLE = '#9f97e8';
@@ -37,7 +28,76 @@ const AI_PURPLE = '#9f97e8';
 // this is a chart of actual logged calories, not an estimate). ──────────
 const CHART_RANGES = [{ id: '1W', days: 7 }, { id: '1M', days: 30 }, { id: '3M', days: 90 }];
 
-function CalorieHero({ consumed, target, chartDays, chartRange, setChartRange, onClick }) {
+// One tap adds 250ml (one "glass" in the underlying water_glasses count —
+// no schema change, this is purely a display/interaction relabel). Holding
+// the tile for ~500ms removes the most recent addition instead, since the
+// tile is too small to show a row of individually-tappable glasses like
+// the old WaterTracker did.
+const WATER_ML_PER_GLASS = 250;
+const WATER_LONG_PRESS_MS = 500;
+
+function WeightTile({ latest, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1, width: '100%', textAlign: 'left', background: 'none', border: 'none',
+        borderBottom: '1px solid var(--border-default)', padding: '14px 12px', cursor: 'pointer',
+        display: 'flex', flexDirection: 'column', justifyContent: 'center', fontFamily: 'inherit',
+      }}
+    >
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 6 }}>WEIGHT</div>
+      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, color: 'var(--text-primary)' }}>
+        {latest ? `${latest.weight}${latest.unit}` : '—'}
+      </div>
+    </button>
+  );
+}
+
+function WaterTile({ glasses, setGlasses }) {
+  const pressTimer = useRef(null);
+  const longPressFired = useRef(false);
+
+  function handlePointerDown(e) {
+    e.stopPropagation();
+    longPressFired.current = false;
+    pressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      setGlasses(Math.max(0, glasses - 1));
+    }, WATER_LONG_PRESS_MS);
+  }
+  function clearPressTimer() {
+    clearTimeout(pressTimer.current);
+  }
+  function handlePointerUp(e) {
+    e.stopPropagation();
+    clearPressTimer();
+    if (longPressFired.current) { longPressFired.current = false; return; }
+    setGlasses(glasses + 1);
+  }
+
+  return (
+    <button
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={clearPressTimer}
+      onPointerCancel={clearPressTimer}
+      style={{
+        flex: 1, width: '100%', textAlign: 'left', background: 'none', border: 'none',
+        padding: '14px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column',
+        justifyContent: 'center', fontFamily: 'inherit', touchAction: 'manipulation', userSelect: 'none',
+      }}
+      title="Tap to add 250ml — hold to undo the last tap"
+    >
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 6 }}>WATER</div>
+      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, color: 'var(--water-blue)' }}>
+        {glasses * WATER_ML_PER_GLASS}ml
+      </div>
+    </button>
+  );
+}
+
+function DashboardHero({ consumed, target, chartDays, chartRange, setChartRange, onChartClick, latestWeight, onWeightClick, glasses, setGlasses }) {
   const max = Math.max(target, ...chartDays.map(d => d.calories), 1);
   const min = Math.min(...chartDays.map(d => d.calories), target);
   const span = max - min || 1;
@@ -60,54 +120,61 @@ function CalorieHero({ consumed, target, chartDays, chartRange, setChartRange, o
   labelIdxs.add(chartDays.length - 1);
 
   return (
-    <div style={{ border: '1px solid var(--border-strong)', borderRadius: 16, padding: 20, cursor: 'pointer' }} onClick={onClick}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
-        <div>
+    <div style={{ border: '1px solid var(--border-strong)', borderRadius: 16, overflow: 'hidden', display: 'flex' }}>
+      {/* Weight + water — compact glance tiles, replacing the old
+          standalone Weight card and Check-in water card. */}
+      <div style={{ width: 104, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-default)' }}>
+        <WeightTile latest={latestWeight} onClick={onWeightClick} />
+        <WaterTile glasses={glasses} setGlasses={setGlasses} />
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0, padding: '18px 16px', cursor: 'pointer' }} onClick={onChartClick}>
+        {/* Stacked, not side-by-side — this panel is narrower now that
+            weight/water share the card, and TODAY's big number + REMAINING's
+            block no longer both fit on one row without wrapping badly. */}
+        <div style={{ marginBottom: 8 }}>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>TODAY</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 34, fontWeight: 700, color: 'var(--text-primary)' }}>{Math.round(consumed).toLocaleString()}</span>
-            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>/ {target.toLocaleString()} kcal</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 28, fontWeight: 700, color: 'var(--text-primary)' }}>{Math.round(consumed).toLocaleString()}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>/ {target.toLocaleString()} kcal</span>
+            <span style={{ color: 'var(--accent)', fontSize: 12, fontWeight: 600, marginLeft: 'auto' }}>
+              {round1(Math.max(0, target - consumed))} left
+            </span>
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>REMAINING</div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: 'var(--accent)' }}>
-            {round1(Math.max(0, target - consumed))}
-          </div>
+
+        <svg viewBox={`0 0 ${w} 78`} style={{ width: '100%', height: 110, marginTop: 10 }} preserveAspectRatio="none">
+          <polygon points={areaPts} fill="var(--accent)" opacity="0.08" />
+          <polyline points={linePts} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {showDots && points.map(([x, y], i) => (
+            <circle key={i} cx={x} cy={y} r={i === points.length - 1 ? 4 : 2.5} fill={i === points.length - 1 ? 'var(--accent)' : 'var(--bg-card)'} stroke="var(--accent)" strokeWidth="1.5" />
+          ))}
+        </svg>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} onClick={e => e.stopPropagation()}>
+          {chartDays.map((d, i) => (
+            <span key={d.date} style={{ fontSize: 10, color: 'var(--text-hint)', visibility: labelIdxs.has(i) ? 'visible' : 'hidden' }}>
+              {chartRange === '1W'
+                ? new Date(d.date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short' })
+                : new Date(d.date + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+            </span>
+          ))}
         </div>
-      </div>
 
-      <svg viewBox={`0 0 ${w} 78`} style={{ width: '100%', height: 110, marginTop: 10 }} preserveAspectRatio="none">
-        <polygon points={areaPts} fill="var(--accent)" opacity="0.08" />
-        <polyline points={linePts} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        {showDots && points.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r={i === points.length - 1 ? 4 : 2.5} fill={i === points.length - 1 ? 'var(--accent)' : 'var(--bg-card)'} stroke="var(--accent)" strokeWidth="1.5" />
-        ))}
-      </svg>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }} onClick={e => e.stopPropagation()}>
-        {chartDays.map((d, i) => (
-          <span key={d.date} style={{ fontSize: 10, color: 'var(--text-hint)', visibility: labelIdxs.has(i) ? 'visible' : 'hidden' }}>
-            {chartRange === '1W'
-              ? new Date(d.date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short' })
-              : new Date(d.date + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-          </span>
-        ))}
-      </div>
-
-      <div onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', gap: 2, background: 'var(--pill-track)', borderRadius: 99, padding: 3 }}>
-        {CHART_RANGES.map(r => (
-          <button
-            key={r.id}
-            onClick={() => setChartRange(r.id)}
-            style={{
-              padding: '6px 14px', borderRadius: 99, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              background: chartRange === r.id ? 'var(--pill-bg)' : 'transparent',
-              color: chartRange === r.id ? 'var(--pill-text)' : 'var(--text-muted)',
-            }}
-          >
-            {r.id}
-          </button>
-        ))}
+        <div onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', gap: 2, background: 'var(--pill-track)', borderRadius: 99, padding: 3 }}>
+          {CHART_RANGES.map(r => (
+            <button
+              key={r.id}
+              onClick={() => setChartRange(r.id)}
+              style={{
+                padding: '6px 14px', borderRadius: 99, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                background: chartRange === r.id ? 'var(--pill-bg)' : 'transparent',
+                color: chartRange === r.id ? 'var(--pill-text)' : 'var(--text-muted)',
+              }}
+            >
+              {r.id}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -171,91 +238,6 @@ function FavouritesRow({ favourites, onQuickAdd }) {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-// ─── Progress (weight) ──────────────────────────────────────────────────
-function WeightCard({ weightLogs, latest, unit, onLog, navigate }) {
-  const [showInput, setShowInput] = useState(false);
-  const [value, setValue] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  // Chart.js renders to <canvas>, which can't resolve CSS custom
-  // properties the way DOM elements can — it needs an actual color
-  // string at paint time. That's fine here since accent is the same hex
-  // in both themes by design; only DOM backgrounds/borders/text below
-  // need var()s.
-  const chartData = {
-    labels: weightLogs.map(w => w.logged_date),
-    datasets: [{
-      data: weightLogs.map(w => Number(w.weight)),
-      borderColor: ACCENT,
-      backgroundColor: ACCENT + '22',
-      fill: true,
-      tension: 0.3,
-      pointRadius: 0,
-    }],
-  };
-  const chartOptions = {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { enabled: false } },
-    scales: { x: { display: false }, y: { display: false } },
-  };
-
-  async function submit() {
-    if (!value || saving) return;
-    setSaving(true);
-    try {
-      await onLog(Number(value), unit);
-      setValue('');
-      setShowInput(false);
-    } catch (err) {
-      console.error('Failed to log weight:', err);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div style={{ border: '1px solid var(--border-strong)', borderRadius: 16, padding: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ color: 'var(--text-muted)', fontSize: 13, fontWeight: 500 }}>Weight</span>
-        <button onClick={() => setShowInput(s => !s)} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>
-          {showInput ? 'Cancel' : '+ Log'}
-        </button>
-      </div>
-      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>
-        {latest ? `${latest.weight}${latest.unit}` : '—'}
-      </div>
-      {showInput ? (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-          <input
-            type="number" value={value} onChange={e => setValue(e.target.value)} placeholder={`Weight (${unit})`}
-            style={{ flex: 1, background: 'var(--bg-subtle)', border: '1px solid var(--border-default)', borderRadius: 7, padding: '7px 10px', color: 'var(--text-primary)', fontSize: 13, outline: 'none', fontFamily: 'inherit' }}
-          />
-          <button onClick={submit} disabled={!value || saving} style={{ background: !value || saving ? 'var(--border-default)' : 'var(--accent)', border: 'none', borderRadius: 7, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: !value || saving ? 'var(--text-muted)' : '#0f0f0f', cursor: !value || saving ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>Save</button>
-        </div>
-      ) : weightLogs.length > 1 ? (
-        <div style={{ height: 60 }}><Line data={chartData} options={chartOptions} /></div>
-      ) : (
-        <div style={{ fontSize: 12, color: 'var(--text-hint)' }}>Log your weight to see a trend here</div>
-      )}
-      <button onClick={() => navigate('/progress')} style={{ background: 'none', border: 'none', color: 'var(--text-hint)', fontSize: 11, cursor: 'pointer', marginTop: 12, padding: 0, fontFamily: 'inherit' }}>View full history →</button>
-    </div>
-  );
-}
-
-// ─── Water Tracker ────────────────────────────────────────────────────────────
-function WaterTracker({ glasses, setGlasses, target = 8 }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-      {Array.from({ length: target }).map((_, i) => (
-        <button key={i} onClick={() => setGlasses(i < glasses ? i : i + 1)} style={{ width: '28px', height: '28px', borderRadius: '6px', border: `1px solid ${i < glasses ? WATER_BLUE : 'var(--border-default)'}`, background: i < glasses ? WATER_BLUE + '22' : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', transition: 'background 0.15s, border-color 0.15s, color 0.15s', color: i < glasses ? WATER_BLUE : 'var(--border-default)' }}>
-          💧
-        </button>
-      ))}
-      <span style={{ color: 'var(--text-hint)', fontSize: '12px', marginLeft: '4px' }}>{glasses}/{target}</span>
     </div>
   );
 }
@@ -418,7 +400,7 @@ export default function Dashboard() {
   // hand instead of a second fetch.
   const { dailyData } = useHistory(dateNDaysAgo(90), today);
   const weightUnit = profile?.unit === 'imperial' ? 'lb' : 'kg';
-  const { logs: weightLogs, latest: latestWeight, logWeight } = useWeightLogs(dateNDaysAgo(89), today);
+  const { logs: weightLogs, latest: latestWeight } = useWeightLogs(dateNDaysAgo(89), today);
   const favourites = useFavouriteFoods();
 
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
@@ -555,13 +537,17 @@ export default function Dashboard() {
           {isGuest && <GuestBanner daysRemaining={daysRemaining} onSave={() => navigate('/settings')} />}
 
           <div style={{ marginBottom: '16px' }}>
-            <CalorieHero
+            <DashboardHero
               consumed={consumed}
               target={calorieTarget}
               chartDays={chartDays}
               chartRange={chartRange}
               setChartRange={setChartRange}
-              onClick={() => navigate('/nutrients')}
+              onChartClick={() => navigate('/nutrients')}
+              latestWeight={latestWeight}
+              onWeightClick={() => navigate('/progress')}
+              glasses={glasses}
+              setGlasses={setGlasses}
             />
           </div>
 
@@ -575,38 +561,27 @@ export default function Dashboard() {
 
           <ShortcutRow navigate={navigate} />
 
-          {/* Progress: weight + logging calendar */}
+          {/* Logging calendar — full width now that Weight moved into the
+              hero card above. */}
           <div style={{ marginBottom: '16px' }}>
-            <div className="grid-2">
-              <WeightCard weightLogs={weightLogs} latest={latestWeight} unit={weightUnit} onLog={(w, u) => logWeight(today, w, u)} navigate={navigate} />
-              <LogCalendar
-                month={calMonth}
-                byDate={calByDate}
-                calorieTarget={calorieTarget}
-                loading={calLoading}
-                onPrevMonth={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-                onNextMonth={() => canGoNextMonth && setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-                canGoNext={canGoNextMonth}
-                onSelectDay={(date) => navigate('/log', { state: { date } })}
-              />
-            </div>
+            <LogCalendar
+              month={calMonth}
+              byDate={calByDate}
+              calorieTarget={calorieTarget}
+              loading={calLoading}
+              onPrevMonth={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+              onNextMonth={() => canGoNextMonth && setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+              canGoNext={canGoNextMonth}
+              onSelectDay={(date) => navigate('/log', { state: { date } })}
+            />
           </div>
 
-          {/* Check in: water + mood */}
+          {/* Check in: mood — water moved into the hero card above. */}
           <div style={{ marginBottom: '16px' }}>
             <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Check in</div>
-            <div className="grid-2">
-              <div style={{ border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500 }}>Water</span>
-                  <span style={{ color: WATER_BLUE, fontSize: '13px', fontWeight: 600 }}>{glasses}/8 glasses</span>
-                </div>
-                <WaterTracker glasses={glasses} setGlasses={setGlasses} />
-              </div>
-              <div style={{ border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '14px' }}>How are you feeling?</span>
-                <MoodCheckin mood={mood} setMood={setMood} energy={energy} setEnergy={setEnergy} />
-              </div>
+            <div style={{ border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '14px' }}>How are you feeling?</span>
+              <MoodCheckin mood={mood} setMood={setMood} energy={energy} setEnergy={setEnergy} />
             </div>
           </div>
 

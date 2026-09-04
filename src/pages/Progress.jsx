@@ -142,7 +142,7 @@ export default function Progress() {
   const calByDate = useMemo(() => new Map(calData.map(d => [d.date, d])), [calData]);
   const canGoNextMonth = calMonthStart < todayLocalDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const weightRangeDays = WEIGHT_RANGES.find(r => r.id === weightRange)?.days;
-  const { logs: weightLogs, loading: weightLoading } = useWeightLogs(
+  const { logs: weightLogs, loading: weightLoading, logWeight } = useWeightLogs(
     weightRangeDays ? dateNDaysAgo(weightRangeDays - 1) : null,
     today
   );
@@ -416,7 +416,7 @@ export default function Progress() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
               <div>
                 <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 2 }}>Weight</div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Logged from the dashboard</div>
+                <LogWeightButton unit={weightUnit} onLog={(w, u) => logWeight(today, w, u)} />
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {WEIGHT_RANGES.map(r => (
@@ -433,7 +433,7 @@ export default function Progress() {
             {weightLoading ? null : weightLogs.length > 1 ? (
               <div style={{ height: 220 }}><Line data={weightChartData} options={chartOptions} /></div>
             ) : (
-              <EmptyChartBox icon="ti-scale" message="Log your weight from the dashboard to see a trend here" />
+              <EmptyChartBox icon="ti-scale" message="Log your weight above to see a trend here" />
             )}
           </div>
 
@@ -493,6 +493,53 @@ function EmptyChartBox({ icon, message }) {
     }}>
       <i className={`ti ${icon}`} style={{ fontSize: 28, color: "var(--border-strong)" }} />
       <div style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", maxWidth: 180 }}>{message}</div>
+    </div>
+  );
+}
+
+// Progress is now the only place in the app to log a new weight entry —
+// the dashboard's inline "+ Log" form (on the old standalone WeightCard)
+// was removed when weight became a compact glance-tile there that just
+// links here instead.
+function LogWeightButton({ unit, onLog }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit() {
+    if (!value || saving) return;
+    setSaving(true);
+    try {
+      await onLog(Number(value), unit);
+      setValue("");
+      setOpen(false);
+    } catch (err) {
+      console.error("Failed to log weight:", err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} style={{ background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 7, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "var(--accent)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+        + Log weight
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <input
+        type="number" autoFocus value={value} onChange={e => setValue(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter") submit(); if (e.key === "Escape") setOpen(false); }}
+        placeholder={`Weight (${unit})`}
+        style={{ width: 110, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 7, padding: "6px 10px", color: "var(--text-primary)", fontSize: 13, outline: "none", fontFamily: "inherit" }}
+      />
+      <button onClick={submit} disabled={!value || saving} style={{ background: !value || saving ? "var(--border-default)" : "var(--accent)", border: "none", borderRadius: 7, padding: "6px 12px", fontSize: 12, fontWeight: 600, color: !value || saving ? "var(--text-muted)" : "#0f0f0f", cursor: !value || saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+        {saving ? "Saving…" : "Save"}
+      </button>
+      <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", color: "var(--text-hint)", fontSize: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
     </div>
   );
 }
