@@ -12,8 +12,11 @@
   --bg-subtle: #141414;
   --border-default: #2a2a2a;
   --border-active: #3a5a3a;
+  --border-strong: #f5f5f2;
   --accent: #8fbc8f;
   --accent-dark: #4a7a4a;
+  --accent-bg: #0f1a0f;
+  --accent-border: #1e3a1e;
   --water-blue: #6aabcf;
   --ai-purple: #9f97e8;
   --warning: #b48250;
@@ -23,6 +26,9 @@
   --text-secondary: #ccc;
   --text-muted: #666;
   --text-hint: #444;
+  --pill-track: #1c1c1a;
+  --pill-bg: #f5f5f2;
+  --pill-text: #0a0a0a;
 }
 
 /* App-wide theme system — scoped to a wrapper element carrying
@@ -103,4 +109,67 @@ body {
 
 h1, h2, h3, h4, h5 {
   font-family: 'Syne', sans-serif;
+}
+
+/* MOTION — shared, reused by multiple components rather than declared
+   per-file (see plans/001, plans/003, plans/005 for the audit behind
+   these). Previously lived in App.css (marketing-page-only); moved here
+   when App.css was retired so Settings/FoodSearch/PhotoScanModal/
+   RequireAuth — which all rely on these — keep working. */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes modal-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes modal-panel-in {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes modal-panel-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.97) translateY(4px); }
+}
+
+.modal-backdrop {
+  animation: modal-backdrop-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.modal-backdrop.is-closing {
+  animation: modal-backdrop-out 160ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+.modal-panel {
+  animation: modal-panel-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  transform-origin: center;
+}
+.modal-panel.is-closing {
+  animation: modal-panel-out 160ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to { opacity: 0; transform: translateX(-50%) translateY(6px); }
+}
+.toast-in { animation: toast-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.toast-out { animation: toast-out 160ms cubic-bezier(0.4, 0, 1, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes modal-panel-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes modal-panel-out { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes toast-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes toast-out { from { opacity: 1; } to { opacity: 0; } }
+}
+
+/* Press feedback uses `animation`, not `transition` — nearly every
+   button in this codebase sets its own inline `transition` (for hover
+   color/border changes), and an inline `transition` fully replaces the
+   property rather than merging with an external rule, which would
+   silently strip `transform` from this rule's animated properties on
+   any button that already has one. `animation` is a separate CSS
+   property untouched by that, so it survives regardless of what a
+   button's own inline style sets. */
+@keyframes button-press { from { transform: scale(1); } to { transform: scale(0.97); } }
+button:not(:disabled):active {
+  animation: button-press 160ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
