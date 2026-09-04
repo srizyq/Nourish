@@ -1031,45 +1031,56 @@ export default function FoodSearch() {
 
   const browsing = query === "";
 
-  const recentFoods = useMemo(() => recentRows.map(row => ({
-    id: "recent_" + row.id,
-    name: row.food_name,
-    meta: "Logged before",
-    cuisine: "all",
-    cal: Number(row.calories) || 0,
-    protein: Number(row.protein_g) || 0,
-    carbs: Number(row.carbs_g) || 0,
-    fat: Number(row.fat_g) || 0,
-    fibre: 0,
-    sodium: 0,
-    sugar: 0,
-    servingGrams: row.serving_grams || 100,
-    source: row.source || "log",
-    // Row is already the most recent food_logs entry for this name, so
-    // its own logged_amount/logged_unit *is* "last used" — no extra
-    // lookup needed here.
-    lastAmount: row.logged_amount != null ? Number(row.logged_amount) : null,
-    lastUnit: row.logged_unit || null,
-  })), [recentRows]);
+  const recentFoods = useMemo(() => recentRows.map(row => {
+    const lastAmount = row.logged_amount != null ? Number(row.logged_amount) : null;
+    const lastUnit = row.logged_unit || null;
+    return {
+      id: "recent_" + row.id,
+      name: row.food_name,
+      // Shows the amount that'll actually be quick-added (MyFitnessPal-style
+      // "258 cal, 200g" row) instead of a generic "Logged before" whenever
+      // there's a remembered amount to show.
+      meta: lastAmount != null && lastUnit ? formatAmountUnit(lastAmount, lastUnit) : "Logged before",
+      cuisine: "all",
+      cal: Number(row.calories) || 0,
+      protein: Number(row.protein_g) || 0,
+      carbs: Number(row.carbs_g) || 0,
+      fat: Number(row.fat_g) || 0,
+      fibre: 0,
+      sodium: 0,
+      sugar: 0,
+      servingGrams: row.serving_grams || 100,
+      source: row.source || "log",
+      // Row is already the most recent food_logs entry for this name, so
+      // its own logged_amount/logged_unit *is* "last used" — no extra
+      // lookup needed here.
+      lastAmount,
+      lastUnit,
+    };
+  }), [recentRows]);
 
   // Frequently logged (real log-count data) mapped to the same food-card
   // shape as everything else.
-  const frequentFoods = useMemo(() => frequent.rows.map(row => ({
-    id: "freq_" + row.id,
-    name: row.food_name,
-    meta: "Logged often",
-    cal: Number(row.calories) || 0,
-    protein: Number(row.protein_g) || 0,
-    carbs: Number(row.carbs_g) || 0,
-    fat: Number(row.fat_g) || 0,
-    fibre: 0,
-    sodium: 0,
-    sugar: 0,
-    servingGrams: row.serving_grams || 100,
-    source: row.source || "log",
-    lastAmount: row.logged_amount != null ? Number(row.logged_amount) : null,
-    lastUnit: row.logged_unit || null,
-  })), [frequent.rows]);
+  const frequentFoods = useMemo(() => frequent.rows.map(row => {
+    const lastAmount = row.logged_amount != null ? Number(row.logged_amount) : null;
+    const lastUnit = row.logged_unit || null;
+    return {
+      id: "freq_" + row.id,
+      name: row.food_name,
+      meta: lastAmount != null && lastUnit ? formatAmountUnit(lastAmount, lastUnit) : "Logged often",
+      cal: Number(row.calories) || 0,
+      protein: Number(row.protein_g) || 0,
+      carbs: Number(row.carbs_g) || 0,
+      fat: Number(row.fat_g) || 0,
+      fibre: 0,
+      sodium: 0,
+      sugar: 0,
+      servingGrams: row.serving_grams || 100,
+      source: row.source || "log",
+      lastAmount,
+      lastUnit,
+    };
+  }), [frequent.rows]);
 
   // Favourites the user has starred, snapshotted at favourite time. Not
   // sourced from food_logs directly, so "last used amount" comes from the
@@ -1079,7 +1090,7 @@ export default function FoodSearch() {
     return {
       id: "fav_" + row.id,
       name: row.name,
-      meta: (row.brand ? row.brand + " · " : "") + (row.serving_label || "1 serving"),
+      meta: (row.brand ? row.brand + " · " : "") + (last ? formatAmountUnit(last.amount, last.unit) : (row.serving_label || "1 serving")),
       cal: Number(row.calories) || 0,
       protein: Number(row.protein_g) || 0,
       carbs: Number(row.carbs_g) || 0,
