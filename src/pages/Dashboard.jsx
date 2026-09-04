@@ -182,10 +182,10 @@ function DashboardHero({ consumed, target, chartDays, chartRange, setChartRange,
 
 function MacroCell({ label, value, target, color }) {
   return (
-    <div style={{ padding: '14px 16px' }}>
+    <div style={{ padding: '14px 10px' }}>
       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label.toUpperCase()}</div>
-      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 17, fontWeight: 700, color }}>
-        {round1(value)}<span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>g / {target}g</span>
+      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 700, color, whiteSpace: 'nowrap' }}>
+        {round1(value)}<span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>g/{target}g</span>
       </div>
     </div>
   );
@@ -551,7 +551,7 @@ export default function Dashboard() {
             />
           </div>
 
-          <div className="grid-3" style={{ border: '1px solid var(--border-strong)', borderRadius: 16, overflow: 'hidden', marginBottom: '20px', gap: 0 }}>
+          <div className="grid-3-fixed" style={{ border: '1px solid var(--border-strong)', borderRadius: 16, overflow: 'hidden', marginBottom: '20px', gap: 0 }}>
             <div style={{ borderRight: '1px solid var(--border-default)' }}><MacroCell label="Protein" value={consumedProtein} target={targets.protein.g} color={ACCENT} /></div>
             <div style={{ borderRight: '1px solid var(--border-default)' }}><MacroCell label="Carbs" value={consumedCarbs} target={targets.carbs.g} color={WATER_BLUE} /></div>
             <MacroCell label="Fat" value={consumedFat} target={targets.fat.g} color={AI_PURPLE} />

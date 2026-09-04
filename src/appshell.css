@@ -189,6 +189,15 @@
   }
 }
 
+/* Dashboard's Protein/Carbs/Fat row — always 3 across, even on narrow
+   phones, instead of .grid-3's usual 2-then-wrap collapse (Fat ending up
+   alone on its own row looked wrong for this specific card). */
+.grid-3-fixed {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
 /* Responsive page padding — large on desktop, tighter on phones. */
 .page-pad {
   padding: 24px 28px;
