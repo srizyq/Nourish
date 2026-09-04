@@ -68,7 +68,7 @@
 }
 [data-theme='light'] {
   --bg-primary: #ffffff;
-  --bg-card: #ffffff;
+  --bg-card: #f7f7f5;
   --bg-subtle: #f7f7f5;
   --border-default: #e7e7e5;
   --border-active: #8fbc8f;

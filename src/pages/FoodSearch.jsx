@@ -1393,7 +1393,7 @@ export default function FoodSearch() {
                   on a dead-end, matching MyFitnessPal's "Can't find it? Add
                   a food" pattern */}
               {!liveLoading && foodsResults.length > 0 && (
-                <div onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 14, textAlign: "center", padding: "10px", color: "var(--text-muted)", fontSize: 12, cursor: "pointer", border: "1px dashed var(--border-default)", borderRadius: 8 }}>
+                <div onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 14, textAlign: "center", padding: "10px", color: "var(--text-muted)", fontSize: 12, cursor: "pointer", background: "var(--bg-card)", border: "1px dashed var(--border-default)", borderRadius: 8 }}>
                   <i className="ti ti-plus" style={{ marginRight: 5 }} />Can't find "{query}"? Create a custom food
                 </div>
               )}

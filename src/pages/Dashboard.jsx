@@ -146,7 +146,7 @@ function DashboardHero({ consumed, target, chartDays, chartRange, setChartRange,
   labelIdxs.add(chartDays.length - 1);
 
   return (
-    <div style={{ border: '1px solid var(--border-strong)', borderRadius: 16, overflow: 'hidden', display: 'flex' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 16, overflow: 'hidden', display: 'flex' }}>
       {/* Weight + water — compact glance tiles, replacing the old
           standalone Weight card and Check-in water card. */}
       <div style={{ width: 104, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border-default)' }}>
@@ -384,7 +384,7 @@ function ShortcutRow({ navigate }) {
   return (
     <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
       {shortcuts.map((s, i) => (
-        <button key={i} onClick={s.action} style={{ flex: 1, background: 'transparent', border: '1px solid var(--border-strong)', borderRadius: '14px', padding: '15px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+        <button key={i} onClick={s.action} style={{ flex: 1, background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '14px', padding: '15px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
           <i className={`ti ${s.icon}`} style={{ fontSize: 15, color: 'var(--text-primary)' }} />
           <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>{s.label}</span>
         </button>
@@ -579,7 +579,7 @@ export default function Dashboard() {
             />
           </div>
 
-          <div className="grid-3-fixed" style={{ border: '1px solid var(--border-strong)', borderRadius: 16, overflow: 'hidden', marginBottom: '20px', gap: 0 }}>
+          <div className="grid-3-fixed" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 16, overflow: 'hidden', marginBottom: '20px', gap: 0 }}>
             <div style={{ borderRight: '1px solid var(--border-default)' }}><MacroCell label="Protein" value={consumedProtein} target={targets.protein.g} color={ACCENT} /></div>
             <div style={{ borderRight: '1px solid var(--border-default)' }}><MacroCell label="Carbs" value={consumedCarbs} target={targets.carbs.g} color={WATER_BLUE} /></div>
             <MacroCell label="Fat" value={consumedFat} target={targets.fat.g} color={AI_PURPLE} />
@@ -607,14 +607,14 @@ export default function Dashboard() {
           {/* Check in: mood — water moved into the hero card above. */}
           <div style={{ marginBottom: '16px' }}>
             <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Check in</div>
-            <div style={{ border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
               <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '14px' }}>How are you feeling?</span>
               <MoodCheckin mood={mood} setMood={setMood} energy={energy} setEnergy={setEnergy} />
             </div>
           </div>
 
           {/* Insights & Data */}
-          <div style={{ border: '1px solid var(--border-strong)', borderRadius: 16, padding: 20, marginBottom: '16px' }}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 16, padding: 20, marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>INSIGHTS &amp; DATA</span>
               <span onClick={() => navigate('/insights')} style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -646,7 +646,7 @@ export default function Dashboard() {
           </div>
 
           {/* Daily food log */}
-          <div style={{ border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
               <span onClick={() => navigate('/log')} style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                 Daily food log <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
