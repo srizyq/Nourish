@@ -6,6 +6,7 @@ import { useCustomFoods } from '../hooks/useCustomFoods';
 import { useSavedMeals } from '../hooks/useSavedMeals';
 import { useFavouriteFoods } from '../hooks/useFavouriteFoods';
 import { useFrequentFoods } from '../hooks/useFrequentFoods';
+import { useLastLoggedAmounts } from '../hooks/useLastLoggedAmounts';
 import { useProfile } from '../hooks/useProfile';
 import { todayLocalDate } from '../lib/patterns';
 import { mealFromDate, currentTimeHHMM, timeStringToDate, formatTime12h, formatTimeFromDate } from '../lib/mealTime';
@@ -682,6 +683,13 @@ function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal, def
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+function formatAmountUnit(amount, unitId) {
+  const unitDef = UNITS.find(u => u.id === unitId);
+  if (!unitDef) return `${amount}`;
+  if (unitId === "serving") return `${amount} serving${amount === 1 ? "" : "s"}`;
+  return `${amount}${unitDef.label}`;
+}
+
 function MacroPill({ value, unit = "g", label, color }) {
   return (
     <div style={{ textAlign: "center" }}>
@@ -692,16 +700,21 @@ function MacroPill({ value, unit = "g", label, color }) {
 }
 
 function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, selectedDate, isPremium, onAdd, addLabel, onDelete, isFavourite, onToggleFavourite }) {
-  const [amount, setAmount] = useState(1);
-  const [unit, setUnit] = useState("serving");
+  // Recent/Frequent/Favourites rows carry the amount+unit this exact food
+  // was last logged with (see FoodSearch's lastAmount/lastUnit mapping) —
+  // quick-add and the expanded editor both default to that instead of
+  // always guessing 1 serving. Search results and custom foods have no
+  // such history to draw on, so they keep the original 1-serving default.
+  // This never touches the food's own servingGrams/base nutrition — it's
+  // purely a starting point for the amount field.
+  const hasRemembered = food.lastAmount != null && !!food.lastUnit;
+  const defaultAmount = hasRemembered ? food.lastAmount : 1;
+  const defaultUnit = hasRemembered ? food.lastUnit : "serving";
+
+  const [amount, setAmount] = useState(defaultAmount);
+  const [unit, setUnit] = useState(defaultUnit);
   const [meal, setMeal] = useState(defaultMeal);
   const [time, setTime] = useState(defaultTime);
-  // Quick-add (the collapsed row's "+" button) always logs the default 1
-  // serving — the same values this card is already initialised with — so
-  // the common case (re-logging something you've had before, or adding a
-  // fresh search result as-is) never requires expanding the card first.
-  // Expanding is still there for anyone who wants to change the amount,
-  // unit, or meal before logging.
   const [justAdded, setJustAdded] = useState(false);
 
   useEffect(() => { setMeal(defaultMeal); }, [defaultMeal]);
@@ -713,16 +726,23 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, select
   // servingGrams on the scaled object is the actual weight THIS logged
   // amount represents (not the original food's per-serving weight) — so
   // that re-adding it later from "Recently/Frequently logged" scales from
-  // an accurate baseline instead of guessing 100g every time.
-  const scaled = { ...scaleFood(food, servings || 0), servingGrams: gramsEquivalent };
+  // an accurate baseline instead of guessing 100g every time. loggedAmount/
+  // loggedUnit are what's actually typed/selected, kept separately so next
+  // time's quick-add can remember it without redefining what "1 serving"
+  // means for the food itself.
+  const scaled = { ...scaleFood(food, servings || 0), servingGrams: gramsEquivalent, loggedAmount: Number(amount) || null, loggedUnit: unit };
   const catStyle = getCategoryStyle(food);
 
-  // Deliberately NOT derived from the `amount`/`unit`/`meal`/`time` state
-  // above — those can already be mid-edit if the card was expanded and
-  // then collapsed again without hitting Add, and quick-add must always
-  // mean exactly "1 serving, to the current default meal/time", not
-  // whatever was last typed into the (now-hidden) amount field.
-  const defaultScaled = { ...scaleFood(food, 1), servingGrams };
+  // Deliberately NOT derived from the live `amount`/`unit`/`meal`/`time`
+  // state above — those can already be mid-edit if the card was expanded
+  // and then collapsed again without hitting Add. Quick-add always means
+  // exactly "the remembered amount (or 1 serving if there isn't one), to
+  // the current default meal/time" — computed fresh from defaultAmount/
+  // defaultUnit, not whatever's currently typed into the (hidden) field.
+  const defaultServings = amountToServings(defaultAmount, defaultUnit, servingGrams);
+  const defaultGramsEquivalent = Math.round(defaultServings * servingGrams);
+  const defaultScaled = { ...scaleFood(food, defaultServings), servingGrams: defaultGramsEquivalent, loggedAmount: defaultAmount, loggedUnit: defaultUnit };
+  const quickAddLabel = formatAmountUnit(defaultAmount, defaultUnit);
   function handleQuickAdd(e) {
     e.stopPropagation();
     onAdd(defaultScaled, isPremium ? null : defaultMeal, isPremium ? timeStringToDate(defaultTime, new Date(selectedDate + "T00:00:00")) : null);
@@ -748,7 +768,7 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, select
         <button
           onClick={handleQuickAdd}
           disabled={justAdded}
-          title={addLabel ? "Quick add — 1 serving to meal builder" : `Quick add — 1 serving to ${defaultMeal}`}
+          title={addLabel ? `Quick add — ${quickAddLabel} to meal builder` : `Quick add — ${quickAddLabel} to ${defaultMeal}`}
           style={{
             width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
             background: justAdded ? "var(--accent-bg)" : "var(--accent)", border: justAdded ? "1px solid var(--accent-dark)" : "none",
@@ -882,6 +902,7 @@ export default function FoodSearch() {
   const savedMeals = useSavedMeals();
   const favourites = useFavouriteFoods();
   const frequent = useFrequentFoods(6);
+  const lastLogged = useLastLoggedAmounts();
   const [query, setQuery] = useState("");
   // Dashboard's per-meal "+ Add food" links here with the meal it was
   // clicked from (e.g. { openMeal: "breakfast" }). Otherwise, default to
@@ -1024,6 +1045,11 @@ export default function FoodSearch() {
     sugar: 0,
     servingGrams: row.serving_grams || 100,
     source: row.source || "log",
+    // Row is already the most recent food_logs entry for this name, so
+    // its own logged_amount/logged_unit *is* "last used" — no extra
+    // lookup needed here.
+    lastAmount: row.logged_amount != null ? Number(row.logged_amount) : null,
+    lastUnit: row.logged_unit || null,
   })), [recentRows]);
 
   // Frequently logged (real log-count data) mapped to the same food-card
@@ -1041,31 +1067,40 @@ export default function FoodSearch() {
     sugar: 0,
     servingGrams: row.serving_grams || 100,
     source: row.source || "log",
+    lastAmount: row.logged_amount != null ? Number(row.logged_amount) : null,
+    lastUnit: row.logged_unit || null,
   })), [frequent.rows]);
 
-  // Favourites the user has starred, snapshotted at favourite time.
-  const favouriteFoods = useMemo(() => favourites.rows.map(row => ({
-    id: "fav_" + row.id,
-    name: row.name,
-    meta: (row.brand ? row.brand + " · " : "") + (row.serving_label || "1 serving"),
-    cal: Number(row.calories) || 0,
-    protein: Number(row.protein_g) || 0,
-    carbs: Number(row.carbs_g) || 0,
-    fat: Number(row.fat_g) || 0,
-    fibre: Number(row.fibre_g) || 0,
-    sodium: Number(row.sodium_mg) || 0,
-    sugar: Number(row.sugar_g) || 0,
-    saturatedFat: Number(row.saturated_fat_g) || 0,
-    transFat: Number(row.trans_fat_g) || 0,
-    cholesterol: Number(row.cholesterol_mg) || 0,
-    potassium: Number(row.potassium_mg) || 0,
-    addedSugar: Number(row.added_sugar_g) || 0,
-    vitaminD: Number(row.vitamin_d_mcg) || 0,
-    calcium: Number(row.calcium_mg) || 0,
-    iron: Number(row.iron_mg) || 0,
-    servingGrams: row.serving_grams || 100,
-    source: row.source || "favourite",
-  })), [favourites.rows]);
+  // Favourites the user has starred, snapshotted at favourite time. Not
+  // sourced from food_logs directly, so "last used amount" comes from the
+  // separate lastLogged lookup rather than the row itself.
+  const favouriteFoods = useMemo(() => favourites.rows.map(row => {
+    const last = lastLogged.map.get(row.name.trim().toLowerCase());
+    return {
+      id: "fav_" + row.id,
+      name: row.name,
+      meta: (row.brand ? row.brand + " · " : "") + (row.serving_label || "1 serving"),
+      cal: Number(row.calories) || 0,
+      protein: Number(row.protein_g) || 0,
+      carbs: Number(row.carbs_g) || 0,
+      fat: Number(row.fat_g) || 0,
+      fibre: Number(row.fibre_g) || 0,
+      sodium: Number(row.sodium_mg) || 0,
+      sugar: Number(row.sugar_g) || 0,
+      saturatedFat: Number(row.saturated_fat_g) || 0,
+      transFat: Number(row.trans_fat_g) || 0,
+      cholesterol: Number(row.cholesterol_mg) || 0,
+      potassium: Number(row.potassium_mg) || 0,
+      addedSugar: Number(row.added_sugar_g) || 0,
+      vitaminD: Number(row.vitamin_d_mcg) || 0,
+      calcium: Number(row.calcium_mg) || 0,
+      iron: Number(row.iron_mg) || 0,
+      servingGrams: row.serving_grams || 100,
+      source: row.source || "favourite",
+      lastAmount: last?.amount ?? null,
+      lastUnit: last?.unit ?? null,
+    };
+  }), [favourites.rows, lastLogged.map]);
 
   // timeStringToDate anchors to "now" by default — pass this as the base
   // so a Pro user's exact-time logging still lands on the selected

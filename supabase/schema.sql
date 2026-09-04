@@ -66,6 +66,8 @@ create table if not exists public.food_logs (
   serving_grams numeric,
   logged_at timestamptz,
   source text,
+  logged_amount numeric,
+  logged_unit text check (logged_unit in ('serving', 'g', 'kg', 'lb', 'oz')),
   created_at timestamptz default now()
 );
 

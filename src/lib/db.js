@@ -73,6 +73,8 @@ export async function addFoodLog(userId, entry) {
       serving_grams: entry.servingGrams || null,
       logged_at: entry.loggedAt ? entry.loggedAt.toISOString() : null,
       source: entry.source || 'local',
+      logged_amount: entry.loggedAmount ?? null,
+      logged_unit: entry.loggedUnit ?? null,
     })
     .select()
     .single();
