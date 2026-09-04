@@ -2,6 +2,7 @@
 import { Fragment } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthProvider'
+import { useAuth } from './hooks/useAuth'
 import RequireAuth from './components/RequireAuth'
 import Welcome from './pages/onboarding/Welcome'
 import Step1 from './pages/onboarding/Step1'
@@ -92,6 +93,30 @@ const label = { fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase
 
 function Landing() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  // "/" is the PWA's own start_url, so every cold launch from the home-
+  // screen icon lands here first — an already-signed-in user (guest or
+  // real account) should never see the marketing page again, they should
+  // land straight back in the app. Without this check it looked like
+  // sessions weren't persisting at all, when really the session was
+  // fine — the app just never bothered to check it here.
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh', background: '#0f0f0f', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          border: '3px solid #2a2a2a', borderTopColor: '#8fbc8f',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+      </div>
+    );
+  }
+  if (user) return <Navigate to="/dashboard" replace />;
+
   return (
     <div style={{ background: 'var(--bg-primary)', minHeight: '100vh', fontFamily: "'DM Sans', sans-serif" }}>
       <Nav navigate={navigate} />
