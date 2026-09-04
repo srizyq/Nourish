@@ -423,7 +423,15 @@ export default function Settings() {
             const sel = tab === t.id;
             return (
               <button
-                key={t.id}
+                // Keyed on selection state, not just id — iOS Safari has a
+                // known bug where a border-bottom on a child of an
+                // overflow-x:auto flex row doesn't repaint on a style-only
+                // change, leaving the previous tab's underline stuck on
+                // screen. Changing the key forces React to tear down and
+                // recreate the button whenever its selected state flips,
+                // which sidesteps the stale paint instead of hoping a
+                // repaint happens on its own.
+                key={`${t.id}-${sel}`}
                 onClick={() => setTab(t.id)}
                 style={{
                   padding: '10px 14px',
@@ -438,6 +446,7 @@ export default function Settings() {
                   marginBottom: '-1px',
                   whiteSpace: 'nowrap',
                   flexShrink: 0,
+                  transform: 'translateZ(0)',
                 }}
               >
                 {t.label}

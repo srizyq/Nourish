@@ -1246,7 +1246,7 @@ export default function FoodSearch() {
         <div className="page-pad">
 
           {/* Search bar */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 14px", marginBottom: 10 }}>
             <i className="ti ti-search" style={{ color: "var(--text-muted)", fontSize: 18 }} />
             <input
               ref={inputRef}
@@ -1257,10 +1257,16 @@ export default function FoodSearch() {
             />
             {liveLoading && <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--text-hint)", borderTopColor: "var(--accent)", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />}
             {query && !liveLoading && <button onClick={() => { setQuery(""); setGenericResults([]); setPackagedLive([]); setLiveError(null); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 }}>✕</button>}
-            <div onClick={() => setScanOpen(true)} style={{ background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 8, padding: "7px 12px", color: "var(--accent)", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }} onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-dark)"} onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-active)"}>
+          </div>
+
+          {/* Scan shortcuts — their own row below the search bar so they
+              never crowd/overflow it on narrow phones (they used to live
+              inline with the input and get cut off). */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            <div onClick={() => setScanOpen(true)} style={{ flex: 1, background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 8, padding: "9px 12px", color: "var(--accent)", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-dark)"} onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-active)"}>
               <i className="ti ti-barcode" style={{ fontSize: 14 }} /> Scan barcode
             </div>
-            <div onClick={() => setPhotoScanOpen(true)} style={{ background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 8, padding: "7px 12px", color: "var(--accent)", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }} onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-dark)"} onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-active)"}>
+            <div onClick={() => setPhotoScanOpen(true)} style={{ flex: 1, background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 8, padding: "9px 12px", color: "var(--accent)", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-dark)"} onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-active)"}>
               <i className="ti ti-camera" style={{ fontSize: 14 }} /> Scan photo
             </div>
           </div>
