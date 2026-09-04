@@ -174,6 +174,13 @@ export default function Step3() {
           <p style={{ color: '#4a7a4a', fontSize: '14px' }}>kcal per day</p>
         </div>
 
+        {/* Sets expectations up front, MacroFactor-style — this number is
+            a starting point from a formula, not a promise; it improves
+            once there's real logged data to learn from. */}
+        <p style={{ color: '#555', fontSize: '13px', lineHeight: 1.5, textAlign: 'center', marginBottom: '20px' }}>
+          A starting point, not a promise — Attune fine-tunes this from your real logs over the next couple of weeks.
+        </p>
+
         {/* Macro breakdown card */}
         <div style={{
           background: '#181818',

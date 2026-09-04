@@ -144,26 +144,44 @@ export default function Step1() {
           })}
         </div>
 
-        {/* Next button */}
-        <button
-          onClick={handleNext}
-          disabled={!selected}
-          style={{
-            width: '100%',
-            padding: '16px',
-            background: selected ? '#8fbc8f' : '#181818',
-            border: `1px solid ${selected ? '#8fbc8f' : '#2a2a2a'}`,
-            borderRadius: '10px',
-            color: selected ? '#0f0f0f' : '#333',
-            fontSize: '15px',
-            fontWeight: 600,
-            cursor: selected ? 'pointer' : 'not-allowed',
-            transition: 'all 0.2s ease',
-            fontFamily: "'DM Sans', sans-serif",
-          }}
-        >
-          Continue →
-        </button>
+        {/* Back + Next */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => navigate('/onboarding/welcome')}
+            style={{
+              flex: '0 0 auto',
+              padding: '16px 20px',
+              background: 'transparent',
+              border: '1px solid #1e1e1e',
+              borderRadius: '10px',
+              color: '#555',
+              fontSize: '15px',
+              cursor: 'pointer',
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            ←
+          </button>
+          <button
+            onClick={handleNext}
+            disabled={!selected}
+            style={{
+              flex: 1,
+              padding: '16px',
+              background: selected ? '#8fbc8f' : '#181818',
+              border: `1px solid ${selected ? '#8fbc8f' : '#2a2a2a'}`,
+              borderRadius: '10px',
+              color: selected ? '#0f0f0f' : '#333',
+              fontSize: '15px',
+              fontWeight: 600,
+              cursor: selected ? 'pointer' : 'not-allowed',
+              transition: 'all 0.2s ease',
+              fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            Continue →
+          </button>
+        </div>
       </div>
     </OnboardingLayout>
   );

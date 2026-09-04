@@ -1,14 +1,35 @@
 // src/pages/onboarding/Step4.jsx
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import OnboardingLayout from '../../components/OnboardingLayout';
 import { supabase } from '../../lib/supabase';
-import { upsertProfile } from '../../lib/db';
+import { getProfile, upsertProfile } from '../../lib/db';
 
-function draftToProfileFields(draft, name) {
+// Writing to `profiles` immediately after a fresh signInAnonymously()
+// can occasionally hit "new row violates row-level security policy"
+// (42501) — the very next request can race the client's own auth
+// context settling onto the brand-new session. Confirmed reproducible
+// with a hard page load followed by an instant click; a short retry is
+// the standard, low-risk way to ride out a timing window like this
+// rather than surfacing a scary error for what's really just "try again
+// in a moment."
+async function withRetry(fn, attempts = 3, delayMs = 250) {
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < attempts - 1) await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
+function draftToProfileFields(draft) {
   const targets = draft.targets || {};
   return {
-    name: name || draft.name || 'there',
+    name: draft.name || 'there',
     goal: draft.goal || null,
     age: draft.age ?? null,
     weight: draft.weight ?? null,
@@ -24,71 +45,79 @@ function draftToProfileFields(draft, name) {
   };
 }
 
+// The final screen is a single soft upgrade prompt, not a hard fork
+// between "create account" and "continue as guest" — by the time this
+// screen is interactive, a guest session already exists and everything
+// collected so far is already saved to it. "Maybe later" just continues;
+// the form here only ever *upgrades* that same session to a permanent
+// one (via updateUser, matching Settings' UpgradeForm) rather than
+// competing with it via a fresh signUp.
 export default function Step4() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [saveChoice, setSaveChoice] = useState(null); // 'save' | 'guest'
-  const [hovered, setHovered] = useState(null);
+  const [preparing, setPreparing] = useState(true);
+  const [prepError, setPrepError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
+  const [upgraded, setUpgraded] = useState(false);
+  const userIdRef = useRef(null);
 
-  async function finishWithProfile(userId) {
-    const draft = JSON.parse(sessionStorage.getItem('attune_onboarding') || '{}');
-    await upsertProfile(userId, draftToProfileFields(draft, name));
-    sessionStorage.removeItem('attune_onboarding');
-    navigate('/dashboard');
-  }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // Reuse an existing session if one's already there (e.g. you hit
+        // "skip" a second time, or came back via the browser's back
+        // button) instead of spinning up a redundant guest account.
+        const { data: { session } } = await supabase.auth.getSession();
+        let userId = session?.user?.id;
+        if (!userId) {
+          const { data, error: anonError } = await supabase.auth.signInAnonymously();
+          if (anonError) throw anonError;
+          userId = data.user.id;
+        }
+        if (cancelled) return;
+        userIdRef.current = userId;
+        // Only seed the profile from the draft if one doesn't already
+        // exist — revisiting this screen (browser back, "skip" a second
+        // time, a stale bookmark) reuses the same session, and by then
+        // sessionStorage's draft is already empty, so writing it
+        // unconditionally would silently wipe real goal/stats/target
+        // data back to null on every repeat visit.
+        const existingProfile = await withRetry(() => getProfile(userId));
+        if (!existingProfile) {
+          const draft = JSON.parse(sessionStorage.getItem('attune_onboarding') || '{}');
+          await withRetry(() => upsertProfile(userId, draftToProfileFields(draft)));
+        }
+        sessionStorage.removeItem('attune_onboarding');
+      } catch (err) {
+        console.error('Failed to prepare guest session:', err);
+        if (!cancelled) setPrepError("Couldn't set things up — try again.");
+      } finally {
+        if (!cancelled) setPreparing(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
-  async function handleCreateAccount() {
-    if (!email || password.length < 8) return;
+  async function handleUpgrade() {
+    if (!email || password.length < 8 || !userIdRef.current) return;
     setLoading(true);
     setError(null);
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
-    if (signUpError) {
-      setLoading(false);
-      setError(signUpError.message.includes('already registered')
+    if (name) {
+      try { await upsertProfile(userIdRef.current, { name }); } catch { /* non-fatal — email/password still matter more */ }
+    }
+    const { error: updateError } = await supabase.auth.updateUser({ email, password });
+    setLoading(false);
+    if (updateError) {
+      setError(updateError.message.includes('already registered')
         ? 'That email is already registered — try logging in instead.'
-        : signUpError.message);
+        : updateError.message);
       return;
     }
-    if (!data.session) {
-      // Email confirmation required before a session exists.
-      setLoading(false);
-      setNeedsEmailConfirm(true);
-      return;
-    }
-    try {
-      await finishWithProfile(data.user.id);
-    } catch (err) {
-      console.error(err);
-      setError('Account created, but saving your profile failed. Try again from Settings.');
-      navigate('/dashboard');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleGuest() {
-    setLoading(true);
-    setError(null);
-    const { data, error: anonError } = await supabase.auth.signInAnonymously();
-    if (anonError) {
-      setLoading(false);
-      setError('Could not start a guest session. Try again, or create a real account.');
-      return;
-    }
-    try {
-      await finishWithProfile(data.user.id);
-    } catch (err) {
-      console.error(err);
-      setError('Guest session started, but saving your profile failed.');
-      navigate('/dashboard');
-    } finally {
-      setLoading(false);
-    }
+    setUpgraded(true);
   }
 
   const inputStyle = (filled) => ({
@@ -105,7 +134,15 @@ export default function Step4() {
     transition: 'border-color 0.2s',
   });
 
-  if (needsEmailConfirm) {
+  if (preparing) {
+    return (
+      <OnboardingLayout step={4}>
+        <p style={{ color: '#555' }}>Setting things up…</p>
+      </OnboardingLayout>
+    );
+  }
+
+  if (upgraded) {
     return (
       <OnboardingLayout step={4}>
         <div style={{ width: '100%', maxWidth: '480px', textAlign: 'center' }}>
@@ -115,16 +152,19 @@ export default function Step4() {
             justifyContent: 'center', fontSize: '28px', margin: '0 auto 24px',
           }}>✉️</div>
           <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: 700, color: '#e8e8e8', marginBottom: '8px' }}>
-            Check your email
+            Almost there
           </h1>
           <p style={{ color: '#666', fontSize: '15px', marginBottom: '24px' }}>
-            We sent a confirmation link to <span style={{ color: '#ccc' }}>{email}</span>. Confirm it, then log in to pick up where you left off.
+            Check your email to confirm <span style={{ color: '#ccc' }}>{email}</span> — everything you've already logged stays right where it is.
           </p>
-          <Link to="/login" style={{
-            display: 'inline-block', padding: '14px 28px', background: '#8fbc8f',
-            border: '1px solid #8fbc8f', borderRadius: '10px', color: '#0f0f0f',
-            fontSize: '15px', fontWeight: 600, textDecoration: 'none',
-          }}>Go to login →</Link>
+          <button
+            onClick={() => navigate('/dashboard')}
+            style={{
+              padding: '14px 28px', background: '#8fbc8f',
+              border: '1px solid #8fbc8f', borderRadius: '10px', color: '#0f0f0f',
+              fontSize: '15px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+            }}
+          >Continue to dashboard →</button>
         </div>
       </OnboardingLayout>
     );
@@ -134,21 +174,11 @@ export default function Step4() {
     <OnboardingLayout step={4}>
       <div style={{ width: '100%', maxWidth: '480px', textAlign: 'center' }}>
 
-        {/* Celebration icon */}
         <div style={{
-          width: '64px',
-          height: '64px',
-          borderRadius: '16px',
-          background: '#0f1a0f',
-          border: '1px solid #1e3a1e',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '28px',
-          margin: '0 auto 24px',
-        }}>
-          🌿
-        </div>
+          width: '64px', height: '64px', borderRadius: '16px', background: '#0f1a0f',
+          border: '1px solid #1e3a1e', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', fontSize: '28px', margin: '0 auto 24px',
+        }}>🌿</div>
 
         <p style={{ color: '#555', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
           you're all set
@@ -164,147 +194,80 @@ export default function Step4() {
           Ready to start tracking
         </h1>
         <p style={{ color: '#666', fontSize: '15px', marginBottom: '36px' }}>
-          Create an account to keep your data across devices, or dive in as a guest for 7 days free.
+          You're already set up as a guest — save your progress with an account, or keep going and do it later from Settings.
         </p>
 
-        {/* Save progress option */}
-        <div style={{ marginBottom: '12px', textAlign: 'left' }}>
-          <button
-            onClick={() => setSaveChoice('save')}
-            onMouseEnter={() => setHovered('save')}
-            onMouseLeave={() => setHovered(null)}
-            style={{
-              width: '100%',
-              background: saveChoice === 'save' ? '#0f1a0f' : '#141414',
-              border: `1px solid ${saveChoice === 'save' ? '#3a5a3a' : (hovered === 'save' ? '#2a2a2a' : '#1e1e1e')}`,
-              borderRadius: '12px',
-              padding: '20px',
-              cursor: 'pointer',
-              textAlign: 'left',
-              transition: 'all 0.2s',
-              outline: 'none',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: saveChoice === 'save' ? '16px' : '0' }}>
-              <div>
-                <div style={{ color: '#e8e8e8', fontWeight: 600, fontSize: '15px', fontFamily: "'Syne', sans-serif", marginBottom: '3px' }}>
-                  Create my account
-                </div>
-                <div style={{ color: '#555', fontSize: '13px' }}>Takes 30 seconds</div>
-              </div>
-              <div style={{
-                width: '20px',
-                height: '20px',
-                borderRadius: '50%',
-                border: `2px solid ${saveChoice === 'save' ? '#8fbc8f' : '#2a2a2a'}`,
-                background: saveChoice === 'save' ? '#8fbc8f' : 'transparent',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                transition: 'all 0.2s',
-              }}>
-                {saveChoice === 'save' && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0f0f0f' }} />}
-              </div>
-            </div>
-
-            {/* Inline fields — expand when selected */}
-            {saveChoice === 'save' && (
-              <div
-                style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
-                onClick={e => e.stopPropagation()}
-              >
-                <input
-                  type="text"
-                  placeholder="Your name (optional)"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-                  onBlur={e => e.target.style.borderColor = name ? '#3a5a3a' : '#1e1e1e'}
-                  style={inputStyle(name)}
-                />
-                <input
-                  type="email"
-                  placeholder="Email address"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-                  onBlur={e => e.target.style.borderColor = email ? '#3a5a3a' : '#1e1e1e'}
-                  style={inputStyle(email)}
-                  autoComplete="email"
-                />
-                <input
-                  type="password"
-                  placeholder="Password (min. 8 characters)"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-                  onBlur={e => e.target.style.borderColor = password ? '#3a5a3a' : '#1e1e1e'}
-                  style={inputStyle(password)}
-                  autoComplete="new-password"
-                />
-                {error && (
-                  <div style={{
-                    background: '#1a0f0f', border: '1px solid #c0707040', borderRadius: '8px',
-                    padding: '10px 14px', fontSize: '13px', color: '#c07070',
-                  }}>{error}</div>
-                )}
-                <button
-                  disabled={!email || password.length < 8 || loading}
-                  onClick={(e) => { e.stopPropagation(); handleCreateAccount(); }}
-                  style={{
-                    padding: '14px',
-                    background: email && password.length >= 8 ? '#8fbc8f' : '#181818',
-                    border: `1px solid ${email && password.length >= 8 ? '#8fbc8f' : '#2a2a2a'}`,
-                    borderRadius: '10px',
-                    color: email && password.length >= 8 ? '#0f0f0f' : '#333',
-                    fontSize: '15px',
-                    fontWeight: 600,
-                    cursor: email && password.length >= 8 && !loading ? 'pointer' : 'not-allowed',
-                    fontFamily: "'DM Sans', sans-serif",
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {loading ? 'Creating account…' : 'Create account & continue →'}
-                </button>
-              </div>
-            )}
-          </button>
+        <div style={{ textAlign: 'left', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <input
+            type="text"
+            placeholder="Your name (optional)"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onFocus={e => e.target.style.borderColor = '#4a7a4a'}
+            onBlur={e => e.target.style.borderColor = name ? '#3a5a3a' : '#1e1e1e'}
+            style={inputStyle(name)}
+          />
+          <input
+            type="email"
+            placeholder="Email address"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            onFocus={e => e.target.style.borderColor = '#4a7a4a'}
+            onBlur={e => e.target.style.borderColor = email ? '#3a5a3a' : '#1e1e1e'}
+            style={inputStyle(email)}
+            autoComplete="email"
+          />
+          <input
+            type="password"
+            placeholder="Password (min. 8 characters)"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onFocus={e => e.target.style.borderColor = '#4a7a4a'}
+            onBlur={e => e.target.style.borderColor = password ? '#3a5a3a' : '#1e1e1e'}
+            style={inputStyle(password)}
+            autoComplete="new-password"
+          />
+          {(prepError || error) && (
+            <div style={{
+              background: '#1a0f0f', border: '1px solid #c0707040', borderRadius: '8px',
+              padding: '10px 14px', fontSize: '13px', color: '#c07070',
+            }}>{prepError || error}</div>
+          )}
         </div>
 
-        {/* Guest option */}
         <button
-          onClick={handleGuest}
-          disabled={loading}
-          onMouseEnter={() => setHovered('guest')}
-          onMouseLeave={() => setHovered(null)}
+          onClick={handleUpgrade}
+          disabled={!email || password.length < 8 || loading || !!prepError}
           style={{
             width: '100%',
-            background: 'transparent',
-            border: `1px solid ${hovered === 'guest' ? '#2a2a2a' : '#1e1e1e'}`,
-            borderRadius: '12px',
-            padding: '18px 20px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            transition: 'all 0.2s',
-            outline: 'none',
-            marginBottom: '16px',
+            padding: '16px',
+            background: email && password.length >= 8 ? '#8fbc8f' : '#181818',
+            border: `1px solid ${email && password.length >= 8 ? '#8fbc8f' : '#2a2a2a'}`,
+            borderRadius: '10px',
+            color: email && password.length >= 8 ? '#0f0f0f' : '#333',
+            fontSize: '15px',
+            fontWeight: 600,
+            cursor: email && password.length >= 8 && !loading ? 'pointer' : 'not-allowed',
+            fontFamily: "'DM Sans', sans-serif",
+            transition: 'all 0.2s ease',
+            marginBottom: '14px',
           }}
         >
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ color: '#ccc', fontWeight: 500, fontSize: '15px', marginBottom: '3px' }}>
-              Continue as guest
-            </div>
-            <div style={{ color: '#444', fontSize: '13px' }}>Full access for 7 days, no password needed</div>
-          </div>
-          <span style={{ color: '#444', fontSize: '18px' }}>→</span>
+          {loading ? 'Creating account…' : 'Create account & continue →'}
         </button>
 
-        {/* Fine print */}
+        <button
+          onClick={() => navigate('/dashboard')}
+          style={{
+            background: 'none', border: 'none', color: '#555', fontSize: '13px',
+            cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", marginBottom: '20px',
+          }}
+        >
+          Maybe later
+        </button>
+
         <p style={{ color: '#333', fontSize: '12px', lineHeight: 1.6 }}>
-          No credit card, ever. Guest data is saved to a temporary account you can upgrade any time from Settings.
+          No credit card, ever. You're saved as a guest for 7 days either way — creating an account just makes it permanent.
         </p>
       </div>
     </OnboardingLayout>

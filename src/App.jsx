@@ -3,6 +3,7 @@ import { Fragment } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthProvider'
 import RequireAuth from './components/RequireAuth'
+import Welcome from './pages/onboarding/Welcome'
 import Step1 from './pages/onboarding/Step1'
 import Step2 from './pages/onboarding/Step2'
 import Step3 from './pages/onboarding/Step3'
@@ -25,7 +26,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/onboarding" element={<Navigate to="/onboarding/step1" replace />} />
+          <Route path="/onboarding" element={<Navigate to="/onboarding/welcome" replace />} />
+          <Route path="/onboarding/welcome" element={<Welcome />} />
           <Route path="/onboarding/step1" element={<Step1 />} />
           <Route path="/onboarding/step2" element={<Step2 />} />
           <Route path="/onboarding/step3" element={<Step3 />} />
@@ -115,7 +117,7 @@ function Nav({ navigate }) {
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <button onClick={() => navigate('/login')} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Log in</button>
-          <button onClick={() => navigate('/onboarding/step1')} style={{ background: 'var(--accent)', border: 'none', borderRadius: 8, padding: '9px 16px', color: '#0f0f0f', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Start free</button>
+          <button onClick={() => navigate('/onboarding/welcome')} style={{ background: 'var(--accent)', border: 'none', borderRadius: 8, padding: '9px 16px', color: '#0f0f0f', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Start free</button>
         </div>
       </div>
     </div>
@@ -195,7 +197,7 @@ function Hero({ navigate }) {
           Attune connects what you log to how you actually feel — real correlations between your food, mood, and energy, on top of an Aus &amp; Asian food database that gets what a laksa is.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
-          <button onClick={() => navigate('/onboarding/step1')} style={{ background: 'var(--accent)', border: 'none', borderRadius: 10, padding: '13px 24px', color: '#0f0f0f', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Start for free — no credit card</button>
+          <button onClick={() => navigate('/onboarding/welcome')} style={{ background: 'var(--accent)', border: 'none', borderRadius: 10, padding: '13px 24px', color: '#0f0f0f', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Start for free — no credit card</button>
           <span style={{ color: 'var(--text-hint)', fontSize: 12 }}>Full app for 7 days, no credit card</span>
         </div>
       </div>

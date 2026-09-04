@@ -20,7 +20,7 @@ export default function RequireAuth({ children }) {
     );
   }
 
-  if (!user) return <Navigate to="/onboarding/step1" replace />;
+  if (!user) return <Navigate to="/onboarding/welcome" replace />;
 
   // Every authenticated page gets theme context from here — nothing
   // outside RequireAuth (marketing, onboarding, login) is theme-aware.

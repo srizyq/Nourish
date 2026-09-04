@@ -35,9 +35,13 @@ export default function OnboardingLayout({ children, step, totalSteps = 4 }) {
           step <span style={{ color: '#8fbc8f' }}>{step}</span> of {totalSteps}
         </span>
 
-        {/* Skip link */}
+        {/* Skip link — goes to the final step, not straight to /dashboard.
+            Skipping mid-flow means no account exists yet, so /dashboard
+            would just bounce you right back here via RequireAuth; the
+            final step silently creates a guest session (with whatever
+            partial answers you did give) before landing you in the app. */}
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/onboarding/step4')}
           style={{
             background: 'none',
             border: 'none',
