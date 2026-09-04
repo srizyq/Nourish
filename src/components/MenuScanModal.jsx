@@ -27,6 +27,13 @@ function resizeImage(file, maxDim = 1400, quality = 0.85) {
   });
 }
 
+// The model is asked for null when a pick is ordered exactly as listed, but
+// sometimes says "None" or similar instead — treat those as no modification
+// too rather than showing a redundant "Modified: None" line.
+function hasModification(text) {
+  return !!text && !/^(none|no modifications?|n\/a|as listed|as-is)\.?$/i.test(text.trim());
+}
+
 function MacroGrid({ pick }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
@@ -201,8 +208,8 @@ export default function MenuScanModal({ onClose, onAddFood, isPremium, onSearchM
                       <span style={{ fontSize: 10, fontWeight: 700, color: '#0f0f0f', background: i === 0 ? '#8fbc8f' : '#3a3a3a', borderRadius: 5, padding: '2px 6px' }}>#{i + 1}</span>
                       <span style={{ fontSize: 14, color: '#e8e8e8', fontWeight: 600 }}>{pick.name}</span>
                     </div>
-                    <div style={{ fontSize: 12, color: '#777', marginBottom: pick.modifications ? 2 : 10, lineHeight: 1.4 }}>{pick.items}</div>
-                    {pick.modifications && (
+                    <div style={{ fontSize: 12, color: '#777', marginBottom: hasModification(pick.modifications) ? 2 : 10, lineHeight: 1.4 }}>{pick.items}</div>
+                    {hasModification(pick.modifications) && (
                       <div style={{ fontSize: 11, color: '#e8c468', marginBottom: 10 }}>Modified: {pick.modifications}</div>
                     )}
                     <MacroGrid pick={pick} />
@@ -218,8 +225,8 @@ export default function MenuScanModal({ onClose, onAddFood, isPremium, onSearchM
             <div style={{ marginTop: 0 }}>
               <div style={{ background: '#181818', border: '1px solid #3a5a3a', borderRadius: 10, padding: 14, marginBottom: 12 }}>
                 <div style={{ fontSize: 14, color: '#e8e8e8', fontWeight: 600, marginBottom: 4 }}>{picked.name}</div>
-                <div style={{ fontSize: 12, color: '#777', marginBottom: picked.modifications ? 2 : 10, lineHeight: 1.4 }}>{picked.items}</div>
-                {picked.modifications && (
+                <div style={{ fontSize: 12, color: '#777', marginBottom: hasModification(picked.modifications) ? 2 : 10, lineHeight: 1.4 }}>{picked.items}</div>
+                {hasModification(picked.modifications) && (
                   <div style={{ fontSize: 11, color: '#e8c468', marginBottom: 10 }}>Modified: {picked.modifications}</div>
                 )}
                 <MacroGrid pick={picked} />

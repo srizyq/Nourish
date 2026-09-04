@@ -31,7 +31,7 @@ remaining today.
 Read the menu and recommend the 3 best options for them. You're not limited to picking 3 whole standalone items — you can combine items across menu sections (e.g. a main + a side from elsewhere on the menu) and suggest simple modifications (e.g. "dressing on the side", "swap fries for a side salad", "no bun"), as long as it's something they could realistically order at this restaurant. If you suggest a modification, recalculate the macros for the modified version — don't report the stock item's macros for a modified order.
 
 Reply with ONLY a JSON object (no other text, no markdown code fence) in exactly this shape:
-{"recommendations": [{"name": "short name for this pick, e.g. 'Grilled chicken bowl, dressing on the side'", "items": "what it's built from off the menu, e.g. 'Grilled chicken bowl + side of steamed veggies instead of rice'", "modifications": "what was changed from the stock menu item, or null if ordered exactly as listed", "cal": number, "protein": number, "carbs": number, "fat": number, "confidence": "low" | "medium" | "high"}, ...]}
+{"recommendations": [{"name": "short name for this pick, e.g. 'Grilled chicken bowl, dressing on the side'", "items": "what it's built from off the menu, e.g. 'Grilled chicken bowl + side of steamed veggies instead of rice'", "modifications": "what was changed from the stock menu item — the actual JSON value null (not the string "none") if ordered exactly as listed with nothing changed", "cal": number, "protein": number, "carbs": number, "fat": number, "confidence": "low" | "medium" | "high"}, ...]}
 
 Always return exactly 3 recommendations, ranked best first for this person's goal and remaining macros.
 
