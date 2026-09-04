@@ -26,6 +26,8 @@ create table if not exists public.profiles (
   reminder_last_sent_date date,
   photo_scans_used int not null default 0,
   photo_scans_period_start date not null default current_date,
+  menu_scans_used int not null default 0,
+  menu_scans_period_start date not null default current_date,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

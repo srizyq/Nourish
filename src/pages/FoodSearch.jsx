@@ -12,6 +12,7 @@ import { mealFromDate, currentTimeHHMM, timeStringToDate, formatTime12h, formatT
 import { scaleFood, UNITS, amountToServings } from '../lib/foodMath';
 import AppNav from '../components/AppNav';
 import PhotoScanModal from '../components/PhotoScanModal';
+import MenuScanModal from '../components/MenuScanModal';
 import { useClosingTransition } from '../hooks/useClosingTransition';
 import { getCategoryStyle } from '../lib/foodCategories';
 
@@ -905,6 +906,8 @@ export default function FoodSearch() {
   // The quick-action sheet's "Scan photo" does the same with openPhotoScan.
   const [scanOpen, setScanOpen] = useState(!!location.state?.openScan);
   const [photoScanOpen, setPhotoScanOpen] = useState(!!location.state?.openPhotoScan);
+  // The quick-action sheet's "Scan menu" does the same with openMenuScan.
+  const [menuScanOpen, setMenuScanOpen] = useState(!!location.state?.openMenuScan);
   const [createFoodOpen, setCreateFoodOpen] = useState(false);
   // Dashboard's "Saved meals" shortcut links here with { openSavedMeals: true }.
   const [savedMealsOpen, setSavedMealsOpen] = useState(!!location.state?.openSavedMeals);
@@ -1419,6 +1422,16 @@ export default function FoodSearch() {
           onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
           onCreateCustom={() => { setPhotoScanOpen(false); setCreateFoodOpen(true); }}
           onSearchManually={() => { setPhotoScanOpen(false); setTimeout(() => inputRef.current?.focus(), 0); }}
+        />
+      )}
+
+      {/* Menu scan modal */}
+      {menuScanOpen && (
+        <MenuScanModal
+          onClose={() => setMenuScanOpen(false)}
+          isPremium={isPremium}
+          onAddFood={async (food, meal, loggedAt) => { await addFoodLog(food, meal, loggedAt); refetchRecent(); setToast(`${food.name} added${meal ? ` to ${meal}` : loggedAt ? ` at ${formatTimeFromDate(loggedAt)}` : ''}`); }}
+          onSearchManually={() => { setMenuScanOpen(false); setTimeout(() => inputRef.current?.focus(), 0); }}
         />
       )}
 

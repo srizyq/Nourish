@@ -2,21 +2,20 @@ import { useNavigate } from 'react-router-dom';
 import { useClosingTransition } from '../hooks/useClosingTransition';
 
 // The mobile bottom nav's center "+" — everything that used to need its
-// own nav slot (barcode scan, photo scan, saved meals, custom food) lives
-// here instead. Menu scan isn't listed yet since that feature doesn't
-// exist yet — add it once it's built, not before (a visible "coming
-// soon" row was considered and explicitly turned down).
+// own nav slot (barcode scan, photo scan, menu scan, saved meals, custom
+// food) lives here instead.
 //
-// Only barcode scan and photo scan deep-link straight into their modal
-// (via existing/new location-state flags on FoodSearch) — log weight,
-// saved meals, and custom food land on the general page instead
-// (Dashboard / Food search) rather than deep-linking, per explicit
-// scope: general-page landing is an accepted tradeoff for those three,
-// not a shortcut taken without asking.
+// Barcode scan, photo scan, and menu scan deep-link straight into their
+// modal (via location-state flags on FoodSearch) — log weight, saved
+// meals, and custom food land on the general page instead (Dashboard /
+// Food search) rather than deep-linking, per explicit scope: general-page
+// landing is an accepted tradeoff for those three, not a shortcut taken
+// without asking.
 const TOP_ACTIONS = [
   { id: 'log-food', label: 'Log food', icon: 'ti-search', to: '/food' },
   { id: 'barcode', label: 'Scan barcode', icon: 'ti-barcode', to: '/food', state: { openScan: true } },
   { id: 'photo', label: 'Scan photo', icon: 'ti-camera', to: '/food', state: { openPhotoScan: true } },
+  { id: 'menu', label: 'Scan menu', icon: 'ti-tools-kitchen-2', to: '/food', state: { openMenuScan: true } },
 ];
 const BOTTOM_ACTIONS = [
   { id: 'weight', label: 'Log weight', icon: 'ti-scale', to: '/dashboard' },
