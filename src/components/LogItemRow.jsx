@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { round1 } from '../lib/format';
 import { scaleFood, UNITS, amountToServings } from '../lib/foodMath';
+import { dateToHHMM, timeStringToDate } from '../lib/mealTime';
+
+const MEAL_OPTIONS = [
+  { value: 'breakfast', label: 'Breakfast' },
+  { value: 'lunch', label: 'Lunch' },
+  { value: 'dinner', label: 'Dinner' },
+  { value: 'snacks', label: 'Snacks' },
+];
 
 // Shared between Dashboard (theme-converted) and the full /log page (not
 // yet converted) — same reasoning as WeekBars in Progress.jsx: uses
@@ -15,6 +23,15 @@ const C = {
 const fieldStyle = { width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 7, padding: '7px 10px', color: 'var(--text-primary)', fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' };
 const labelStyle = { fontSize: 11, color: 'var(--text-muted)', marginBottom: 4, display: 'block' };
 
+// Matches buildDayTimeline's own item.loggedAt || item.createdAt fallback
+// (lib/mealTime.js) — a legacy/free-tier item with no real loggedAt still
+// needs a sensible time seed, and it must agree with whichever hour the
+// timeline is actually showing it under, not default to "right now" and
+// silently disagree with the visible bucket.
+function effectiveLoggedAt(item) {
+  return new Date(item.loggedAt || item.createdAt || Date.now());
+}
+
 // Plain text macro readout — matches the style used everywhere else in the
 // app (e.g. FoodCard's add-food preview) instead of a bordered box.
 function MacroReadout({ value, unit, label, color }) {
@@ -26,14 +43,16 @@ function MacroReadout({ value, unit, label, color }) {
   );
 }
 
-// A logged food row that expands in place to edit how much of it you had —
-// shared between the Dashboard's compact meal log and the full /log page
+// A logged food row that expands in place to edit how much of it you had,
+// plus — since when you happened to be logging it isn't necessarily when
+// you ate it — which meal it belongs to (free tier) or what time it's
+// logged at (Pro), instead of having to delete and re-add just to move it.
+// Shared between the Dashboard's compact meal log and the full /log page
 // so both stay in sync instead of drifting into two separate editing UIs.
-// You can only change the amount (a number + unit — serving/g/kg/lb/oz,
-// the same picker used when adding food), never the macros directly; every
-// macro/micronutrient is scaled proportionally from the currently-logged
-// amount so the numbers always stay internally consistent.
-export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSave }) {
+// Macros are never edited directly; every macro/micronutrient is scaled
+// proportionally from the currently-logged amount so the numbers always
+// stay internally consistent.
+export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSave, isPremium = false }) {
   // Older items logged before serving_grams was tracked have no real
   // weight on record. Silently guessing 100g there would look precise
   // without being true — so weight-based units are only offered when we
@@ -42,6 +61,8 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
 
   const [amount, setAmount] = useState(hasKnownWeight ? String(item.servingGrams) : '1');
   const [unit, setUnit] = useState(hasKnownWeight ? 'g' : 'serving');
+  const [meal, setMeal] = useState(item.meal);
+  const [time, setTime] = useState(() => dateToHHMM(effectiveLoggedAt(item)));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -57,6 +78,8 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
     if (!isExpanded) return;
     setAmount(hasKnownWeight ? String(item.servingGrams) : '1');
     setUnit(hasKnownWeight ? 'g' : 'serving');
+    setMeal(item.meal);
+    setTime(dateToHHMM(effectiveLoggedAt(item)));
   }, [isExpanded, item, hasKnownWeight]);
 
   // "serving" is only offered when there's no real weight to anchor to —
@@ -76,7 +99,18 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
       // otherwise a "2 servings" edit on a legacy item with no real weight
       // would silently fabricate one from the 100g fallback and make it
       // look gram-accurate on the next edit.
-      await onSave({ ...preview, servingGrams: hasKnownWeight ? gramsEquivalent : null });
+      //
+      // meal/loggedAt are set explicitly here rather than left to
+      // `...preview`'s spread — scaleFood() spreads every field of `item`
+      // through unchanged, including the *original* loggedAt as a raw ISO
+      // string (not a Date), which would otherwise silently leak into the
+      // free-tier save path and crash db.js's toISOString() call.
+      await onSave({
+        ...preview,
+        servingGrams: hasKnownWeight ? gramsEquivalent : null,
+        meal: isPremium ? item.meal : meal,
+        loggedAt: isPremium ? timeStringToDate(time, effectiveLoggedAt(item)) : (item.loggedAt ? new Date(item.loggedAt) : null),
+      });
     } catch (err) {
       console.error('Failed to save food log edits:', err);
       setError("Couldn't save — try again.");
@@ -123,6 +157,21 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
               </div>
             </div>
             {!hasKnownWeight && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>No serving size on record for this item — only relative scaling is available (1 = what's currently logged). Delete and re-add it via search for gram-accurate editing.</div>}
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            {isPremium ? (
+              <>
+                <label style={labelStyle}>Logged at</label>
+                <input style={{ ...fieldStyle, width: 130 }} type="time" value={time} onChange={e => setTime(e.target.value)} />
+              </>
+            ) : (
+              <>
+                <label style={labelStyle}>Meal</label>
+                <select style={{ ...fieldStyle, width: 160, cursor: 'pointer' }} value={meal} onChange={e => setMeal(e.target.value)}>
+                  {MEAL_OPTIONS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+              </>
+            )}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 14, borderBottom: '1px solid var(--border-default)' }}>
             <MacroReadout value={preview.cal} unit="" label="Calories" color={C.green} />

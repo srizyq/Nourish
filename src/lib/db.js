@@ -88,26 +88,33 @@ export async function deleteFoodLog(id) {
 }
 
 export async function updateFoodLog(id, entry) {
+  const patch = {
+    calories: entry.cal || 0,
+    protein_g: entry.protein || 0,
+    carbs_g: entry.carbs || 0,
+    fat_g: entry.fat || 0,
+    fibre_g: entry.fibre || 0,
+    sodium_mg: entry.sodium || 0,
+    sugar_g: entry.sugar || 0,
+    saturated_fat_g: entry.saturatedFat || 0,
+    trans_fat_g: entry.transFat || 0,
+    cholesterol_mg: entry.cholesterol || 0,
+    potassium_mg: entry.potassium || 0,
+    added_sugar_g: entry.addedSugar || 0,
+    vitamin_d_mcg: entry.vitaminD || 0,
+    calcium_mg: entry.calcium || 0,
+    iron_mg: entry.iron || 0,
+    serving_grams: entry.servingGrams || null,
+  };
+  // Both optional — only touched when the caller actually included them,
+  // so an amount-only edit never accidentally resets the other. Lets an
+  // already-logged item move to a different meal (free tier) or a
+  // different logged time (Pro), instead of requiring delete + re-add.
+  if (entry.meal !== undefined) patch.meal = entry.meal;
+  if (entry.loggedAt !== undefined) patch.logged_at = entry.loggedAt ? entry.loggedAt.toISOString() : null;
   const { data, error } = await supabase
     .from('food_logs')
-    .update({
-      calories: entry.cal || 0,
-      protein_g: entry.protein || 0,
-      carbs_g: entry.carbs || 0,
-      fat_g: entry.fat || 0,
-      fibre_g: entry.fibre || 0,
-      sodium_mg: entry.sodium || 0,
-      sugar_g: entry.sugar || 0,
-      saturated_fat_g: entry.saturatedFat || 0,
-      trans_fat_g: entry.transFat || 0,
-      cholesterol_mg: entry.cholesterol || 0,
-      potassium_mg: entry.potassium || 0,
-      added_sugar_g: entry.addedSugar || 0,
-      vitamin_d_mcg: entry.vitaminD || 0,
-      calcium_mg: entry.calcium || 0,
-      iron_mg: entry.iron || 0,
-      serving_grams: entry.servingGrams || null,
-    })
+    .update(patch)
     .eq('id', id)
     .select()
     .single();

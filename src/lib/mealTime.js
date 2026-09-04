@@ -55,6 +55,13 @@ export function formatTimeFromDate(d) {
   return formatTime12h(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`);
 }
 
+// The raw "HH:MM" a Date represents — for seeding a <input type="time">
+// from an already-logged item's timestamp, as opposed to formatTimeFromDate
+// above which is for display.
+export function dateToHHMM(d) {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 // Full 12am–11pm coverage for the Pro hourly view, instead of
 // groupItemsByHour's "only show hours with something in them" (which
 // reads as basically empty for most of the day). Contiguous stretches of

@@ -113,6 +113,7 @@ function HourCard({ segment, isOpen, onToggle, expandedItemId, onToggleItem, onD
               onToggle={() => onToggleItem(item.id)}
               onDelete={() => onDelete(item.id)}
               onSave={async (fields) => { await onSave(item.id, fields); onToggleItem(item.id); }}
+              isPremium
             />
           ))}
         </div>
