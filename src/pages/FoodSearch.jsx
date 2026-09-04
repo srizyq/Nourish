@@ -363,18 +363,18 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selected
         <div style={{ position: "relative", marginBottom: 14 }}>
           <video ref={videoRef} style={{ width: "100%", borderRadius: 10, background: "#0a0a0a", display: looking ? "block" : "none", maxHeight: 220, objectFit: "cover" }} />
           {looking && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}><div style={{ width: "70%", height: 2, background: "#8fbc8f", opacity: 0.7, boxShadow: "0 0 8px #8fbc8f", borderRadius: 2 }} /></div>}
-          {!looking && <div style={{ height: 180, border: "1px dashed #2a2a2a", borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}><i className="ti ti-barcode" style={{ fontSize: 36, color: "#333" }} /><div style={{ fontSize: 13, color: "#555" }}>Point your camera at a barcode</div><div style={{ fontSize: 11, color: "#333" }}>Works with most packaged foods</div></div>}
+          {!looking && <div style={{ height: 180, border: "1px dashed var(--border-default)", borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}><i className="ti ti-barcode" style={{ fontSize: 36, color: "var(--text-hint)" }} /><div style={{ fontSize: 13, color: "var(--text-muted)" }}>Point your camera at a barcode</div><div style={{ fontSize: 11, color: "var(--text-hint)" }}>Works with most packaged foods</div></div>}
         </div>
       )}
-      {scanning && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "20px 0", color: "#555", fontSize: 13 }}><div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid #333", borderTopColor: "#8fbc8f", animation: "spin 0.8s linear infinite" }} />Looking up product…</div>}
+      {scanning && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "20px 0", color: "var(--text-muted)", fontSize: 13 }}><div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--text-hint)", borderTopColor: "var(--accent)", animation: "spin 0.8s linear infinite" }} />Looking up product…</div>}
       {error && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070", marginBottom: 10 }}>{error}</div>
+          <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "var(--danger)", marginBottom: 10 }}>{error}</div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={onSearchManually} style={{ flex: 1, background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "9px", fontSize: 13, color: "#ccc", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <button onClick={onSearchManually} style={{ flex: 1, background: "transparent", border: "1px solid var(--border-default)", borderRadius: 8, padding: "9px", fontSize: 13, color: "var(--text-secondary)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <i className="ti ti-search" style={{ fontSize: 14 }} /> Search manually
             </button>
-            <button onClick={onCreateCustom} style={{ flex: 1, background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "9px", fontSize: 13, color: "#8fbc8f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <button onClick={onCreateCustom} style={{ flex: 1, background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 8, padding: "9px", fontSize: 13, color: "var(--accent)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <i className="ti ti-plus" style={{ fontSize: 14 }} /> Create custom food
             </button>
           </div>
@@ -382,24 +382,24 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selected
       )}
       {result && (
         <div>
-          <div style={{ fontSize: 11, color: "#555", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Product found</div>
-          <div style={{ background: "#181818", border: "1px solid #3a5a3a", borderRadius: 10, padding: "14px", marginBottom: 12 }}>
-            <div style={{ fontSize: 14, color: "#e8e8e8", fontWeight: 600, marginBottom: 2 }}>{result.name}</div>
-            {result.brand && <div style={{ fontSize: 12, color: "#555", marginBottom: 10 }}>{result.brand} · {result.serving}</div>}
+          <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>Product found</div>
+          <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-active)", borderRadius: 10, padding: "14px", marginBottom: 12 }}>
+            <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 600, marginBottom: 2 }}>{result.name}</div>
+            {result.brand && <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>{result.brand} · {result.serving}</div>}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 14 }}>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#8fbc8f" }}>{scaled.protein}g</div><div style={{ fontSize: 10, color: "#555" }}>Protein</div></div>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#6aabcf" }}>{scaled.carbs}g</div><div style={{ fontSize: 10, color: "#555" }}>Carbs</div></div>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#b48250" }}>{scaled.fat}g</div><div style={{ fontSize: 10, color: "#555" }}>Fat</div></div>
-              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "#9f97e8" }}>{scaled.fibre}g</div><div style={{ fontSize: 10, color: "#555" }}>Fibre</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "var(--accent)" }}>{scaled.protein}g</div><div style={{ fontSize: 10, color: "var(--text-muted)" }}>Protein</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "var(--water-blue)" }}>{scaled.carbs}g</div><div style={{ fontSize: 10, color: "var(--text-muted)" }}>Carbs</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "var(--warning)" }}>{scaled.fat}g</div><div style={{ fontSize: 10, color: "var(--text-muted)" }}>Fat</div></div>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 600, color: "var(--ai-purple)" }}>{scaled.fibre}g</div><div style={{ fontSize: 10, color: "var(--text-muted)" }}>Fibre</div></div>
             </div>
-            <div style={{ display: "flex", gap: 16, paddingTop: 10, borderTop: "1px solid #1e1e1e" }}>
-              <div style={{ fontSize: 12, color: "#555" }}>Sodium <span style={{ color: "#888" }}>{scaled.sodium}mg</span></div>
-              <div style={{ fontSize: 12, color: "#555" }}>Sugar <span style={{ color: "#888" }}>{scaled.sugar}g</span></div>
+            <div style={{ display: "flex", gap: 16, paddingTop: 10, borderTop: "1px solid var(--border-default)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Sodium <span style={{ color: "var(--text-secondary)" }}>{scaled.sodium}mg</span></div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Sugar <span style={{ color: "var(--text-secondary)" }}>{scaled.sugar}g</span></div>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, color: "#8fbc8f" }}>{scaled.cal}</span>
-            <span style={{ fontSize: 12, color: "#555" }}> kcal{unit !== "g" && ` · ≈${gramsEquivalent}g`} — label serving: {result.serving}</span>
+            <span style={{ fontSize: 18, fontWeight: 700, color: "var(--accent)" }}>{scaled.cal}</span>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}> kcal{unit !== "g" && ` · ≈${gramsEquivalent}g`} — label serving: {result.serving}</span>
           </div>
           <AddControls
             amount={amount} setAmount={setAmount}
@@ -410,11 +410,11 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selected
             onAdd={() => { onAddFood(scaled, isPremium ? null : meal, isPremium ? timeStringToDate(time, new Date(selectedDate + "T00:00:00")) : null); onClose(); }}
             disabled={!servings}
           />
-          <button onClick={reset} style={{ marginTop: 10, width: "100%", background: "transparent", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "#666", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
+          <button onClick={reset} style={{ marginTop: 10, width: "100%", background: "transparent", border: "1px solid var(--border-default)", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "var(--text-muted)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
         </div>
       )}
       {!result && !scanning && (
-        <button onClick={looking ? stopScanner : startScanner} style={{ width: "100%", background: looking ? "#1e1e1e" : "#8fbc8f", border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, color: looking ? "#c07070" : "#0f0f0f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "background 0.2s" }}>
+        <button onClick={looking ? stopScanner : startScanner} style={{ width: "100%", background: looking ? "var(--border-default)" : "var(--accent)", border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, color: looking ? "var(--danger)" : "#0f0f0f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "background 0.2s" }}>
           <i className={`ti ${looking ? "ti-x" : "ti-camera"}`} style={{ fontSize: 15 }} />
           {looking ? "Stop camera" : "Start scanning"}
         </button>
@@ -431,10 +431,10 @@ function ScanModal({ onClose, onAddFood, defaultMeal, defaultTime, selectedDate,
   const { closing, close } = useClosingTransition(onClose);
   return (
     <div onClick={close} className={`modal-backdrop${closing ? ' is-closing' : ''}`} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}>
-      <div onClick={e => e.stopPropagation()} className={`modal-panel${closing ? ' is-closing' : ''}`} style={{ background: "#141414", border: "1px solid #2a2a2a", borderRadius: 16, width: "100%", maxWidth: 460, maxHeight: "85vh", overflowY: "auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #1e1e1e", position: "sticky", top: 0, background: "#141414", zIndex: 10 }}>
-          <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 15, color: "#e8e8e8" }}>Scan barcode</span>
-          <button onClick={close} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
+      <div onClick={e => e.stopPropagation()} className={`modal-panel${closing ? ' is-closing' : ''}`} style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 16, width: "100%", maxWidth: 460, maxHeight: "85vh", overflowY: "auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--border-default)", position: "sticky", top: 0, background: "var(--bg-subtle)", zIndex: 10 }}>
+          <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>Scan barcode</span>
+          <button onClick={close} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
         </div>
         <div style={{ padding: 20 }}>
           <BarcodeScanner onAddFood={onAddFood} onClose={onClose} defaultMeal={defaultMeal} defaultTime={defaultTime} selectedDate={selectedDate} isPremium={isPremium} onCreateCustom={onCreateCustom} onSearchManually={onSearchManually} />
@@ -450,10 +450,10 @@ function ModalShell({ title, onClose, children, maxWidth = 460 }) {
   const { closing, close } = useClosingTransition(onClose);
   return (
     <div onClick={close} className={`modal-backdrop${closing ? ' is-closing' : ''}`} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 24 }}>
-      <div onClick={e => e.stopPropagation()} className={`modal-panel${closing ? ' is-closing' : ''}`} style={{ background: "#141414", border: "1px solid #2a2a2a", borderRadius: 16, width: "100%", maxWidth, maxHeight: "85vh", overflowY: "auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #1e1e1e", position: "sticky", top: 0, background: "#141414", zIndex: 10 }}>
-          <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 15, color: "#e8e8e8" }}>{title}</span>
-          <button onClick={close} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
+      <div onClick={e => e.stopPropagation()} className={`modal-panel${closing ? ' is-closing' : ''}`} style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 16, width: "100%", maxWidth, maxHeight: "85vh", overflowY: "auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--border-default)", position: "sticky", top: 0, background: "var(--bg-subtle)", zIndex: 10 }}>
+          <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>{title}</span>
+          <button onClick={close} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
         </div>
         <div style={{ padding: 20 }}>{children}</div>
       </div>
@@ -461,8 +461,8 @@ function ModalShell({ title, onClose, children, maxWidth = 460 }) {
   );
 }
 
-const fieldStyle = { width: "100%", background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "9px 12px", color: "#e8e8e8", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
-const labelStyle = { fontSize: 11, color: "#777", marginBottom: 5, display: "block" };
+const fieldStyle = { width: "100%", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 7, padding: "9px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none", fontFamily: "inherit", boxSizing: "border-box" };
+const labelStyle = { fontSize: 11, color: "var(--text-muted)", marginBottom: 5, display: "block" };
 
 // ─── Create a custom food ───────────────────────────────────────────────────
 
@@ -545,8 +545,8 @@ function CreateFoodModal({ onClose, onCreate, initialName }) {
           <div><label style={labelStyle}>Sodium (mg)</label><input style={fieldStyle} type="number" min="0" value={sodium} onChange={e => setSodium(e.target.value)} /></div>
           <div><label style={labelStyle}>Sugar (g)</label><input style={fieldStyle} type="number" min="0" value={sugar} onChange={e => setSugar(e.target.value)} /></div>
         </div>
-        {error && <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070" }}>{error}</div>}
-        <button onClick={submit} disabled={!valid || saving} style={{ background: !valid || saving ? "#2a2a2a" : "#8fbc8f", border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, color: !valid || saving ? "#666" : "#0f0f0f", cursor: !valid || saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+        {error && <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "var(--danger)" }}>{error}</div>}
+        <button onClick={submit} disabled={!valid || saving} style={{ background: !valid || saving ? "var(--border-default)" : "var(--accent)", border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, color: !valid || saving ? "var(--text-muted)" : "#0f0f0f", cursor: !valid || saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
           {saving ? "Saving…" : "Save custom food"}
         </button>
       </div>
@@ -559,11 +559,11 @@ function CreateFoodModal({ onClose, onCreate, initialName }) {
 function SavedMealsModal({ meals, loading, onClose, onLog, onDelete, onStartBuilder }) {
   return (
     <ModalShell title="Saved meals" onClose={onClose}>
-      <button onClick={onStartBuilder} style={{ width: "100%", background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "10px", fontSize: 13, fontWeight: 600, color: "#8fbc8f", cursor: "pointer", fontFamily: "inherit", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+      <button onClick={onStartBuilder} style={{ width: "100%", background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 8, padding: "10px", fontSize: 13, fontWeight: 600, color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
         <i className="ti ti-plus" /> Build a new meal
       </button>
       {loading ? null : meals.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "24px", color: "#444", fontSize: 13, background: "#181818", border: "1px dashed #2a2a2a", borderRadius: 10 }}>
+        <div style={{ textAlign: "center", padding: "24px", color: "var(--text-hint)", fontSize: 13, background: "var(--bg-card)", border: "1px dashed var(--border-default)", borderRadius: 10 }}>
           No saved meals yet. Build one from foods you log often.
         </div>
       ) : (
@@ -571,13 +571,13 @@ function SavedMealsModal({ meals, loading, onClose, onLog, onDelete, onStartBuil
           const items = meal.items || [];
           const totalCal = items.reduce((s, it) => s + (Number(it.cal) || 0), 0);
           return (
-            <div key={meal.id} style={{ background: "#181818", border: "1px solid #1e1e1e", borderRadius: 10, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
+            <div key={meal.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "12px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, color: "#e8e8e8" }}>{meal.name}</div>
-                <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{items.length} item{items.length !== 1 ? "s" : ""} · {Math.round(totalCal)} kcal</div>
+                <div style={{ fontSize: 14, color: "var(--text-primary)" }}>{meal.name}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{items.length} item{items.length !== 1 ? "s" : ""} · {Math.round(totalCal)} kcal</div>
               </div>
-              <button onClick={() => onLog(meal)} style={{ background: "#8fbc8f", border: "none", borderRadius: 7, padding: "7px 12px", fontSize: 12, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Log all</button>
-              <button onClick={() => onDelete(meal.id)} style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 9px", color: "#c07070", cursor: "pointer" }}><i className="ti ti-trash" /></button>
+              <button onClick={() => onLog(meal)} style={{ background: "var(--accent)", border: "none", borderRadius: 7, padding: "7px 12px", fontSize: 12, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>Log all</button>
+              <button onClick={() => onDelete(meal.id)} style={{ background: "none", border: "1px solid var(--border-default)", borderRadius: 7, padding: "7px 9px", color: "var(--danger)", cursor: "pointer" }}><i className="ti ti-trash" /></button>
             </div>
           );
         })
@@ -622,29 +622,29 @@ function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal, def
   return (
     <ModalShell title={`Meal builder (${items.length})`} onClose={onClose}>
       {items.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "20px", color: "#444", fontSize: 13 }}>
+        <div style={{ textAlign: "center", padding: "20px", color: "var(--text-hint)", fontSize: 13 }}>
           No items yet — close this, then tap "+ Add to meal" on any food.
         </div>
       ) : (
         <>
           <div style={{ marginBottom: 14 }}>
             {items.map((it, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < items.length - 1 ? "1px solid #1e1e1e" : "none" }}>
-                <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: "#ccc", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</div>
-                <div style={{ fontSize: 12, color: "#8fbc8f", flexShrink: 0 }}>{Math.round(it.cal)} kcal</div>
-                <button onClick={() => onRemove(i)} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 15, padding: 0 }}>✕</button>
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < items.length - 1 ? "1px solid var(--border-default)" : "none" }}>
+                <div style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{it.name}</div>
+                <div style={{ fontSize: 12, color: "var(--accent)", flexShrink: 0 }}>{Math.round(it.cal)} kcal</div>
+                <button onClick={() => onRemove(i)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 15, padding: 0 }}>✕</button>
               </div>
             ))}
           </div>
-          <div style={{ display: "flex", gap: 16, marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid #1e1e1e", fontSize: 12, color: "#555" }}>
-            <span><span style={{ color: "#8fbc8f", fontWeight: 600 }}>{Math.round(totals.cal)}</span> kcal</span>
-            <span>P <span style={{ color: "#888" }}>{Math.round(totals.protein)}g</span></span>
-            <span>C <span style={{ color: "#888" }}>{Math.round(totals.carbs)}g</span></span>
-            <span>F <span style={{ color: "#888" }}>{Math.round(totals.fat)}g</span></span>
+          <div style={{ display: "flex", gap: 16, marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid var(--border-default)", fontSize: 12, color: "var(--text-muted)" }}>
+            <span><span style={{ color: "var(--accent)", fontWeight: 600 }}>{Math.round(totals.cal)}</span> kcal</span>
+            <span>P <span style={{ color: "var(--text-secondary)" }}>{Math.round(totals.protein)}g</span></span>
+            <span>C <span style={{ color: "var(--text-secondary)" }}>{Math.round(totals.carbs)}g</span></span>
+            <span>F <span style={{ color: "var(--text-secondary)" }}>{Math.round(totals.fat)}g</span></span>
           </div>
           <label style={labelStyle}>Meal name *</label>
           <input style={{ ...fieldStyle, marginBottom: 12 }} value={name} onChange={e => setName(e.target.value)} placeholder="e.g. My usual breakfast" />
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#ccc", marginBottom: logNow ? 12 : 16, cursor: "pointer" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-secondary)", marginBottom: logNow ? 12 : 16, cursor: "pointer" }}>
             <input type="checkbox" checked={logNow} onChange={e => setLogNow(e.target.checked)} />
             Also log to today
           </label>
@@ -657,8 +657,8 @@ function BuilderReviewModal({ items, onClose, onRemove, onSave, defaultMeal, def
               </select>
             )
           )}
-          {error && <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070", marginBottom: 12 }}>{error}</div>}
-          <button onClick={submit} disabled={!name.trim() || saving} style={{ width: "100%", background: !name.trim() || saving ? "#2a2a2a" : "#8fbc8f", border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, color: !name.trim() || saving ? "#666" : "#0f0f0f", cursor: !name.trim() || saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+          {error && <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "var(--danger)", marginBottom: 12 }}>{error}</div>}
+          <button onClick={submit} disabled={!name.trim() || saving} style={{ width: "100%", background: !name.trim() || saving ? "var(--border-default)" : "var(--accent)", border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, color: !name.trim() || saving ? "var(--text-muted)" : "#0f0f0f", cursor: !name.trim() || saving ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
             {saving ? "Saving…" : !logNow ? "Save meal" : isPremium ? `Save meal & log at ${formatTime12h(time)}` : `Save meal & log to ${meal}`}
           </button>
         </>
@@ -673,7 +673,7 @@ function MacroPill({ value, unit = "g", label, color }) {
   return (
     <div style={{ textAlign: "center" }}>
       <div style={{ fontSize: 15, fontWeight: 600, color }}>{value}{unit}</div>
-      <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{label}</div>
+      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{label}</div>
     </div>
   );
 }
@@ -718,19 +718,19 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, select
   }
 
   return (
-    <div style={{ background: "#181818", border: `1px solid ${isExpanded ? "#4a7a4a" : "#1e1e1e"}`, borderRadius: 10, marginBottom: 8, overflow: "hidden", transition: "border-color 0.15s", cursor: "pointer" }}>
+    <div style={{ background: "var(--bg-card)", border: `1px solid ${isExpanded ? "var(--accent-dark)" : "var(--border-default)"}`, borderRadius: 10, marginBottom: 8, overflow: "hidden", transition: "border-color 0.15s", cursor: "pointer" }}>
       <div onClick={onToggle} style={{ display: "flex", alignItems: "center", padding: "11px 14px", gap: 12 }}>
         <div style={{ width: 40, height: 40, background: catStyle.color + "22", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0, color: catStyle.color }}><i className={`ti ${catStyle.icon}`} /></div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, color: "#e8e8e8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div style={{ fontSize: 14, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {food.name}
             {food.source === "custom" && <span style={{ marginLeft: 8, fontSize: 10, color: "#b48fd9", border: "1px solid #b48fd950", borderRadius: 5, padding: "1px 6px", verticalAlign: "middle" }}>Custom</span>}
           </div>
-          <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>{food.meta}</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{food.meta}</div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "#8fbc8f" }}>{food.cal}</span>
-          <span style={{ fontSize: 11, color: "#555" }}> kcal</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--accent)" }}>{food.cal}</span>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}> kcal</span>
         </div>
         <button
           onClick={handleQuickAdd}
@@ -738,8 +738,8 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, select
           title={addLabel ? "Quick add — 1 serving to meal builder" : `Quick add — 1 serving to ${defaultMeal}`}
           style={{
             width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-            background: justAdded ? "#0f1a0f" : "#8fbc8f", border: justAdded ? "1px solid #4a7a4a" : "none",
-            color: justAdded ? "#8fbc8f" : "#0f0f0f", fontSize: 15, lineHeight: 1,
+            background: justAdded ? "var(--accent-bg)" : "var(--accent)", border: justAdded ? "1px solid var(--accent-dark)" : "none",
+            color: justAdded ? "var(--accent)" : "#0f0f0f", fontSize: 15, lineHeight: 1,
             display: "flex", alignItems: "center", justifyContent: "center",
             cursor: justAdded ? "default" : "pointer", fontFamily: "inherit",
           }}
@@ -747,25 +747,25 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, select
           <i className={`ti ${justAdded ? "ti-check" : "ti-plus"}`} />
         </button>
         {onToggleFavourite && (
-          <button onClick={(e) => { e.stopPropagation(); onToggleFavourite(); }} title={isFavourite ? "Remove favourite" : "Add favourite"} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0, color: isFavourite ? "#e8c468" : "#333", fontSize: 16, display: "flex" }}>
+          <button onClick={(e) => { e.stopPropagation(); onToggleFavourite(); }} title={isFavourite ? "Remove favourite" : "Add favourite"} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, flexShrink: 0, color: isFavourite ? "var(--gold)" : "var(--text-hint)", fontSize: 16, display: "flex" }}>
             <i className={isFavourite ? "ti ti-star-filled" : "ti ti-star"} />
           </button>
         )}
-        <span style={{ fontSize: 13, color: "#444", marginLeft: 4 }}>{isExpanded ? "▲" : "▼"}</span>
+        <span style={{ fontSize: 13, color: "var(--text-hint)", marginLeft: 4 }}>{isExpanded ? "▲" : "▼"}</span>
       </div>
       {isExpanded && (
-        <div style={{ borderTop: "1px solid #1e1e1e", padding: "14px", background: "#141414" }}>
+        <div style={{ borderTop: "1px solid var(--border-default)", padding: "14px", background: "var(--bg-subtle)" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 14 }}>
-            <MacroPill value={scaled.protein} label="Protein" color="#8fbc8f" />
-            <MacroPill value={scaled.carbs} label="Carbs" color="#6aabcf" />
-            <MacroPill value={scaled.fat} label="Fat" color="#b48250" />
-            <MacroPill value={scaled.fibre} label="Fibre" color="#9f97e8" />
+            <MacroPill value={scaled.protein} label="Protein" color="var(--accent)" />
+            <MacroPill value={scaled.carbs} label="Carbs" color="var(--water-blue)" />
+            <MacroPill value={scaled.fat} label="Fat" color="var(--warning)" />
+            <MacroPill value={scaled.fibre} label="Fibre" color="var(--ai-purple)" />
           </div>
-          <div style={{ display: "flex", gap: 16, marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid #1e1e1e" }}>
-            <div style={{ fontSize: 12, color: "#555" }}>Sodium <span style={{ color: "#888" }}>{scaled.sodium}mg</span></div>
-            <div style={{ fontSize: 12, color: "#555" }}>Sugar <span style={{ color: "#888" }}>{scaled.sugar}g</span></div>
-            <div style={{ fontSize: 12, color: "#555", marginLeft: "auto" }}>
-              <span style={{ color: "#8fbc8f", fontWeight: 600 }}>{scaled.cal}</span> kcal{unit !== "g" && ` · ≈${gramsEquivalent}g`}
+          <div style={{ display: "flex", gap: 16, marginBottom: 14, paddingBottom: 14, borderBottom: "1px solid var(--border-default)" }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Sodium <span style={{ color: "var(--text-secondary)" }}>{scaled.sodium}mg</span></div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Sugar <span style={{ color: "var(--text-secondary)" }}>{scaled.sugar}g</span></div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "auto" }}>
+              <span style={{ color: "var(--accent)", fontWeight: 600 }}>{scaled.cal}</span> kcal{unit !== "g" && ` · ≈${gramsEquivalent}g`}
             </div>
           </div>
           <AddControls
@@ -779,7 +779,7 @@ function FoodCard({ food, isExpanded, onToggle, defaultMeal, defaultTime, select
             addLabel={addLabel}
           />
           {onDelete && (
-            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ marginTop: 10, width: "100%", background: "none", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px", fontSize: 12, color: "#c07070", cursor: "pointer", fontFamily: "inherit" }}>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ marginTop: 10, width: "100%", background: "none", border: "1px solid var(--border-default)", borderRadius: 8, padding: "7px", fontSize: 12, color: "var(--danger)", cursor: "pointer", fontFamily: "inherit" }}>
                 <i className="ti ti-trash" style={{ marginRight: 5 }} />Delete custom food
               </button>
           )}
@@ -796,18 +796,18 @@ function AddControls({ amount, setAmount, unit, setUnit, meal, setMeal, time, se
         <input
           type="number" min="0" step="any" value={amount}
           onChange={e => setAmount(e.target.value)}
-          style={{ width: 70, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#e8e8e8", fontSize: 13, outline: "none", fontFamily: "inherit" }}
+          style={{ width: 70, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 7, padding: "7px 10px", color: "var(--text-primary)", fontSize: 13, outline: "none", fontFamily: "inherit" }}
         />
-        <select value={unit} onChange={e => setUnit(e.target.value)} style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
+        <select value={unit} onChange={e => setUnit(e.target.value)} style={{ flex: 1, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 7, padding: "7px 10px", color: "var(--text-secondary)", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
           {UNITS.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
         </select>
         {isPremium ? (
           <input
             type="time" value={time} onChange={e => setTime(e.target.value)}
-            style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}
+            style={{ flex: 1, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 7, padding: "7px 10px", color: "var(--text-secondary)", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}
           />
         ) : (
-          <select value={meal} onChange={e => setMeal(e.target.value)} style={{ flex: 1, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "7px 10px", color: "#ccc", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
+          <select value={meal} onChange={e => setMeal(e.target.value)} style={{ flex: 1, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 7, padding: "7px 10px", color: "var(--text-secondary)", fontSize: 13, outline: "none", fontFamily: "inherit", cursor: "pointer" }}>
             {MEALS.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         )}
@@ -815,7 +815,7 @@ function AddControls({ amount, setAmount, unit, setUnit, meal, setMeal, time, se
       <button
         onClick={onAdd}
         disabled={disabled}
-        style={{ background: disabled ? "#2a2a2a" : "#8fbc8f", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, color: disabled ? "#666" : "#0f0f0f", cursor: disabled ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}
+        style={{ background: disabled ? "var(--border-default)" : "var(--accent)", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, color: disabled ? "var(--text-muted)" : "#0f0f0f", cursor: disabled ? "not-allowed" : "pointer", whiteSpace: "nowrap", fontFamily: "inherit" }}
       >
         {addLabel ? addLabel : isPremium ? `+ Add at ${formatTime12h(time)}` : `+ Add to ${meal}`}
       </button>
@@ -831,7 +831,7 @@ function Toast({ message, onDone }) {
     return () => { clearTimeout(leaveTimer); clearTimeout(doneTimer); };
   }, [onDone]);
   return (
-    <div className={leaving ? "toast-out" : "toast-in"} style={{ position: "fixed", bottom: 28, left: "50%", background: "#0f1a0f", border: "1px solid #4a7a4a", borderRadius: 10, padding: "10px 20px", color: "#8fbc8f", fontSize: 14, zIndex: 100, whiteSpace: "nowrap", pointerEvents: "none" }}>
+    <div className={leaving ? "toast-out" : "toast-in"} style={{ position: "fixed", bottom: 28, left: "50%", background: "var(--accent-bg)", border: "1px solid var(--accent-dark)", borderRadius: 10, padding: "10px 20px", color: "var(--accent)", fontSize: 14, zIndex: 100, whiteSpace: "nowrap", pointerEvents: "none" }}>
       ✓ {message}
     </div>
   );
@@ -1129,7 +1129,7 @@ export default function FoodSearch() {
   }
 
   return (
-    <div style={{ height: "100vh", overflow: "hidden", background: "#0f0f0f", color: "#e8e8e8", fontFamily: "'DM Sans', sans-serif", display: "flex" }}>
+    <div style={{ height: "100vh", overflow: "hidden", background: "var(--bg-primary)", color: "var(--text-primary)", fontFamily: "'DM Sans', sans-serif", display: "flex" }}>
 
       <AppNav active="food" />
 
@@ -1137,44 +1137,44 @@ export default function FoodSearch() {
       <div className="app-content-pad" style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
 
         {/* Top bar */}
-        <div className="page-pad-top" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px 12px", paddingTop: 14, paddingBottom: 14, borderBottom: "1px solid #1e1e1e", background: "#0f0f0f", position: "sticky", top: 0, zIndex: 20 }}>
+        <div className="page-pad-top" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "8px 12px", paddingTop: 14, paddingBottom: 14, borderBottom: "1px solid var(--border-default)", background: "var(--bg-primary)", position: "sticky", top: 0, zIndex: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16, color: "#e8e8e8" }}>Food search</span>
+            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16, color: "var(--text-primary)" }}>Food search</span>
             <div style={{ display: "flex", alignItems: "center", gap: 4, background: isToday ? "transparent" : "#1a1508", border: isToday ? "none" : "1px solid #4a3a1a", borderRadius: 7, padding: isToday ? 0 : "3px 4px" }}>
-              <button onClick={() => shiftDate(-1)} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 15, display: "flex", padding: 3 }} aria-label="Previous day">
+              <button onClick={() => shiftDate(-1)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 15, display: "flex", padding: 3 }} aria-label="Previous day">
                 <i className="ti ti-chevron-left" />
               </button>
-              <span style={{ fontSize: 12, color: isToday ? "#666" : "#e8c468", minWidth: 74, textAlign: "center" }}>
+              <span style={{ fontSize: 12, color: isToday ? "var(--text-muted)" : "var(--gold)", minWidth: 74, textAlign: "center" }}>
                 {isToday ? "Today" : new Date(selectedDate + "T00:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
               </span>
-              <button onClick={() => shiftDate(1)} disabled={isToday} style={{ background: "none", border: "none", color: isToday ? "#2a2a2a" : "#666", cursor: isToday ? "default" : "pointer", fontSize: 15, display: "flex", padding: 3 }} aria-label="Next day">
+              <button onClick={() => shiftDate(1)} disabled={isToday} style={{ background: "none", border: "none", color: isToday ? "var(--border-default)" : "var(--text-muted)", cursor: isToday ? "default" : "pointer", fontSize: 15, display: "flex", padding: 3 }} aria-label="Next day">
                 <i className="ti ti-chevron-right" />
               </button>
             </div>
             {isPremium ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "4px 10px" }}>
-                <span style={{ fontSize: 12, color: "#8fbc8f" }}>Logging at</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 7, padding: "4px 10px" }}>
+                <span style={{ fontSize: 12, color: "var(--accent)" }}>Logging at</span>
                 <input
                   type="time" value={activeTime} onChange={e => setActiveTime(e.target.value)}
-                  style={{ background: "none", border: "none", color: "#8fbc8f", fontSize: 12, fontFamily: "inherit", cursor: "pointer", outline: "none" }}
+                  style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 12, fontFamily: "inherit", cursor: "pointer", outline: "none" }}
                 />
               </div>
             ) : (
               <div style={{ position: "relative" }}>
-                <button onClick={() => setMealDropdownOpen(o => !o)} style={{ background: "#181818", border: "1px solid #2a2a2a", borderRadius: 7, padding: "4px 10px", fontSize: 12, color: "#8fbc8f", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
+                <button onClick={() => setMealDropdownOpen(o => !o)} style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 7, padding: "4px 10px", fontSize: 12, color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 5 }}>
                   Adding to: {activeMeal} ▾
                 </button>
                 {mealDropdownOpen && (
-                  <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 8, overflow: "hidden", zIndex: 50, minWidth: 140 }}>
-                    {MEALS.map(m => <div key={m} onClick={() => { setActiveMeal(m); setMealDropdownOpen(false); }} style={{ padding: "9px 14px", fontSize: 13, color: m === activeMeal ? "#8fbc8f" : "#ccc", background: m === activeMeal ? "#0f1a0f" : "transparent", cursor: "pointer" }}>{m}</div>)}
+                  <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 8, overflow: "hidden", zIndex: 50, minWidth: 140 }}>
+                    {MEALS.map(m => <div key={m} onClick={() => { setActiveMeal(m); setMealDropdownOpen(false); }} style={{ padding: "9px 14px", fontSize: 13, color: m === activeMeal ? "var(--accent)" : "var(--text-secondary)", background: m === activeMeal ? "var(--accent-bg)" : "transparent", cursor: "pointer" }}>{m}</div>)}
                   </div>
                 )}
               </div>
             )}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <div onClick={() => setCreateFoodOpen(true)} title="Create a custom food" style={{ width: 32, height: 32, background: "#181818", border: "1px solid #1e1e1e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, color: "#888" }}><i className="ti ti-plus" /></div>
-            <div onClick={() => setSavedMealsOpen(true)} title="Saved meals" style={{ width: 32, height: 32, background: "#181818", border: "1px solid #1e1e1e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, color: "#888" }}><i className="ti ti-bookmark" /></div>
+            <div onClick={() => setCreateFoodOpen(true)} title="Create a custom food" style={{ width: 32, height: 32, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, color: "var(--text-muted)" }}><i className="ti ti-plus" /></div>
+            <div onClick={() => setSavedMealsOpen(true)} title="Saved meals" style={{ width: 32, height: 32, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 15, color: "var(--text-muted)" }}><i className="ti ti-bookmark" /></div>
           </div>
         </div>
 
@@ -1182,21 +1182,21 @@ export default function FoodSearch() {
         <div className="page-pad">
 
           {/* Search bar */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "#181818", border: "1px solid #2a2a2a", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
-            <i className="ti ti-search" style={{ color: "#555", fontSize: 18 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+            <i className="ti ti-search" style={{ color: "var(--text-muted)", fontSize: 18 }} />
             <input
               ref={inputRef}
               value={query}
               onChange={e => { setQuery(e.target.value); setExpandedId(null); }}
               placeholder="Search any food, dish, or product…"
-              style={{ flex: 1, background: "none", border: "none", outline: "none", color: "#e8e8e8", fontSize: 15, fontFamily: "inherit" }}
+              style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--text-primary)", fontSize: 15, fontFamily: "inherit" }}
             />
-            {liveLoading && <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid #333", borderTopColor: "#8fbc8f", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />}
-            {query && !liveLoading && <button onClick={() => { setQuery(""); setGenericResults([]); setPackagedLive([]); setLiveError(null); }} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 }}>✕</button>}
-            <div onClick={() => setScanOpen(true)} style={{ background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "7px 12px", color: "#8fbc8f", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }} onMouseEnter={e => e.currentTarget.style.borderColor = "#4a7a4a"} onMouseLeave={e => e.currentTarget.style.borderColor = "#3a5a3a"}>
+            {liveLoading && <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--text-hint)", borderTopColor: "var(--accent)", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />}
+            {query && !liveLoading && <button onClick={() => { setQuery(""); setGenericResults([]); setPackagedLive([]); setLiveError(null); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 }}>✕</button>}
+            <div onClick={() => setScanOpen(true)} style={{ background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 8, padding: "7px 12px", color: "var(--accent)", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }} onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-dark)"} onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-active)"}>
               <i className="ti ti-barcode" style={{ fontSize: 14 }} /> Scan barcode
             </div>
-            <div onClick={() => setPhotoScanOpen(true)} style={{ background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "7px 12px", color: "#8fbc8f", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }} onMouseEnter={e => e.currentTarget.style.borderColor = "#4a7a4a"} onMouseLeave={e => e.currentTarget.style.borderColor = "#3a5a3a"}>
+            <div onClick={() => setPhotoScanOpen(true)} style={{ background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 8, padding: "7px 12px", color: "var(--accent)", fontSize: 13, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6 }} onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent-dark)"} onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-active)"}>
               <i className="ti ti-camera" style={{ fontSize: 14 }} /> Scan photo
             </div>
           </div>
@@ -1209,7 +1209,7 @@ export default function FoodSearch() {
             <>
               {favouriteFoods.length > 0 && (
                 <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Favourites</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Favourites</div>
                   {favouriteFoods.map(food => (
                     <FoodCard
                       key={food.id}
@@ -1230,7 +1230,7 @@ export default function FoodSearch() {
 
               {frequentFoods.length > 0 && (
                 <div style={{ marginBottom: 24 }}>
-                  <div style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Frequently logged</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Frequently logged</div>
                   {frequentFoods.map(food => (
                     <FoodCard
                       key={food.id}
@@ -1250,9 +1250,9 @@ export default function FoodSearch() {
               )}
 
               <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Recently logged</div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>Recently logged</div>
                 {recentLoading ? null : recentFoods.length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "20px", color: "#444", fontSize: 13, background: "#141414", border: "1px dashed #2a2a2a", borderRadius: 10 }}>
+                  <div style={{ textAlign: "center", padding: "20px", color: "var(--text-hint)", fontSize: 13, background: "var(--bg-subtle)", border: "1px dashed var(--border-default)", borderRadius: 10 }}>
                     Log some food to see it here
                   </div>
                 ) : (
@@ -1280,7 +1280,7 @@ export default function FoodSearch() {
           {!browsing && (
             <>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <span style={{ fontSize: 12, color: "#555" }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {liveLoading ? "Searching…" : `${allResults.length} result${allResults.length !== 1 ? "s" : ""}`}
                 </span>
               </div>
@@ -1289,12 +1289,12 @@ export default function FoodSearch() {
                   (raw/cooked/every-cut variants across every food category,
                   not brands) */}
               {foodsResults.length === 0 && !liveLoading && packagedResults.length === 0 && !liveError ? (
-                <div style={{ textAlign: "center", padding: "48px 20px", color: "#444", fontSize: 14 }}>
+                <div style={{ textAlign: "center", padding: "48px 20px", color: "var(--text-hint)", fontSize: 14 }}>
                   <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
                   No foods found for "{query}"
                   <br />
-                  <span style={{ fontSize: 12, color: "#333", marginTop: 8, display: "block" }}>Try a different search term, use the scan button, or create it yourself</span>
-                  <button onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 16, background: "#0f1a0f", border: "1px solid #3a5a3a", borderRadius: 8, padding: "9px 16px", fontSize: 13, color: "#8fbc8f", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-hint)", marginTop: 8, display: "block" }}>Try a different search term, use the scan button, or create it yourself</span>
+                  <button onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 16, background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 8, padding: "9px 16px", fontSize: 13, color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <i className="ti ti-plus" /> Create "{query}" as a custom food
                   </button>
                 </div>
@@ -1321,7 +1321,7 @@ export default function FoodSearch() {
                   on a dead-end, matching MyFitnessPal's "Can't find it? Add
                   a food" pattern */}
               {!liveLoading && foodsResults.length > 0 && (
-                <div onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 14, textAlign: "center", padding: "10px", color: "#666", fontSize: 12, cursor: "pointer", border: "1px dashed #2a2a2a", borderRadius: 8 }}>
+                <div onClick={() => setCreateFoodOpen(true)} style={{ marginTop: 14, textAlign: "center", padding: "10px", color: "var(--text-muted)", fontSize: 12, cursor: "pointer", border: "1px dashed var(--border-default)", borderRadius: 8 }}>
                   <i className="ti ti-plus" style={{ marginRight: 5 }} />Can't find "{query}"? Create a custom food
                 </div>
               )}
@@ -1332,13 +1332,13 @@ export default function FoodSearch() {
               {(liveLoading || packagedResults.length > 0 || liveError) && (
                 <div style={{ marginTop: foodsResults.length > 0 ? 20 : 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                    <span style={{ fontSize: 11, color: "#555", letterSpacing: "0.06em", textTransform: "uppercase" }}>Packaged products</span>
-                    <span style={{ background: "#0a1520", border: "1px solid #2a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, color: "#6aabcf" }}>🌐 Live search</span>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Packaged products</span>
+                    <span style={{ background: "#0a1520", border: "1px solid #2a4a6a", borderRadius: 6, padding: "2px 8px", fontSize: 10, color: "var(--water-blue)" }}>🌐 Live search</span>
                   </div>
                   {liveLoading ? (
-                    <div style={{ fontSize: 13, color: "#555", padding: "8px 0" }}>Searching…</div>
+                    <div style={{ fontSize: 13, color: "var(--text-muted)", padding: "8px 0" }}>Searching…</div>
                   ) : liveError ? (
-                    <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "#c07070" }}>{liveError}</div>
+                    <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "var(--danger)" }}>{liveError}</div>
                   ) : (
                     packagedResults.map(food => (
                       <FoodCard
@@ -1364,7 +1364,7 @@ export default function FoodSearch() {
           {/* Required FatSecret Platform API attribution — must not be
               reworded per their attribution policy. */}
           <div style={{ marginTop: 24, textAlign: "center" }}>
-            <a href="https://platform.fatsecret.com" target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#444" }}>Powered by fatsecret Platform API</a>
+            <a href="https://platform.fatsecret.com" target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "var(--text-hint)" }}>Powered by fatsecret Platform API</a>
           </div>
         </div>
       </div>
@@ -1374,10 +1374,10 @@ export default function FoodSearch() {
 
       {/* Meal builder floating bar */}
       {builderMode && (
-        <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", background: "#141414", border: "1px solid #4a7a4a", borderRadius: 12, padding: "10px 12px 10px 18px", display: "flex", alignItems: "center", gap: 12, zIndex: 90, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
-          <span style={{ fontSize: 13, color: "#8fbc8f" }}>Building meal · {builderItems.length} item{builderItems.length !== 1 ? "s" : ""}</span>
-          <button onClick={() => setBuilderReviewOpen(true)} style={{ background: "#8fbc8f", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "inherit" }}>Review & save</button>
-          <button onClick={cancelBuilder} style={{ background: "none", border: "1px solid #2a2a2a", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "#888", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+        <div style={{ position: "fixed", bottom: 16, left: "50%", transform: "translateX(-50%)", background: "var(--bg-subtle)", border: "1px solid var(--accent-dark)", borderRadius: 12, padding: "10px 12px 10px 18px", display: "flex", alignItems: "center", gap: 12, zIndex: 90, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+          <span style={{ fontSize: 13, color: "var(--accent)" }}>Building meal · {builderItems.length} item{builderItems.length !== 1 ? "s" : ""}</span>
+          <button onClick={() => setBuilderReviewOpen(true)} style={{ background: "var(--accent)", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, color: "#0f0f0f", cursor: "pointer", fontFamily: "inherit" }}>Review & save</button>
+          <button onClick={cancelBuilder} style={{ background: "none", border: "1px solid var(--border-default)", borderRadius: 8, padding: "7px 12px", fontSize: 12, color: "var(--text-muted)", cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
         </div>
       )}
 

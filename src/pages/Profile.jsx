@@ -7,8 +7,8 @@ import AppNav from '../components/AppNav';
 function Card({ children, style }) {
   return (
     <div style={{
-      background: '#141414',
-      border: '1px solid #1e1e1e',
+      background: 'var(--bg-subtle)',
+      border: '1px solid var(--border-default)',
       borderRadius: '16px',
       padding: '24px',
       marginBottom: '16px',
@@ -21,7 +21,7 @@ function Card({ children, style }) {
 
 function SectionLabel({ children }) {
   return (
-    <p style={{ color: '#555', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 18px' }}>
+    <p style={{ color: 'var(--text-muted)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 18px' }}>
       {children}
     </p>
   );
@@ -29,10 +29,10 @@ function SectionLabel({ children }) {
 
 function FieldRow({ label, hint, children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '12px 0', borderBottom: '1px solid #1a1a1a' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '12px 0', borderBottom: '1px solid var(--border-default)' }}>
       <div>
-        <div style={{ color: '#ccc', fontSize: '14px', fontWeight: 500 }}>{label}</div>
-        {hint && <div style={{ color: '#555', fontSize: '12px', marginTop: '2px' }}>{hint}</div>}
+        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 500 }}>{label}</div>
+        {hint && <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>{hint}</div>}
       </div>
       <div style={{ flexShrink: 0 }}>{children}</div>
     </div>
@@ -49,18 +49,18 @@ function TextInput({ value, onChange, type = 'text', suffix, width = '120px' }) 
         style={{
           width,
           padding: '9px 12px',
-          background: '#0f0f0f',
-          border: '1px solid #2a2a2a',
+          background: 'var(--bg-primary)',
+          border: '1px solid var(--border-default)',
           borderRadius: '8px',
-          color: '#e8e8e8',
+          color: 'var(--text-primary)',
           fontSize: '14px',
           fontFamily: "'DM Sans', sans-serif",
           outline: 'none',
         }}
-        onFocus={e => (e.target.style.borderColor = '#4a7a4a')}
-        onBlur={e => (e.target.style.borderColor = '#2a2a2a')}
+        onFocus={e => (e.target.style.borderColor = 'var(--accent-dark)')}
+        onBlur={e => (e.target.style.borderColor = 'var(--border-default)')}
       />
-      {suffix && <span style={{ color: '#555', fontSize: '13px' }}>{suffix}</span>}
+      {suffix && <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{suffix}</span>}
     </div>
   );
 }
@@ -105,30 +105,30 @@ export default function Profile() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0f0f0f', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)', fontFamily: "'DM Sans', sans-serif" }}>
       <AppNav active="profile" initials={initials} />
 
       <div className="app-content-pad" style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
         {/* Top bar */}
         <div className="page-pad-top" style={{
           display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px 16px',
-          paddingTop: 20, paddingBottom: 20, borderBottom: '1px solid #1e1e1e',
-          position: 'sticky', top: 0, background: '#0f0f0f', zIndex: 10,
+          paddingTop: 20, paddingBottom: 20, borderBottom: '1px solid var(--border-default)',
+          position: 'sticky', top: 0, background: 'var(--bg-primary)', zIndex: 10,
         }}>
           <div>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '18px', fontWeight: 700, color: '#e8e8e8', margin: 0 }}>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               Profile
             </h2>
-            <p style={{ color: '#444', fontSize: '13px', margin: '2px 0 0' }}>Your personal details and body stats</p>
+            <p style={{ color: 'var(--text-hint)', fontSize: '13px', margin: '2px 0 0' }}>Your personal details and body stats</p>
           </div>
           <button
             onClick={handleSave}
             style={{
               padding: '10px 20px',
-              background: saved ? '#0f1a0f' : '#8fbc8f',
-              border: `1px solid ${saved ? '#3a5a3a' : '#8fbc8f'}`,
+              background: saved ? 'var(--accent-bg)' : 'var(--accent)',
+              border: `1px solid ${saved ? 'var(--border-active)' : 'var(--accent)'}`,
               borderRadius: '10px',
-              color: saved ? '#8fbc8f' : '#0f0f0f',
+              color: saved ? 'var(--accent)' : '#0f0f0f',
               fontSize: '14px', fontWeight: 600, cursor: 'pointer',
               fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s',
             }}
@@ -144,27 +144,27 @@ export default function Profile() {
           <Card style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '20px' }}>
             <div style={{
               width: 64, height: 64, borderRadius: '50%',
-              background: '#0f1a0f', border: '1px solid #4a7a4a',
+              background: 'var(--accent-bg)', border: '1px solid var(--accent-dark)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 22, fontWeight: 700, color: '#8fbc8f', flexShrink: 0,
+              fontSize: 22, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
               fontFamily: "'Syne', sans-serif",
             }}>
               {initials}
             </div>
             <div>
-              <div style={{ color: '#e8e8e8', fontSize: '20px', fontWeight: 700, fontFamily: "'Syne', sans-serif" }}>
+              <div style={{ color: 'var(--text-primary)', fontSize: '20px', fontWeight: 700, fontFamily: "'Syne', sans-serif" }}>
                 {form.name || 'Your name'}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
                 <span style={{
                   fontSize: '12px', padding: '3px 10px', borderRadius: '99px',
-                  background: isGuest ? '#1a1410' : '#0f1a0f',
-                  border: `1px solid ${isGuest ? '#3a2e1e' : '#3a5a3a'}`,
-                  color: isGuest ? '#b48250' : '#8fbc8f',
+                  background: isGuest ? '#1a1410' : 'var(--accent-bg)',
+                  border: `1px solid ${isGuest ? '#3a2e1e' : 'var(--border-active)'}`,
+                  color: isGuest ? 'var(--warning)' : 'var(--accent)',
                 }}>
                   {isGuest ? `Guest · ${daysRemaining} days left` : 'Member'}
                 </span>
-                {!isGuest && user?.email && <span style={{ color: '#555', fontSize: '13px' }}>{user.email}</span>}
+                {!isGuest && user?.email && <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{user.email}</span>}
               </div>
             </div>
           </Card>
@@ -189,10 +189,10 @@ export default function Profile() {
                         onClick={() => set('unit', u.value)}
                         style={{
                           padding: '8px 12px',
-                          background: sel ? '#0f1a0f' : '#0f0f0f',
-                          border: `1px solid ${sel ? '#3a5a3a' : '#2a2a2a'}`,
+                          background: sel ? 'var(--accent-bg)' : 'var(--bg-primary)',
+                          border: `1px solid ${sel ? 'var(--border-active)' : 'var(--border-default)'}`,
                           borderRadius: '8px',
-                          color: sel ? '#8fbc8f' : '#666',
+                          color: sel ? 'var(--accent)' : 'var(--text-muted)',
                           fontSize: '13px', fontWeight: 500, cursor: 'pointer',
                           fontFamily: "'DM Sans', sans-serif",
                         }}
@@ -216,7 +216,7 @@ export default function Profile() {
               <FieldRow label="Height">
                 <TextInput value={form.height} onChange={v => set('height', v)} type="number" suffix={form.unit === 'imperial' ? 'in' : 'cm'} width="90px" />
               </FieldRow>
-              <p style={{ color: '#444', fontSize: '12px', margin: '14px 0 0' }}>
+              <p style={{ color: 'var(--text-hint)', fontSize: '12px', margin: '14px 0 0' }}>
                 These feed your calculated calorie target on the Goals tab in Settings.
               </p>
             </Card>

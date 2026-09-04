@@ -8,6 +8,7 @@ import { Line, Bar } from "react-chartjs-2";
 import { useProfile } from "../hooks/useProfile";
 import { useHistory } from "../hooks/useHistory";
 import { useWeightLogs } from "../hooks/useWeightLogs";
+import { useTheme } from "../hooks/useTheme";
 import { todayLocalDate, dateNDaysAgo, dateRange, streakFor, computeStreak } from "../lib/patterns";
 import { computeTrendWeight, computeExpenditureHistory, toKg, fromKg } from "../lib/adaptiveTDEE";
 import AppNav from "../components/AppNav";
@@ -24,24 +25,10 @@ const WEIGHT_RANGES = [
   { id: "all", label: "All time", days: null },
 ];
 
-// ── colour tokens ────────────────────────────────────────────────────────────
-const C = {
-  bg:        "#0f0f0f",
-  bgCard:    "#181818",
-  bgSubtle:  "#141414",
-  bgAI:      "#0f1a0f",
-  border:    "#1e1e1e",
-  border2:   "#2a2a2a",
-  borderA:   "#3a5a3a",
-  borderA2:  "#4a7a4a",
-  green:     "#8fbc8f",
-  greenDark: "#4a7a4a",
-  blue:      "#6aabcf",
-  purple:    "#9f97e8",
-  textP:     "#e8e8e8",
-  textS:     "#cccccc",
-  textM:     "#666666",
-};
+// Theme-invariant accents — identical hex in both themes by design.
+const ACCENT = "#8fbc8f";
+const WATER_BLUE = "#6aabcf";
+const AI_PURPLE = "#9f97e8";
 
 const RANGES = [
   { id: 7, label: "7 days" },
@@ -58,16 +45,16 @@ function avg(nums) {
 function StatCard({ label, value, hint }) {
   return (
     <div style={{
-      background: C.bgCard, border: `1px solid ${C.border}`,
+      background: "var(--bg-card)", border: "1px solid var(--border-default)",
       borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 10,
     }}>
-      <div style={{ fontSize: 11, color: C.textM, textTransform: "uppercase", letterSpacing: "0.8px" }}>
+      <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.8px" }}>
         {label}
       </div>
-      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 26, fontWeight: 700, color: value === "—" ? C.border2 : C.textP, lineHeight: 1 }}>
+      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 26, fontWeight: 700, color: value === "—" ? "var(--border-strong)" : "var(--text-primary)", lineHeight: 1 }}>
         {value}
       </div>
-      <div style={{ fontSize: 12, color: C.border2 }}>{hint}</div>
+      <div style={{ fontSize: 12, color: "var(--border-strong)" }}>{hint}</div>
     </div>
   );
 }
@@ -81,10 +68,10 @@ function StreakItem({ icon, iconBg, iconColor, name, count }) {
         <i className={`ti ${icon}`} />
       </div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 13, color: active ? C.textS : C.textM }}>{name}</div>
-        <div style={{ fontSize: 12, color: C.border2 }}>{active ? `${count} day${count === 1 ? "" : "s"} in a row` : "Not started yet"}</div>
+        <div style={{ fontSize: 13, color: active ? "var(--text-secondary)" : "var(--text-muted)" }}>{name}</div>
+        <div style={{ fontSize: 12, color: "var(--border-strong)" }}>{active ? `${count} day${count === 1 ? "" : "s"} in a row` : "Not started yet"}</div>
       </div>
-      <div style={{ background: active ? C.bgAI : C.bgCard, border: `1px solid ${active ? C.borderA : C.border}`, borderRadius: 20, padding: "3px 10px", fontSize: 12, color: active ? C.green : C.border2 }}>
+      <div style={{ background: active ? "var(--accent-bg)" : "var(--bg-card)", border: `1px solid ${active ? "var(--border-active)" : "var(--border-default)"}`, borderRadius: 20, padding: "3px 10px", fontSize: 12, color: active ? "var(--accent)" : "var(--border-strong)" }}>
         {count}
       </div>
     </div>
@@ -92,11 +79,8 @@ function StreakItem({ icon, iconBg, iconColor, name, count }) {
 }
 
 // ── week-at-a-glance bars ────────────────────────────────────────────────
-// Rendered on both Progress (not yet theme-converted, still uses the
-// literal `C` tokens below it in this file) and Dashboard (which is
-// theme-converted) — deliberately uses var()s + theme-invariant literals
-// here rather than the local `C` object, so it renders correctly on
-// Dashboard today without needing the rest of this file converted first.
+// Shared with Dashboard's own week view — uses var()s + theme-invariant
+// literals so it renders correctly wherever it's mounted.
 export function WeekBars({ days, calorieTarget }) {
   const max = Math.max(calorieTarget || 0, ...days.map(d => d.calories), 1);
   return (
@@ -131,9 +115,19 @@ export function WeekBars({ days, calorieTarget }) {
 export default function Progress() {
   const navigate = useNavigate();
   const { profile } = useProfile();
+  const { theme } = useTheme();
   const [range, setRange] = useState(30);
   const [weightRange, setWeightRange] = useState("30d");
   const initials = (profile?.name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
+
+  // Chart.js draws to <canvas>, which can't resolve CSS custom
+  // properties — it needs a literal color string at render time. Unlike
+  // the accent colors above, tick/grid/text colors genuinely differ
+  // between themes, so they're branched here on the live theme instead
+  // of hardcoded once.
+  const isLight = theme === "light";
+  const chartTextMuted = isLight ? "#6b6b6b" : "#666666";
+  const chartGrid = isLight ? "#e7e7e5" : "#2a2a2a";
 
   const today = todayLocalDate();
   const { dailyData, loading } = useHistory(dateNDaysAgo(range - 1), today);
@@ -200,8 +194,8 @@ export default function Progress() {
       {
         label: "Calories",
         data: filledDays.map(d => d.calories || null),
-        borderColor: C.green,
-        backgroundColor: C.green + "22",
+        borderColor: ACCENT,
+        backgroundColor: ACCENT + "22",
         fill: true,
         tension: 0.3,
         spanGaps: true,
@@ -210,7 +204,7 @@ export default function Progress() {
       ...(calorieTarget ? [{
         label: "Goal",
         data: filledDays.map(() => calorieTarget),
-        borderColor: C.textM,
+        borderColor: chartTextMuted,
         borderDash: [4, 4],
         pointRadius: 0,
         fill: false,
@@ -221,9 +215,9 @@ export default function Progress() {
   const macroChartData = {
     labels,
     datasets: [
-      { label: "Protein", data: filledDays.map(d => d.protein_g || 0), backgroundColor: C.green },
-      { label: "Carbs", data: filledDays.map(d => d.carbs_g || 0), backgroundColor: C.blue },
-      { label: "Fat", data: filledDays.map(d => d.fat_g || 0), backgroundColor: C.purple },
+      { label: "Protein", data: filledDays.map(d => d.protein_g || 0), backgroundColor: ACCENT },
+      { label: "Carbs", data: filledDays.map(d => d.carbs_g || 0), backgroundColor: WATER_BLUE },
+      { label: "Fat", data: filledDays.map(d => d.fat_g || 0), backgroundColor: AI_PURPLE },
     ],
   };
 
@@ -243,8 +237,8 @@ export default function Progress() {
       {
         label: "Weight",
         data: weightLogs.map(w => Math.round(fromKg(toKg(w.weight, w.unit), weightUnit) * 10) / 10),
-        borderColor: C.green,
-        backgroundColor: C.green + "22",
+        borderColor: ACCENT,
+        backgroundColor: ACCENT + "22",
         fill: true,
         tension: 0.3,
         spanGaps: true,
@@ -256,7 +250,7 @@ export default function Progress() {
           const t = trendByDate.get(w.logged_date);
           return t != null ? Math.round(fromKg(t, weightUnit) * 10) / 10 : null;
         }),
-        borderColor: C.blue,
+        borderColor: WATER_BLUE,
         backgroundColor: "transparent",
         fill: false,
         tension: 0.3,
@@ -280,8 +274,8 @@ export default function Progress() {
     datasets: [{
       label: "Estimated maintenance",
       data: expenditureHistory.map(p => p.tdee),
-      borderColor: C.purple,
-      backgroundColor: C.purple + "22",
+      borderColor: AI_PURPLE,
+      backgroundColor: AI_PURPLE + "22",
       fill: true,
       tension: 0.3,
       pointRadius: expenditureHistory.length > 20 ? 0 : 3,
@@ -292,11 +286,11 @@ export default function Progress() {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { labels: { color: C.textM, boxWidth: 10, font: { size: 11 } } },
+      legend: { labels: { color: chartTextMuted, boxWidth: 10, font: { size: 11 } } },
     },
     scales: {
-      x: { ticks: { color: C.textM, font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: C.border } },
-      y: { ticks: { color: C.textM, font: { size: 10 } }, grid: { color: C.border } },
+      x: { ticks: { color: chartTextMuted, font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: chartGrid } },
+      y: { ticks: { color: chartTextMuted, font: { size: 10 } }, grid: { color: chartGrid } },
     },
   };
 
@@ -311,11 +305,11 @@ export default function Progress() {
   const sbIconBase = {
     width: 36, height: 36, display: "flex", alignItems: "center",
     justifyContent: "center", borderRadius: 8, cursor: "pointer",
-    color: C.textM, fontSize: 18,
+    color: "var(--text-muted)", fontSize: 18,
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: C.bg, fontFamily: "'DM Sans', sans-serif", color: C.textP, overflow: "hidden" }}>
+    <div style={{ display: "flex", height: "100vh", background: "var(--bg-primary)", fontFamily: "'DM Sans', sans-serif", color: "var(--text-primary)", overflow: "hidden" }}>
 
       <AppNav active="progress" initials={initials} />
 
@@ -323,7 +317,7 @@ export default function Progress() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
 
         {/* top bar */}
-        <div className="page-pad-top" style={{ minHeight: 52, background: C.bg, borderBottom: `1px solid ${C.border}`, display: "flex", flexWrap: "wrap", alignItems: "center", paddingTop: 8, paddingBottom: 8, gap: 16, flexShrink: 0 }}>
+        <div className="page-pad-top" style={{ minHeight: 52, background: "var(--bg-primary)", borderBottom: "1px solid var(--border-default)", display: "flex", flexWrap: "wrap", alignItems: "center", paddingTop: 8, paddingBottom: 8, gap: 16, flexShrink: 0 }}>
           <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 600 }}>Progress</span>
           <div style={{ flex: 1 }} />
           <div style={{ ...sbIconBase, fontSize: 18 }} title="Notifications"><i className="ti ti-bell" /></div>
@@ -334,24 +328,24 @@ export default function Progress() {
 
           {!hasData && !loading && (
             <div style={{
-              background: C.bgAI, border: `1px solid ${C.borderA}`,
+              background: "var(--accent-bg)", border: "1px solid var(--border-active)",
               borderRadius: 12, padding: "28px 32px", marginBottom: 24,
               display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24,
             }}>
               <div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: C.textP, marginBottom: 6 }}>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>
                   Nothing to show yet in this range
                 </div>
-                <div style={{ fontSize: 14, color: C.textM, maxWidth: 420, lineHeight: 1.6 }}>
+                <div style={{ fontSize: 14, color: "var(--text-muted)", maxWidth: 420, lineHeight: 1.6 }}>
                   Start logging meals and check in on mood in the dashboard — your charts, streaks, and trends will appear here as your data builds up.
                 </div>
               </div>
               <button
                 onClick={() => navigate("/dashboard")}
                 style={{
-                  background: C.green, border: "none", borderRadius: 8,
+                  background: "var(--accent)", border: "none", borderRadius: 8,
                   padding: "10px 22px", fontSize: 14, fontWeight: 600,
-                  color: C.bg, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                  color: "#0f0f0f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
                   whiteSpace: "nowrap", flexShrink: 0,
                 }}
               >
@@ -364,10 +358,10 @@ export default function Progress() {
           <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
             {RANGES.map(r => (
               <button key={r.id} onClick={() => setRange(r.id)} style={{
-                background: range === r.id ? C.bgAI : C.bgCard,
-                border: `1px solid ${range === r.id ? C.borderA2 : C.border2}`,
+                background: range === r.id ? "var(--accent-bg)" : "var(--bg-card)",
+                border: `1px solid ${range === r.id ? "var(--accent-dark)" : "var(--border-strong)"}`,
                 borderRadius: 8, padding: "7px 18px", fontSize: 13,
-                color: range === r.id ? C.green : "#888", cursor: "pointer",
+                color: range === r.id ? "var(--accent)" : "var(--text-muted)", cursor: "pointer",
                 fontFamily: "'DM Sans', sans-serif",
               }}>{r.label}</button>
             ))}
@@ -397,18 +391,18 @@ export default function Progress() {
 
           {/* charts */}
           <div className="grid-2" style={{ marginBottom: 24 }}>
-            <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS, marginBottom: 2 }}>Calories vs goal</div>
-              <div style={{ fontSize: 12, color: C.textM, marginBottom: 16 }}>Daily intake over the last {range} days</div>
+            <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20 }}>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 2 }}>Calories vs goal</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Daily intake over the last {range} days</div>
               {hasData ? (
                 <div style={{ height: 200 }}><Line data={calorieChartData} options={chartOptions} /></div>
               ) : (
                 <EmptyChartBox icon="ti-chart-line" message="Log at least 1 day to see your calorie chart" />
               )}
             </div>
-            <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS, marginBottom: 2 }}>Macro breakdown</div>
-              <div style={{ fontSize: 12, color: C.textM, marginBottom: 16 }}>Protein, carbs &amp; fat per day</div>
+            <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20 }}>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 2 }}>Macro breakdown</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Protein, carbs &amp; fat per day</div>
               {hasData ? (
                 <div style={{ height: 200 }}><Bar data={macroChartData} options={stackedOptions} /></div>
               ) : (
@@ -418,19 +412,19 @@ export default function Progress() {
           </div>
 
           {/* weight chart */}
-          <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 24 }}>
+          <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
               <div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS, marginBottom: 2 }}>Weight</div>
-                <div style={{ fontSize: 12, color: C.textM }}>Logged from the dashboard</div>
+                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 2 }}>Weight</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Logged from the dashboard</div>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {WEIGHT_RANGES.map(r => (
                   <button key={r.id} onClick={() => setWeightRange(r.id)} style={{
-                    background: weightRange === r.id ? C.bgAI : C.bgCard,
-                    border: `1px solid ${weightRange === r.id ? C.borderA2 : C.border2}`,
+                    background: weightRange === r.id ? "var(--accent-bg)" : "var(--bg-card)",
+                    border: `1px solid ${weightRange === r.id ? "var(--accent-dark)" : "var(--border-strong)"}`,
                     borderRadius: 7, padding: "5px 11px", fontSize: 12,
-                    color: weightRange === r.id ? C.green : "#888", cursor: "pointer",
+                    color: weightRange === r.id ? "var(--accent)" : "var(--text-muted)", cursor: "pointer",
                     fontFamily: "'DM Sans', sans-serif",
                   }}>{r.label}</button>
                 ))}
@@ -444,10 +438,10 @@ export default function Progress() {
           </div>
 
           {/* expenditure chart */}
-          <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 24 }}>
+          <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS, marginBottom: 2 }}>Estimated maintenance</div>
-              <div style={{ fontSize: 12, color: C.textM }}>How your true maintenance calories have moved, based on your logged weight and food</div>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 2 }}>Estimated maintenance</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>How your true maintenance calories have moved, based on your logged weight and food</div>
             </div>
             {weightLoading ? null : expenditureHistory.length > 1 ? (
               <div style={{ height: 220 }}><Line data={expenditureChartData} options={chartOptions} /></div>
@@ -460,26 +454,26 @@ export default function Progress() {
           <div className="grid-2">
 
             {/* streak badges */}
-            <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS, marginBottom: 16 }}>Streak badges</div>
+            <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20 }}>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 16 }}>Streak badges</div>
               {[
-                { icon: "ti-flame",      iconBg: C.bgAI,     iconColor: C.green,  name: "Logging streak",   count: loggingStreak },
-                { icon: "ti-target",     iconBg: C.bgAI,     iconColor: C.green,  name: "Calorie target",   count: calorieStreak },
-                { icon: "ti-meat",       iconBg: "#0a1520",  iconColor: C.blue,   name: "Protein target",   count: proteinStreak },
-                { icon: "ti-mood-smile", iconBg: "#140f1f",  iconColor: C.purple, name: "Mood check-ins",   count: moodStreak },
+                { icon: "ti-flame",      iconBg: "var(--accent-bg)", iconColor: "var(--accent)",     name: "Logging streak",   count: loggingStreak },
+                { icon: "ti-target",     iconBg: "var(--accent-bg)", iconColor: "var(--accent)",     name: "Calorie target",   count: calorieStreak },
+                { icon: "ti-meat",       iconBg: WATER_BLUE + "18",  iconColor: "var(--water-blue)", name: "Protein target",   count: proteinStreak },
+                { icon: "ti-mood-smile", iconBg: AI_PURPLE + "18",   iconColor: "var(--ai-purple)",  name: "Mood check-ins",   count: moodStreak },
               ].map((s, i, arr) => (
-                <div key={s.name} style={{ borderBottom: i < arr.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                <div key={s.name} style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border-default)" : "none" }}>
                   <StreakItem {...s} />
                 </div>
               ))}
             </div>
 
             {/* weekly mini chart */}
-            <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS, marginBottom: 8 }}>This week at a glance</div>
-              <div style={{ fontSize: 12, color: C.textM, marginBottom: 16 }}>Calories logged each day</div>
+            <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20 }}>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>This week at a glance</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Calories logged each day</div>
               <WeekBars days={dateRange(dateNDaysAgo(6), today).map(date => byDate.get(date) || { date, calories: 0 })} calorieTarget={calorieTarget} />
-              <div style={{ marginTop: 20, padding: "12px 14px", background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 13, color: C.textM, lineHeight: 1.6 }}>
+              <div style={{ marginTop: 20, padding: "12px 14px", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 8, fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6 }}>
                 Green = within 15% of your target. Blue = logged but off target. Grey = nothing logged.
               </div>
             </div>
@@ -494,11 +488,11 @@ export default function Progress() {
 function EmptyChartBox({ icon, message }) {
   return (
     <div style={{
-      height: 180, border: `1px dashed ${C.border2}`, borderRadius: 8,
+      height: 180, border: "1px dashed var(--border-strong)", borderRadius: 8,
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10,
     }}>
-      <i className={`ti ${icon}`} style={{ fontSize: 28, color: C.border2 }} />
-      <div style={{ fontSize: 13, color: C.textM, textAlign: "center", maxWidth: 180 }}>{message}</div>
+      <i className={`ti ${icon}`} style={{ fontSize: 28, color: "var(--border-strong)" }} />
+      <div style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", maxWidth: 180 }}>{message}</div>
     </div>
   );
 }

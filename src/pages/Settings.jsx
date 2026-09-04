@@ -15,8 +15,8 @@ import AppNav from '../components/AppNav';
 function Card({ children, style }) {
   return (
     <div style={{
-      background: '#141414',
-      border: '1px solid #1e1e1e',
+      background: 'var(--bg-subtle)',
+      border: '1px solid var(--border-default)',
       borderRadius: '16px',
       padding: '24px',
       marginBottom: '16px',
@@ -29,7 +29,7 @@ function Card({ children, style }) {
 
 function SectionLabel({ children }) {
   return (
-    <p style={{ color: '#555', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 18px' }}>
+    <p style={{ color: 'var(--text-muted)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 18px' }}>
       {children}
     </p>
   );
@@ -37,10 +37,10 @@ function SectionLabel({ children }) {
 
 function FieldRow({ label, hint, children }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '12px 0', borderBottom: '1px solid #1a1a1a' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '12px 0', borderBottom: '1px solid var(--border-default)' }}>
       <div>
-        <div style={{ color: '#ccc', fontSize: '14px', fontWeight: 500 }}>{label}</div>
-        {hint && <div style={{ color: '#555', fontSize: '12px', marginTop: '2px' }}>{hint}</div>}
+        <div style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 500 }}>{label}</div>
+        {hint && <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>{hint}</div>}
       </div>
       <div style={{ flexShrink: 0 }}>{children}</div>
     </div>
@@ -54,10 +54,10 @@ function Select({ value, onChange, options }) {
       onChange={e => onChange(e.target.value)}
       style={{
         padding: '9px 12px',
-        background: '#0f0f0f',
-        border: '1px solid #2a2a2a',
+        background: 'var(--bg-primary)',
+        border: '1px solid var(--border-default)',
         borderRadius: '8px',
-        color: '#e8e8e8',
+        color: 'var(--text-primary)',
         fontSize: '14px',
         fontFamily: "'DM Sans', sans-serif",
         outline: 'none',
@@ -83,8 +83,8 @@ function Segmented({ value, onChange, options }) {
               flex: '1 1 auto',
               minWidth: '120px',
               padding: '14px 16px',
-              background: sel ? '#0f1a0f' : '#0f0f0f',
-              border: `1px solid ${sel ? '#3a5a3a' : '#2a2a2a'}`,
+              background: sel ? 'var(--accent-bg)' : 'var(--bg-primary)',
+              border: `1px solid ${sel ? 'var(--border-active)' : 'var(--border-default)'}`,
               borderRadius: '12px',
               cursor: 'pointer',
               textAlign: 'left',
@@ -92,8 +92,8 @@ function Segmented({ value, onChange, options }) {
             }}
           >
             <div style={{ fontSize: '18px', marginBottom: '4px' }}>{o.emoji}</div>
-            <div style={{ color: sel ? '#8fbc8f' : '#ccc', fontSize: '14px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>{o.label}</div>
-            {o.desc && <div style={{ color: '#555', fontSize: '12px', marginTop: '2px' }}>{o.desc}</div>}
+            <div style={{ color: sel ? 'var(--accent)' : 'var(--text-secondary)', fontSize: '14px', fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>{o.label}</div>
+            {o.desc && <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>{o.desc}</div>}
           </button>
         );
       })}
@@ -108,8 +108,8 @@ function Toggle({ on, onChange }) {
       style={{
         width: '44px', height: '26px',
         borderRadius: '99px',
-        border: `1px solid ${on ? '#4a7a4a' : '#2a2a2a'}`,
-        background: on ? '#4a7a4a33' : '#0f0f0f',
+        border: `1px solid ${on ? 'var(--accent-dark)' : 'var(--border-default)'}`,
+        background: on ? '#4a7a4a33' : 'var(--bg-primary)',
         position: 'relative',
         cursor: 'pointer',
         transition: 'all 0.2s',
@@ -122,14 +122,14 @@ function Toggle({ on, onChange }) {
         left: on ? '20px' : '2px',
         width: '20px', height: '20px',
         borderRadius: '50%',
-        background: on ? '#8fbc8f' : '#555',
+        background: on ? 'var(--accent)' : 'var(--text-muted)',
         transition: 'left 0.2s',
       }} />
     </button>
   );
 }
 
-function Slider({ value, min, max, step = 1, onChange, color = '#8fbc8f' }) {
+function Slider({ value, min, max, step = 1, onChange, color = 'var(--accent)' }) {
   const pct = ((value - min) / (max - min)) * 100;
   return (
     <input
@@ -145,7 +145,7 @@ function Slider({ value, min, max, step = 1, onChange, color = '#8fbc8f' }) {
         WebkitAppearance: 'none',
         height: '6px',
         borderRadius: '99px',
-        background: `linear-gradient(to right, ${color} ${pct}%, #1e1e1e ${pct}%)`,
+        background: `linear-gradient(to right, ${color} ${pct}%, var(--border-default) ${pct}%)`,
         outline: 'none',
         cursor: 'pointer',
       }}
@@ -157,12 +157,12 @@ function MacroPreviewBar({ label, grams, calories, pct, color }) {
   return (
     <div style={{ marginBottom: '14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-        <span style={{ color: '#ccc', fontSize: '13px', fontWeight: 500 }}>{label}</span>
-        <span style={{ color: '#666', fontSize: '12px' }}>
-          <span style={{ color: '#e8e8e8', fontWeight: 600 }}>{grams}g</span> · {calories} kcal · {Math.round(pct * 100)}%
+        <span style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500 }}>{label}</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{grams}g</span> · {calories} kcal · {Math.round(pct * 100)}%
         </span>
       </div>
-      <div style={{ height: '6px', background: '#1e1e1e', borderRadius: '99px', overflow: 'hidden' }}>
+      <div style={{ height: '6px', background: 'var(--border-default)', borderRadius: '99px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct * 100}%`, background: color, borderRadius: '99px', transition: 'width 0.4s ease' }} />
       </div>
     </div>
@@ -174,10 +174,10 @@ function MacroPreviewBar({ label, grams, calories, pct, color }) {
 // rather than silently falling back to a guess.
 function AdaptiveTargetPanel({ loading, result, goal, onRefresh }) {
   if (loading) {
-    return <p style={{ color: '#555', fontSize: '13px', textAlign: 'center', margin: 0 }}>Crunching your weight and food logs…</p>;
+    return <p style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', margin: 0 }}>Crunching your weight and food logs…</p>;
   }
   if (!result) {
-    return <p style={{ color: '#555', fontSize: '13px', textAlign: 'center', margin: 0 }}>—</p>;
+    return <p style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', margin: 0 }}>—</p>;
   }
   if (!result.ready) {
     const messages = {
@@ -187,10 +187,10 @@ function AdaptiveTargetPanel({ loading, result, goal, onRefresh }) {
     };
     return (
       <div style={{ textAlign: 'center' }}>
-        <p style={{ color: '#555', fontSize: '13px', margin: '0 0 10px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '0 0 10px' }}>
           {messages[result.reason] || 'Not enough data yet to estimate this.'}
         </p>
-        <p style={{ color: '#444', fontSize: '11px', margin: 0 }}>
+        <p style={{ color: 'var(--text-hint)', fontSize: '11px', margin: 0 }}>
           Until then, this uses your Calculated target as a placeholder.
         </p>
       </div>
@@ -201,14 +201,14 @@ function AdaptiveTargetPanel({ loading, result, goal, onRefresh }) {
   const goalLabel = { lose: 'Lose weight', maintain: 'Stay balanced', build: 'Build muscle' }[goal] || 'your goal';
   return (
     <div style={{ textAlign: 'center' }}>
-      <p style={{ color: '#555', fontSize: '13px', margin: '0 0 8px' }}>
-        Estimated maintenance: <span style={{ color: '#ccc', fontWeight: 600 }}>{estimate.tdee.toLocaleString()} kcal</span>, from your trend weight going {trendDirection} {Math.abs(estimate.weightChangeKg)}kg
+      <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '0 0 8px' }}>
+        Estimated maintenance: <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{estimate.tdee.toLocaleString()} kcal</span>, from your trend weight going {trendDirection} {Math.abs(estimate.weightChangeKg)}kg
         over {estimate.spanDays} days while averaging {estimate.avgCalIn.toLocaleString()} kcal/day ({estimate.loggedDayCount} logged days).
         Adjusted for your "{goalLabel}" goal to {result.target.toLocaleString()} kcal — this updates as you keep logging.
       </p>
       <button
         onClick={onRefresh}
-        style={{ background: 'none', border: '1px solid #2a2a2a', borderRadius: '7px', padding: '5px 12px', color: '#8fbc8f', fontSize: '11px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+        style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: '7px', padding: '5px 12px', color: 'var(--accent)', fontSize: '11px', cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
       >
         Recalculate
       </button>
@@ -351,31 +351,31 @@ export default function Settings() {
     : 7;
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0f0f0f', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)', fontFamily: "'DM Sans', sans-serif" }}>
       <AppNav active="settings" initials={initials} />
 
       <div className="app-content-pad" style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
         {/* Top bar */}
         <div className="page-pad-top" style={{
           display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px 16px',
-          paddingTop: 20, paddingBottom: 20, borderBottom: '1px solid #1e1e1e',
-          position: 'sticky', top: 0, background: '#0f0f0f', zIndex: 10,
+          paddingTop: 20, paddingBottom: 20, borderBottom: '1px solid var(--border-default)',
+          position: 'sticky', top: 0, background: 'var(--bg-primary)', zIndex: 10,
         }}>
           <div>
-            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '18px', fontWeight: 700, color: '#e8e8e8', margin: 0 }}>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               Settings
             </h2>
-            <p style={{ color: '#444', fontSize: '13px', margin: '2px 0 0' }}>Manage your goals, profile and preferences</p>
+            <p style={{ color: 'var(--text-hint)', fontSize: '13px', margin: '2px 0 0' }}>Manage your goals, profile and preferences</p>
           </div>
           {tab === 'goals' && (
             <button
               onClick={handleSave}
               style={{
                 padding: '10px 20px',
-                background: saved ? '#0f1a0f' : '#8fbc8f',
-                border: `1px solid ${saved ? '#3a5a3a' : '#8fbc8f'}`,
+                background: saved ? 'var(--accent-bg)' : 'var(--accent)',
+                border: `1px solid ${saved ? 'var(--border-active)' : 'var(--accent)'}`,
                 borderRadius: '10px',
-                color: saved ? '#8fbc8f' : '#0f0f0f',
+                color: saved ? 'var(--accent)' : '#0f0f0f',
                 fontSize: '14px', fontWeight: 600, cursor: 'pointer',
                 fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s',
               }}
@@ -391,34 +391,34 @@ export default function Settings() {
             onClick={() => navigate('/profile')}
             style={{
               width: '100%', display: 'flex', alignItems: 'center', gap: '14px',
-              padding: '14px 16px', background: '#141414', border: '1px solid #1e1e1e',
+              padding: '14px 16px', background: 'var(--bg-subtle)', border: '1px solid var(--border-default)',
               borderRadius: '14px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
               transition: 'border-color 0.15s',
             }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = '#2a2a2a'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = '#1e1e1e'}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--border-strong)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border-default)'}
           >
             <div style={{
               width: 48, height: 48, borderRadius: '50%',
-              background: '#0f1a0f', border: '1px solid #4a7a4a',
+              background: 'var(--accent-bg)', border: '1px solid var(--accent-dark)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 17, fontWeight: 700, color: '#8fbc8f', flexShrink: 0,
+              fontSize: 17, fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
               fontFamily: "'Syne', sans-serif",
             }}>
               {initials}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ color: '#e8e8e8', fontSize: '15px', fontWeight: 600 }}>{profile?.name || 'Your name'}</div>
-              <div style={{ color: '#555', fontSize: '13px', marginTop: '2px' }}>
+              <div style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: 600 }}>{profile?.name || 'Your name'}</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '2px' }}>
                 {isGuest ? `Guest mode · ${daysRemaining} days left` : (user?.email || 'View profile')}
               </div>
             </div>
-            <i className="ti ti-chevron-right" style={{ color: '#444', fontSize: 16, flexShrink: 0 }} />
+            <i className="ti ti-chevron-right" style={{ color: 'var(--text-hint)', fontSize: 16, flexShrink: 0 }} />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="page-pad-top" style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingTop: 16, borderBottom: '1px solid #1e1e1e' }}>
+        <div className="page-pad-top" style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingTop: 16, borderBottom: '1px solid var(--border-default)' }}>
           {TABS.map(t => {
             const sel = tab === t.id;
             return (
@@ -429,8 +429,8 @@ export default function Settings() {
                   padding: '10px 14px',
                   background: 'transparent',
                   border: 'none',
-                  borderBottom: `2px solid ${sel ? '#8fbc8f' : 'transparent'}`,
-                  color: sel ? '#e8e8e8' : '#555',
+                  borderBottom: `2px solid ${sel ? 'var(--accent)' : 'transparent'}`,
+                  color: sel ? 'var(--text-primary)' : 'var(--text-muted)',
                   fontSize: '14px',
                   fontWeight: sel ? 600 : 400,
                   cursor: 'pointer',
@@ -500,10 +500,10 @@ export default function Settings() {
                         }}
                         style={{
                           flex: 1, padding: '10px',
-                          background: sel ? '#0f1a0f' : '#0f0f0f',
-                          border: `1px solid ${sel ? '#3a5a3a' : '#2a2a2a'}`,
+                          background: sel ? 'var(--accent-bg)' : 'var(--bg-primary)',
+                          border: `1px solid ${sel ? 'var(--border-active)' : 'var(--border-default)'}`,
                           borderRadius: '8px',
-                          color: sel ? '#8fbc8f' : '#666',
+                          color: sel ? 'var(--accent)' : 'var(--text-muted)',
                           fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                           fontFamily: "'DM Sans', sans-serif",
                         }}
@@ -515,23 +515,23 @@ export default function Settings() {
                 </div>
 
                 <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                  <span style={{ fontFamily: "'Syne', sans-serif", fontSize: '40px', fontWeight: 700, color: '#8fbc8f' }}>
+                  <span style={{ fontFamily: "'Syne', sans-serif", fontSize: '40px', fontWeight: 700, color: 'var(--accent)' }}>
                     {calories.toLocaleString()}
                   </span>
-                  <span style={{ color: '#555', fontSize: '14px', marginLeft: '6px' }}>kcal / day</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '14px', marginLeft: '6px' }}>kcal / day</span>
                 </div>
 
                 {calMode === 'custom' ? (
                   <>
                     <Slider value={customCal} min={1200} max={4000} step={10} onChange={setCustomCal} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#444', fontSize: '11px', marginTop: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-hint)', fontSize: '11px', marginTop: '6px' }}>
                       <span>1,200</span><span>4,000</span>
                     </div>
                   </>
                 ) : calMode === 'adaptive' ? (
                   <AdaptiveTargetPanel loading={adaptiveLoading} result={adaptiveResult} goal={form.goal} onRefresh={() => refreshAdaptive(form.goal)} />
                 ) : (
-                  <p style={{ color: '#555', fontSize: '13px', textAlign: 'center', margin: 0 }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '13px', textAlign: 'center', margin: 0 }}>
                     Calculated from your stats, goal and activity level. Switch to Custom to set it manually.
                   </p>
                 )}
@@ -542,39 +542,39 @@ export default function Settings() {
 
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ color: '#ccc', fontSize: '13px', fontWeight: 500 }}>Protein</span>
-                    <span style={{ color: '#8fbc8f', fontSize: '13px', fontWeight: 600 }}>{proteinPct}%</span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500 }}>Protein</span>
+                    <span style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: 600 }}>{proteinPct}%</span>
                   </div>
-                  <Slider value={proteinPct} min={10} max={60} onChange={v => setProteinPct(Math.min(v, 100 - fatPct))} color="#8fbc8f" />
+                  <Slider value={proteinPct} min={10} max={60} onChange={v => setProteinPct(Math.min(v, 100 - fatPct))} color="var(--accent)" />
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ color: '#ccc', fontSize: '13px', fontWeight: 500 }}>Fat</span>
-                    <span style={{ color: '#9f97e8', fontSize: '13px', fontWeight: 600 }}>{fatPct}%</span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500 }}>Fat</span>
+                    <span style={{ color: 'var(--ai-purple)', fontSize: '13px', fontWeight: 600 }}>{fatPct}%</span>
                   </div>
-                  <Slider value={fatPct} min={10} max={50} onChange={v => setFatPct(Math.min(v, 100 - proteinPct))} color="#9f97e8" />
+                  <Slider value={fatPct} min={10} max={50} onChange={v => setFatPct(Math.min(v, 100 - proteinPct))} color="var(--ai-purple)" />
                 </div>
 
                 <div style={{ marginBottom: '24px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <span style={{ color: '#ccc', fontSize: '13px', fontWeight: 500 }}>Carbs</span>
-                    <span style={{ color: '#6aabcf', fontSize: '13px', fontWeight: 600 }}>{carbPct}% (auto)</span>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500 }}>Carbs</span>
+                    <span style={{ color: 'var(--water-blue)', fontSize: '13px', fontWeight: 600 }}>{carbPct}% (auto)</span>
                   </div>
-                  <div style={{ height: '6px', background: '#1e1e1e', borderRadius: '99px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${carbPct}%`, background: '#6aabcf', borderRadius: '99px', transition: 'width 0.2s' }} />
+                  <div style={{ height: '6px', background: 'var(--border-default)', borderRadius: '99px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${carbPct}%`, background: 'var(--water-blue)', borderRadius: '99px', transition: 'width 0.2s' }} />
                   </div>
-                  <p style={{ color: '#444', fontSize: '11px', marginTop: '6px' }}>Carbs fill whatever's left so your split always totals 100%.</p>
+                  <p style={{ color: 'var(--text-hint)', fontSize: '11px', marginTop: '6px' }}>Carbs fill whatever's left so your split always totals 100%.</p>
                 </div>
 
                 {/* Live preview */}
-                <div style={{ background: '#0f1a0f', border: '1px solid #1e3a1e', borderRadius: '12px', padding: '18px' }}>
-                  <p style={{ color: '#4a7a4a', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 14px' }}>
+                <div style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', borderRadius: '12px', padding: '18px' }}>
+                  <p style={{ color: 'var(--accent-dark)', fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 14px' }}>
                     Daily breakdown
                   </p>
-                  <MacroPreviewBar label="Protein" grams={preview.protein.g} calories={preview.protein.cal} pct={preview.protein.pct} color="#8fbc8f" />
-                  <MacroPreviewBar label="Carbs"   grams={preview.carbs.g}   calories={preview.carbs.cal}   pct={preview.carbs.pct}   color="#6aabcf" />
-                  <MacroPreviewBar label="Fat"     grams={preview.fat.g}     calories={preview.fat.cal}     pct={preview.fat.pct}     color="#9f97e8" />
+                  <MacroPreviewBar label="Protein" grams={preview.protein.g} calories={preview.protein.cal} pct={preview.protein.pct} color="var(--accent)" />
+                  <MacroPreviewBar label="Carbs"   grams={preview.carbs.g}   calories={preview.carbs.cal}   pct={preview.carbs.pct}   color="var(--water-blue)" />
+                  <MacroPreviewBar label="Fat"     grams={preview.fat.g}     calories={preview.fat.cal}     pct={preview.fat.pct}     color="var(--ai-purple)" />
                 </div>
               </Card>
 
@@ -610,15 +610,15 @@ export default function Settings() {
                         setReminderTimeInput(e.target.value);
                         try { await reminders.setTime(e.target.value); } catch { setReminderError("Couldn't save the new time — try again."); }
                       }}
-                      style={{ background: '#0f0f0f', border: '1px solid #2a2a2a', borderRadius: 7, padding: '7px 10px', color: '#e8e8e8', fontSize: 13, fontFamily: 'inherit' }}
+                      style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 7, padding: '7px 10px', color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit' }}
                     />
-                    <span style={{ color: '#555', fontSize: 12 }}>Time in your device's local timezone</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Time in your device's local timezone</span>
                   </div>
                 )}
                 {!pushSupported() && (
-                  <p style={{ color: '#c07070', fontSize: 12, margin: '0 0 16px' }}>Push notifications aren't supported in this browser.</p>
+                  <p style={{ color: 'var(--danger)', fontSize: 12, margin: '0 0 16px' }}>Push notifications aren't supported in this browser.</p>
                 )}
-                {reminderError && <p style={{ color: '#c07070', fontSize: 12, margin: '0 0 16px' }}>{reminderError}</p>}
+                {reminderError && <p style={{ color: 'var(--danger)', fontSize: 12, margin: '0 0 16px' }}>{reminderError}</p>}
                 {[
                   { key: 'water', label: 'Water reminders',     hint: 'Gentle reminders to stay hydrated — coming soon' },
                   { key: 'mood',  label: 'Daily mood check-in', hint: 'One tap each evening — coming soon' },
@@ -650,13 +650,13 @@ export default function Settings() {
               <Card style={{ marginBottom: 0 }}>
                 <SectionLabel>Account</SectionLabel>
                 <FieldRow label="Status" hint={isGuest ? `Guest mode · ${daysRemaining} days left` : 'Signed in'}>
-                  {!isGuest && <span style={{ color: '#8fbc8f', fontSize: '13px' }}>{user?.email}</span>}
+                  {!isGuest && <span style={{ color: 'var(--accent)', fontSize: '13px' }}>{user?.email}</span>}
                 </FieldRow>
                 {isGuest && <UpgradeForm />}
                 {isGuest && (
-                  <p style={{ color: '#555', fontSize: '13px', margin: '16px 0 0' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '16px 0 0' }}>
                     Already have an account?{' '}
-                    <span onClick={() => navigate('/login')} style={{ color: '#8fbc8f', cursor: 'pointer', textDecoration: 'underline' }}>
+                    <span onClick={() => navigate('/login')} style={{ color: 'var(--accent)', cursor: 'pointer', textDecoration: 'underline' }}>
                       Log in instead
                     </span>{' '}— this guest session's data will be left behind unless you upgrade it first.
                   </p>
@@ -668,8 +668,8 @@ export default function Settings() {
                   onClick={requestLogout}
                   style={{
                     marginTop: '16px',
-                    padding: '9px 16px', background: 'transparent', border: '1px solid #2a2a2a',
-                    borderRadius: '8px', color: '#ccc', fontSize: '13px', fontWeight: 600,
+                    padding: '9px 16px', background: 'transparent', border: '1px solid var(--border-default)',
+                    borderRadius: '8px', color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 600,
                     cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
                   }}
                 >
@@ -680,15 +680,15 @@ export default function Settings() {
               <Card style={{ marginBottom: 0 }}>
                 <SectionLabel>Appearance</SectionLabel>
                 <FieldRow label="Theme" hint={theme === 'light' ? 'Light — matches most of the day' : 'Dark — easier on the eyes at night'}>
-                  <div style={{ display: 'flex', gap: 6, background: '#0f0f0f', border: '1px solid #2a2a2a', borderRadius: 20, padding: 2 }}>
+                  <div style={{ display: 'flex', gap: 6, background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 20, padding: 2 }}>
                     {[{ id: 'dark', label: 'Dark', icon: 'ti-moon' }, { id: 'light', label: 'Light', icon: 'ti-sun' }].map(opt => (
                       <button
                         key={opt.id}
                         onClick={() => setTheme(opt.id)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 18, border: 'none',
-                          background: theme === opt.id ? '#8fbc8f' : 'transparent',
-                          color: theme === opt.id ? '#0f0f0f' : '#888',
+                          background: theme === opt.id ? 'var(--accent)' : 'transparent',
+                          color: theme === opt.id ? '#0f0f0f' : 'var(--text-muted)',
                           fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
                         }}
                       >
@@ -707,17 +707,17 @@ export default function Settings() {
 
       {showLogoutConfirm && (
         <div onClick={closeLogoutConfirm} className={`modal-backdrop${logoutConfirmClosing ? ' is-closing' : ''}`} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}>
-          <div onClick={e => e.stopPropagation()} className={`modal-panel${logoutConfirmClosing ? ' is-closing' : ''}`} style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: 16, width: '100%', maxWidth: 420, padding: 24 }}>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 17, color: '#e8e8e8', marginBottom: 10 }}>
+          <div onClick={e => e.stopPropagation()} className={`modal-panel${logoutConfirmClosing ? ' is-closing' : ''}`} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-default)', borderRadius: 16, width: '100%', maxWidth: 420, padding: 24 }}>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 17, color: 'var(--text-primary)', marginBottom: 10 }}>
               Exit guest session?
             </div>
-            <p style={{ color: '#999', fontSize: 14, lineHeight: 1.6, margin: '0 0 20px' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.6, margin: '0 0 20px' }}>
               You're in guest mode. Guest accounts have no password, so once you exit there's no way to log back into this data — it's gone for good. Create a real account above first if you want to keep it.
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button
                 onClick={closeLogoutConfirm}
-                style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid #2a2a2a', borderRadius: 8, color: '#ccc', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-secondary)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
               >
                 Cancel
               </button>
@@ -751,7 +751,7 @@ function UpgradeForm() {
 
   if (status === 'done') {
     return (
-      <p style={{ color: '#8fbc8f', fontSize: '13px', margin: '14px 0 0' }}>
+      <p style={{ color: 'var(--accent)', fontSize: '13px', margin: '14px 0 0' }}>
         Almost there — check your email to confirm the address, then you're a full account with all your guest data intact.
       </p>
     );
@@ -759,23 +759,23 @@ function UpgradeForm() {
 
   return (
     <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <p style={{ color: '#666', fontSize: '13px', margin: '0 0 6px' }}>Upgrade to a real account — keeps everything you've logged so far.</p>
+      <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '0 0 6px' }}>Upgrade to a real account — keeps everything you've logged so far.</p>
       <input
         type="email" placeholder="Email address" value={email}
         onChange={e => setEmail(e.target.value)}
-        style={{ padding: '9px 12px', background: '#0f0f0f', border: '1px solid #2a2a2a', borderRadius: '8px', color: '#e8e8e8', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", outline: 'none' }}
+        style={{ padding: '9px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", outline: 'none' }}
       />
       <input
         type="password" placeholder="Password (min. 8 characters)" value={password}
         onChange={e => setPassword(e.target.value)}
-        style={{ padding: '9px 12px', background: '#0f0f0f', border: '1px solid #2a2a2a', borderRadius: '8px', color: '#e8e8e8', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", outline: 'none' }}
+        style={{ padding: '9px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: '8px', color: 'var(--text-primary)', fontSize: '13px', fontFamily: "'DM Sans', sans-serif", outline: 'none' }}
       />
-      {status && status !== 'loading' && <span style={{ color: '#c07070', fontSize: '12px' }}>{status}</span>}
+      {status && status !== 'loading' && <span style={{ color: 'var(--danger)', fontSize: '12px' }}>{status}</span>}
       <button
         onClick={handleUpgrade}
         disabled={!email || password.length < 8 || status === 'loading'}
         style={{
-          padding: '9px 16px', background: '#8fbc8f', border: '1px solid #8fbc8f',
+          padding: '9px 16px', background: 'var(--accent)', border: '1px solid var(--accent)',
           borderRadius: '8px', color: '#0f0f0f', fontSize: '13px', fontWeight: 600,
           cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", marginTop: '4px',
         }}

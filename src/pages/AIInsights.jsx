@@ -5,40 +5,19 @@ import { useHistory } from "../hooks/useHistory";
 import AppNav from "../components/AppNav";
 import { todayLocalDate, dateNDaysAgo, generateInsights, generateMoodResponse, computeStreak } from "../lib/patterns";
 
-// ── colour tokens (matches Progress.jsx exactly) ─────────────────────────────
-const C = {
-  bg:        "#0f0f0f",
-  bgCard:    "#181818",
-  bgSubtle:  "#141414",
-  bgAI:      "#0f1a0f",
-  border:    "#1e1e1e",
-  border2:   "#2a2a2a",
-  borderA:   "#3a5a3a",
-  borderA2:  "#4a7a4a",
-  green:     "#8fbc8f",
-  greenDark: "#4a7a4a",
-  blue:      "#6aabcf",
-  purple:    "#9f97e8",
-  amber:     "#b48250",
-  red:       "#c07070",
-  textP:     "#e8e8e8",
-  textS:     "#cccccc",
-  textM:     "#666666",
-};
-
 // ── skeleton card ────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
     <div style={{
-      background: C.bgAI, border: `1px solid ${C.borderA}`,
+      background: "var(--accent-bg)", border: "1px solid var(--border-active)",
       borderRadius: 12, padding: 20,
       display: "flex", alignItems: "flex-start", gap: 16,
     }}>
-      <div style={{ width: 36, height: 36, borderRadius: 8, background: C.border, flexShrink: 0, animation: "pulse 1.5s ease-in-out infinite" }} />
+      <div style={{ width: 36, height: 36, borderRadius: 8, background: "var(--border-default)", flexShrink: 0, animation: "pulse 1.5s ease-in-out infinite" }} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ width: 100, height: 10, borderRadius: 4, background: C.border, animation: "pulse 1.5s ease-in-out infinite" }} />
-        <div style={{ width: "90%", height: 12, borderRadius: 4, background: C.border, animation: "pulse 1.5s ease-in-out infinite" }} />
-        <div style={{ width: "72%", height: 12, borderRadius: 4, background: C.border, animation: "pulse 1.5s ease-in-out infinite" }} />
+        <div style={{ width: 100, height: 10, borderRadius: 4, background: "var(--border-default)", animation: "pulse 1.5s ease-in-out infinite" }} />
+        <div style={{ width: "90%", height: 12, borderRadius: 4, background: "var(--border-default)", animation: "pulse 1.5s ease-in-out infinite" }} />
+        <div style={{ width: "72%", height: 12, borderRadius: 4, background: "var(--border-default)", animation: "pulse 1.5s ease-in-out infinite" }} />
       </div>
     </div>
   );
@@ -54,7 +33,7 @@ function InsightCard({ icon, title, body, accentColor, delay }) {
 
   return (
     <div style={{
-      background: C.bgAI, border: `1px solid ${C.borderA}`,
+      background: "var(--accent-bg)", border: "1px solid var(--border-active)",
       borderRadius: 12, padding: 20,
       display: "flex", alignItems: "flex-start", gap: 16,
       opacity: visible ? 1 : 0,
@@ -76,7 +55,7 @@ function InsightCard({ icon, title, body, accentColor, delay }) {
         }}>
           {title}
         </div>
-        <p style={{ fontSize: 14, color: C.textS, lineHeight: 1.65, margin: 0 }}>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.65, margin: 0 }}>
           {body}
         </p>
       </div>
@@ -164,16 +143,16 @@ export default function AIInsights() {
   const sbIconBase = {
     width: 36, height: 36, display: "flex", alignItems: "center",
     justifyContent: "center", borderRadius: 8,
-    color: C.textM, fontSize: 18,
+    color: "var(--text-muted)", fontSize: 18,
   };
 
   // ── render ──────────────────────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", height: "100vh", background: C.bg, fontFamily: "'DM Sans', sans-serif", color: C.textP, overflow: "hidden" }}>
+    <div style={{ display: "flex", height: "100vh", background: "var(--bg-primary)", fontFamily: "'DM Sans', sans-serif", color: "var(--text-primary)", overflow: "hidden" }}>
       <style>{`
         @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
         * { box-sizing: border-box; }
-        textarea:focus { outline: none; border-color: ${C.borderA} !important; }
+        textarea:focus { outline: none; border-color: var(--border-active) !important; }
         textarea { font-family: "DM Sans", sans-serif; }
       `}</style>
 
@@ -184,15 +163,15 @@ export default function AIInsights() {
 
         {/* top bar — matches Progress exactly */}
         <div className="page-pad-top" style={{
-          minHeight: 52, background: C.bg, borderBottom: `1px solid ${C.border}`,
+          minHeight: 52, background: "var(--bg-primary)", borderBottom: "1px solid var(--border-default)",
           display: "flex", flexWrap: "wrap", alignItems: "center", paddingTop: 8, paddingBottom: 8, gap: 16, flexShrink: 0,
         }}>
           <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 16, fontWeight: 600 }}>Patterns</span>
           <div style={{ flex: 1 }} />
-          <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 12 }}>🔥</span>
-            <span style={{ color: C.textP, fontSize: 12, fontWeight: 600 }}>{streak}</span>
-            <span style={{ color: C.textM, fontSize: 11 }}>day streak</span>
+            <span style={{ color: "var(--text-primary)", fontSize: 12, fontWeight: 600 }}>{streak}</span>
+            <span style={{ color: "var(--text-muted)", fontSize: 11 }}>day streak</span>
           </div>
           <div style={{ ...sbIconBase, cursor: "pointer" }} title="Notifications"><i className="ti ti-bell" /></div>
         </div>
@@ -201,12 +180,12 @@ export default function AIInsights() {
         <div className="page-pad app-content-pad" style={{ flex: 1, overflowY: "auto" }}>
 
           {/* ── pattern insight cards ── */}
-          <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
+          <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20, marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS }}>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>
                 Your patterns
               </div>
-              <span style={{ fontSize: 11, color: C.textM }}>Computed from {name === "there" ? "your" : `${name}'s`} own logged data — no AI, no guessing</span>
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Computed from {name === "there" ? "your" : `${name}'s`} own logged data — no AI, no guessing</span>
             </div>
 
             {historyLoading ? (
@@ -223,8 +202,8 @@ export default function AIInsights() {
           </div>
 
           {/* ── mood check-in ── */}
-          <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS, marginBottom: 16 }}>
+          <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20, marginBottom: 16 }}>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 16 }}>
               How are you feeling today?
             </div>
 
@@ -239,21 +218,21 @@ export default function AIInsights() {
                       title={m.label}
                       style={{
                         flex: 1, padding: "10px 4px", borderRadius: 8,
-                        border: `1px solid ${selectedMood === m.id ? C.borderA : C.border}`,
-                        background: selectedMood === m.id ? C.bgAI : "transparent",
+                        border: `1px solid ${selectedMood === m.id ? "var(--border-active)" : "var(--border-default)"}`,
+                        background: selectedMood === m.id ? "var(--accent-bg)" : "transparent",
                         cursor: "pointer", display: "flex", flexDirection: "column",
                         alignItems: "center", gap: 5, transition: "all 0.15s",
                       }}
                     >
                       <span style={{ fontSize: 22 }}>{m.emoji}</span>
-                      <span style={{ fontSize: 10, color: selectedMood === m.id ? C.green : C.textM }}>{m.label}</span>
+                      <span style={{ fontSize: 10, color: selectedMood === m.id ? "var(--accent)" : "var(--text-muted)" }}>{m.label}</span>
                     </button>
                   ))}
                 </div>
 
                 {/* energy level */}
                 <div style={{ marginBottom: 18 }}>
-                  <div style={{ fontSize: 11, color: C.textM, marginBottom: 8 }}>Energy level</div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>Energy level</div>
                   <div style={{ display: "flex", gap: 6 }}>
                     {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
                       <button
@@ -261,9 +240,9 @@ export default function AIInsights() {
                         onClick={() => setSelectedEnergy(n)}
                         style={{
                           flex: 1, height: 32, borderRadius: 6,
-                          border: `1px solid ${selectedEnergy >= n ? C.borderA : C.border}`,
-                          background: selectedEnergy >= n ? C.green + "22" : "transparent",
-                          color: selectedEnergy >= n ? C.green : C.border2,
+                          border: `1px solid ${selectedEnergy >= n ? "var(--border-active)" : "var(--border-default)"}`,
+                          background: selectedEnergy >= n ? "#8fbc8f22" : "transparent",
+                          color: selectedEnergy >= n ? "var(--accent)" : "var(--border-strong)",
                           fontSize: 11, fontWeight: 600, cursor: "pointer",
                           transition: "all 0.1s", fontFamily: "'DM Sans', sans-serif",
                         }}
@@ -279,9 +258,9 @@ export default function AIInsights() {
                   onChange={e => setMoodNote(e.target.value)}
                   rows={2}
                   style={{
-                    width: "100%", background: C.bgCard,
-                    border: `1px solid ${C.border}`, borderRadius: 8,
-                    padding: "10px 14px", fontSize: 13, color: C.textS,
+                    width: "100%", background: "var(--bg-card)",
+                    border: "1px solid var(--border-default)", borderRadius: 8,
+                    padding: "10px 14px", fontSize: 13, color: "var(--text-secondary)",
                     resize: "none", marginBottom: 14,
                   }}
                 />
@@ -290,10 +269,10 @@ export default function AIInsights() {
                   onClick={submitMood}
                   disabled={!selectedMood || !selectedEnergy || loadingMood}
                   style={{
-                    background: selectedMood && selectedEnergy ? C.green : C.bgCard,
+                    background: selectedMood && selectedEnergy ? "var(--accent)" : "var(--bg-card)",
                     border: "none", borderRadius: 8, padding: "10px 22px",
                     fontSize: 13, fontWeight: 600,
-                    color: selectedMood && selectedEnergy ? C.bg : C.border2,
+                    color: selectedMood && selectedEnergy ? "#0f0f0f" : "var(--border-strong)",
                     cursor: selectedMood && selectedEnergy && !loadingMood ? "pointer" : "not-allowed",
                     transition: "background 0.2s, color 0.2s", fontFamily: "'DM Sans', sans-serif",
                   }}
@@ -307,54 +286,54 @@ export default function AIInsights() {
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 14 }}>
                   <span style={{ fontSize: 32 }}>{selectedMoodObj?.emoji}</span>
                   <div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: C.textP, margin: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
                       {selectedMoodObj?.label} · Energy {selectedEnergy}/10
                     </p>
-                    <p style={{ fontSize: 12, color: C.textM, margin: "2px 0 0" }}>Checked in today</p>
+                    <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "2px 0 0" }}>Checked in today</p>
                   </div>
                 </div>
 
                 {/* templated response */}
                 <div style={{
-                  background: C.bgAI, border: `1px solid ${C.borderA}`,
+                  background: "var(--accent-bg)", border: "1px solid var(--border-active)",
                   borderRadius: 10, padding: "14px 16px", marginBottom: 12,
                   minHeight: 64, display: "flex", alignItems: "center", gap: 12,
                 }}>
                   <div style={{
-                    width: 28, height: 28, background: C.greenDark + "22",
-                    border: `1px solid ${C.borderA}`, borderRadius: 6,
+                    width: 28, height: 28, background: "#4a7a4a22",
+                    border: "1px solid var(--border-active)", borderRadius: 6,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     flexShrink: 0,
                   }}>
-                    <i className="ti ti-sparkles" style={{ fontSize: 13, color: C.green }} />
+                    <i className="ti ti-sparkles" style={{ fontSize: 13, color: "var(--accent)" }} />
                   </div>
-                  <p style={{ fontSize: 14, color: C.textS, lineHeight: 1.65, margin: 0 }}>{moodResponse}</p>
+                  <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.65, margin: 0 }}>{moodResponse}</p>
                 </div>
 
                 <button
                   onClick={resetMood}
                   style={{
-                    background: "transparent", border: `1px solid ${C.border}`,
+                    background: "transparent", border: "1px solid var(--border-default)",
                     borderRadius: 8, padding: "6px 14px", fontSize: 12,
-                    color: C.textM, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                    color: "var(--text-muted)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
                     transition: "border-color 0.15s",
                   }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = C.borderA}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = C.border}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = "var(--border-active)"}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-default)"}
                 >Update check-in</button>
               </div>
             )}
           </div>
 
           {/* ── weekly mood history grid ── */}
-          <div style={{ background: C.bgSubtle, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20, marginBottom: 16 }}>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: C.textS, marginBottom: 2 }}>
+          <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20, marginBottom: 16 }}>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 2 }}>
               Last 7 days
             </div>
-            <div style={{ fontSize: 12, color: C.textM, marginBottom: 16 }}>Mood and energy history</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>Mood and energy history</div>
 
             {/* mood row */}
-            <div style={{ fontSize: 11, color: C.textM, marginBottom: 8 }}>Mood</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>Mood</div>
             <div className="grid-7" style={{ marginBottom: 20 }}>
               {last7.map(({ date, label }) => {
                 const row = byDate.get(date);
@@ -363,30 +342,30 @@ export default function AIInsights() {
                   <div key={date} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
                     <div style={{
                       width: "100%", aspectRatio: "1", borderRadius: 8,
-                      background: C.bgCard, border: `1px solid ${C.border}`,
+                      background: "var(--bg-card)", border: "1px solid var(--border-default)",
                       display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
                     }}>
-                      {emoji || <span style={{ color: C.border2, fontSize: 12 }}>—</span>}
+                      {emoji || <span style={{ color: "var(--border-strong)", fontSize: 12 }}>—</span>}
                     </div>
-                    <span style={{ fontSize: 10, color: C.textM }}>{label}</span>
+                    <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{label}</span>
                   </div>
                 );
               })}
             </div>
 
             {/* energy row */}
-            <div style={{ fontSize: 11, color: C.textM, marginBottom: 8 }}>Energy</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>Energy</div>
             <div className="grid-7">
               {last7.map(({ date, label }) => {
                 const row = byDate.get(date);
                 const val = row?.energy ?? null;
                 const pct = val ? (val / 10) * 100 : 0;
-                const barColor = val >= 7 ? C.green : val >= 5 ? C.amber : C.red;
+                const barColor = val >= 7 ? "var(--accent)" : val >= 5 ? "var(--warning)" : "var(--danger)";
                 return (
                   <div key={date} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
                     <div style={{
-                      width: "100%", height: 52, background: C.bgCard,
-                      border: `1px solid ${C.border}`, borderRadius: 8,
+                      width: "100%", height: 52, background: "var(--bg-card)",
+                      border: "1px solid var(--border-default)", borderRadius: 8,
                       display: "flex", flexDirection: "column", justifyContent: "flex-end",
                       overflow: "hidden", position: "relative",
                     }}>
@@ -394,7 +373,7 @@ export default function AIInsights() {
                         <>
                           <div style={{
                             width: "100%", height: pct + "%",
-                            background: barColor + "30",
+                            background: `color-mix(in srgb, ${barColor} 30%, transparent)`,
                             borderTop: "2px solid " + barColor,
                             transition: "height 0.6s ease",
                           }} />
@@ -406,7 +385,7 @@ export default function AIInsights() {
                         </>
                       )}
                     </div>
-                    <span style={{ fontSize: 10, color: C.textM }}>{label}</span>
+                    <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{label}</span>
                   </div>
                 );
               })}
