@@ -228,3 +228,35 @@
     padding: 0 16px;
   }
 }
+
+/* Press feedback for any clickable element — instant confirmation that
+   the tap registered, per the "buttons must feel responsive" rule. Scale
+   only (never `all`) so it stays GPU-cheap. */
+.btn-press {
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* Cascading entrance for list rows — each item's animation-delay is set
+   inline per-index so the list reads as one cohesive motion instead of
+   everything popping in at once. Starts from a barely-offset/faded state,
+   never scale(0)/opacity 0 from nothing. */
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.stagger-item {
+  animation: stagger-in 320ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+/* A small pop for momentary confirmation states (e.g. "copied") —
+   starts from a visible 0.8 scale, not 0, per the never-scale(0) rule. */
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+.pop-in {
+  animation: pop-in 220ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}

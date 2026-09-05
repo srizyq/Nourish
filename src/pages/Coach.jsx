@@ -18,6 +18,7 @@ import { round1 } from '../lib/format';
 import DaySelector from '../components/DaySelector';
 import LogItemRow from '../components/LogItemRow';
 import LogoMark from '../components/LogoMark';
+import StreakItem from '../components/StreakItem';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Tooltip, Legend, Filler);
 
@@ -54,11 +55,45 @@ function Card({ children, style }) {
   );
 }
 
-function SectionLabel({ children }) {
+function SectionLabel({ icon, children }) {
   return (
-    <p style={{ color: 'var(--text-muted)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 18px' }}>
+    <p style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--text-muted)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 18px' }}>
+      {icon && <i className={`ti ${icon}`} style={{ fontSize: 13 }} />}
       {children}
     </p>
+  );
+}
+
+// Initials avatar with a progress ring around it — filled toward how much
+// of the client's calorie target they've logged today. No target yet ==
+// a plain unfilled ring, not a missing/broken-looking element.
+function ClientAvatar({ name, pct, size = 44 }) {
+  const initials = (name || '?').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth * 2) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(1, pct || 0));
+  const offset = circumference * (1 - clamped);
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }}>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--border-default)" strokeWidth={strokeWidth} />
+        {clamped > 0 && (
+          <circle
+            cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--accent)" strokeWidth={strokeWidth}
+            strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+            style={{ transition: 'stroke-dashoffset 500ms cubic-bezier(0.23, 1, 0.32, 1)' }}
+          />
+        )}
+      </svg>
+      <div style={{
+        position: 'absolute', inset: strokeWidth, borderRadius: '50%', background: 'var(--bg-card)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: size * 0.32, fontWeight: 700, color: 'var(--accent)', fontFamily: "'Syne', sans-serif",
+      }}>
+        {initials}
+      </div>
+    </div>
   );
 }
 
@@ -71,11 +106,11 @@ function StatRow({ label, value }) {
   );
 }
 
-function StatCard({ label, value, hint }) {
+function StatCard({ label, value, hint, color = ACCENT }) {
   return (
     <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-default)', borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
-      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: value === '—' ? 'var(--border-strong)' : 'var(--text-primary)', lineHeight: 1 }}>{value}</div>
+      <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: value === '—' ? 'var(--border-strong)' : color, lineHeight: 1 }}>{value}</div>
       <div style={{ fontSize: 11, color: 'var(--border-strong)' }}>{hint}</div>
     </div>
   );
@@ -168,6 +203,7 @@ export default function Coach() {
           </div>
           <button
             onClick={selectedClient ? () => setSelectedClient(null) : exitCoachMode}
+            className="btn-press"
             style={{ padding: '9px 16px', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
           >
             {selectedClient ? '← All clients' : 'Exit Coach Mode'}
@@ -199,38 +235,50 @@ export default function Coach() {
 
 // ─── Client list + invite code ────────────────────────────────────────────────
 function ClientListView({ profile, clients, loading, generating, codeError, copied, onGenerate, onCopy, onSelect, onRevoke }) {
+  const hasClients = clients.length > 0;
   return (
     <div className="grid-2" style={{ alignItems: 'start' }}>
-      <Card style={{ marginBottom: 0 }}>
-        <SectionLabel>Invite a client</SectionLabel>
+      <Card style={{
+        marginBottom: 0,
+        background: profile.coach_invite_code
+          ? 'linear-gradient(160deg, var(--accent-bg) 0%, var(--bg-subtle) 65%)'
+          : 'var(--bg-subtle)',
+        border: `1px solid ${profile.coach_invite_code ? 'var(--border-active)' : 'var(--border-default)'}`,
+      }}>
+        <SectionLabel icon="ti-user-plus">{hasClients ? 'Invite another client' : 'Invite your first client'}</SectionLabel>
         {profile.coach_invite_code ? (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: '0 0 16px', lineHeight: 1.6 }}>
+              Share this code — a client enters it in Settings to connect their data to your dashboard.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <div style={{
-                flex: 1, padding: '10px 14px', background: 'var(--bg-primary)', border: '1px solid var(--border-default)',
-                borderRadius: 8, fontFamily: "'Syne', sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: '0.1em',
+                flex: 1, padding: '14px 16px', background: 'var(--bg-primary)', border: '1px solid var(--border-active)',
+                borderRadius: 10, fontFamily: "'Syne', sans-serif", fontSize: 26, fontWeight: 700, letterSpacing: '0.14em',
                 color: 'var(--accent)', textAlign: 'center',
               }}>
                 {profile.coach_invite_code}
               </div>
               <button
                 onClick={onCopy}
-                style={{ padding: '10px 14px', background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}
+                className="btn-press"
+                style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 10, color: copied ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 16, cursor: 'pointer', flexShrink: 0 }}
+                title="Copy code"
               >
-                {copied ? 'Copied!' : 'Copy'}
+                {copied ? <i className="ti ti-check pop-in" /> : <i className="ti ti-copy" />}
               </button>
             </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: 12, margin: '0 0 12px' }}>
-              Share this code — a client enters it to connect their data to your dashboard.
-            </p>
           </>
         ) : (
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 12px' }}>Generate a code to start inviting clients.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: '0 0 16px', lineHeight: 1.6 }}>
+            Generate a code and share it with a client — once they enter it, their food, weight and check-ins show up here.
+          </p>
         )}
         {codeError && <p style={{ color: 'var(--danger)', fontSize: 12, margin: '0 0 12px' }}>{codeError}</p>}
         <button
           onClick={onGenerate}
           disabled={generating}
+          className="btn-press"
           style={{ padding: '9px 16px', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
         >
           {generating ? 'Generating…' : profile.coach_invite_code ? 'Regenerate code' : 'Generate code'}
@@ -238,14 +286,19 @@ function ClientListView({ profile, clients, loading, generating, codeError, copi
       </Card>
 
       <Card style={{ marginBottom: 0 }}>
-        <SectionLabel>Your clients</SectionLabel>
+        <SectionLabel icon="ti-users">Your clients</SectionLabel>
         {loading ? (
           <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading…</p>
-        ) : clients.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No clients connected yet — share your invite code to get started.</p>
+        ) : !hasClients ? (
+          <div style={{ textAlign: 'center', padding: '20px 12px' }}>
+            <i className="ti ti-users" style={{ fontSize: 28, color: 'var(--border-strong)' }} />
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '12px 0 0', lineHeight: 1.6 }}>
+              Once a client redeems your invite code, they'll show up here.
+            </p>
+          </div>
         ) : (
-          clients.map(row => (
-            <ClientPreviewRow key={row.id} row={row} onSelect={onSelect} onRevoke={onRevoke} />
+          clients.map((row, i) => (
+            <ClientPreviewRow key={row.id} row={row} index={i} onSelect={onSelect} onRevoke={onRevoke} />
           ))
         )}
       </Card>
@@ -255,22 +308,31 @@ function ClientListView({ profile, clients, loading, generating, codeError, copi
 
 // A client row previews today's totals plus a 7-day average, fetched
 // independently per row so one slow client never blocks the rest of the list.
-function ClientPreviewRow({ row, onSelect, onRevoke }) {
+// The avatar ring fills toward today's share of the client's own calorie
+// target, giving an at-a-glance signal without reading any numbers.
+function ClientPreviewRow({ row, index, onSelect, onRevoke }) {
   const today = todayLocalDate();
   const { dailyData, loading } = useHistory(dateNDaysAgo(6), today, row.client?.id);
   const todayData = dailyData.find(d => d.date === today);
   const loggedDays = dailyData.filter(d => d.loggedMeals > 0);
   const avgCal = loggedDays.length ? Math.round(avg(loggedDays.map(d => d.calories))) : null;
+  const calorieTarget = row.client?.calorie_target || null;
+  const todayPct = calorieTarget && todayData ? todayData.calories / calorieTarget : 0;
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0', borderBottom: '1px solid var(--border-default)' }}>
+    <div
+      className="stagger-item"
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 0', borderBottom: '1px solid var(--border-default)', animationDelay: `${Math.min(index, 8) * 40}ms` }}
+    >
+      <ClientAvatar name={row.client?.name} pct={todayPct} />
       <button
         onClick={() => onSelect(row.client)}
+        className="btn-press"
         style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ color: 'var(--text-primary)', fontSize: 14, fontWeight: 600 }}>{row.client?.name || 'Unnamed client'}</span>
-          <span style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
+          <span style={{ color: 'var(--accent)', fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
             {loading ? '…' : todayData ? `${Math.round(todayData.calories)} kcal today` : 'Nothing today'}
           </span>
         </div>
@@ -284,6 +346,7 @@ function ClientPreviewRow({ row, onSelect, onRevoke }) {
       <button
         onClick={() => onRevoke(row.id)}
         title="Disconnect"
+        className="btn-press"
         style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}
       >
         <i className="ti ti-x" />
@@ -425,7 +488,7 @@ function ClientDetailView({ client }) {
       {/* Goal & targets + stat cards */}
       <div className="grid-2" style={{ marginBottom: 16, alignItems: 'start' }}>
         <Card style={{ marginBottom: 0 }}>
-          <SectionLabel>Goal &amp; targets</SectionLabel>
+          <SectionLabel icon="ti-target">Goal &amp; targets</SectionLabel>
           <StatRow label="Goal" value={GOAL_LABELS[client.goal] || '—'} />
           <StatRow label="Calorie target" value={calorieTarget ? `${calorieTarget.toLocaleString()} kcal` : '—'} />
           <StatRow label="Protein" value={client.protein_g ? `${client.protein_g}g` : '—'} />
@@ -433,10 +496,10 @@ function ClientDetailView({ client }) {
           <StatRow label="Fat" value={client.fat_g ? `${client.fat_g}g` : '—'} />
         </Card>
         <div className="grid-2" style={{ gap: 12 }}>
-          <StatCard label="Avg. calories" value={hasData ? avgCalories.toLocaleString() : '—'} hint={hasData ? `over ${loggedDays.length} logged days` : 'No data yet'} />
-          <StatCard label="Days on target" value={hasData && calorieTarget ? daysOnTarget : '—'} hint={calorieTarget ? 'within 10% of goal' : 'No calorie target set'} />
-          <StatCard label="Avg. protein" value={hasData ? `${avgProtein}g` : '—'} hint={hasData ? `over ${loggedDays.length} logged days` : 'No data yet'} />
-          <StatCard label="Avg. energy" value={avgEnergy || '—'} hint={avgEnergy ? `over ${energyDays.length} check-ins` : 'No check-ins yet'} />
+          <StatCard label="Avg. calories" value={hasData ? avgCalories.toLocaleString() : '—'} hint={hasData ? `over ${loggedDays.length} logged days` : 'No data yet'} color={ACCENT} />
+          <StatCard label="Days on target" value={hasData && calorieTarget ? daysOnTarget : '—'} hint={calorieTarget ? 'within 10% of goal' : 'No calorie target set'} color={ACCENT} />
+          <StatCard label="Avg. protein" value={hasData ? `${avgProtein}g` : '—'} hint={hasData ? `over ${loggedDays.length} logged days` : 'No data yet'} color={WATER_BLUE} />
+          <StatCard label="Avg. energy" value={avgEnergy || '—'} hint={avgEnergy ? `over ${energyDays.length} check-ins` : 'No check-ins yet'} color={AI_PURPLE} />
         </div>
       </div>
 
@@ -446,6 +509,7 @@ function ClientDetailView({ client }) {
           <button
             key={r.id}
             onClick={() => setRange(r.id)}
+            className="btn-press"
             style={{
               background: range === r.id ? 'var(--accent-bg)' : 'var(--bg-card)',
               border: `1px solid ${range === r.id ? 'var(--accent-dark)' : 'var(--border-strong)'}`,
@@ -462,7 +526,7 @@ function ClientDetailView({ client }) {
       {/* charts */}
       <div className="grid-2" style={{ marginBottom: 16 }}>
         <Card style={{ marginBottom: 0 }}>
-          <SectionLabel>Calories vs goal</SectionLabel>
+          <SectionLabel icon="ti-chart-line">Calories vs goal</SectionLabel>
           {historyLoading ? null : hasData ? (
             <div style={{ height: 200 }}><Line data={calorieChartData} options={chartOptions} /></div>
           ) : (
@@ -470,7 +534,7 @@ function ClientDetailView({ client }) {
           )}
         </Card>
         <Card style={{ marginBottom: 0 }}>
-          <SectionLabel>Macro breakdown</SectionLabel>
+          <SectionLabel icon="ti-chart-bar">Macro breakdown</SectionLabel>
           {historyLoading ? null : hasData ? (
             <div style={{ height: 200 }}><Bar data={macroChartData} options={stackedOptions} /></div>
           ) : (
@@ -481,7 +545,7 @@ function ClientDetailView({ client }) {
 
       {/* weight chart */}
       <Card>
-        <SectionLabel>Weight</SectionLabel>
+        <SectionLabel icon="ti-scale">Weight</SectionLabel>
         <div style={{ color: 'var(--text-primary)', fontSize: 22, fontWeight: 700, fontFamily: "'Syne', sans-serif", marginBottom: 12 }}>
           {latestWeight ? `${latestWeight.weight}${latestWeight.unit}` : '—'}
         </div>
@@ -494,19 +558,15 @@ function ClientDetailView({ client }) {
 
       {/* streaks */}
       <Card>
-        <SectionLabel>Streaks</SectionLabel>
+        <SectionLabel icon="ti-flame">Streaks</SectionLabel>
         {[
-          { icon: 'ti-flame', name: 'Logging streak', count: loggingStreak },
-          { icon: 'ti-target', name: 'Calorie target', count: calorieStreak },
-          { icon: 'ti-meat', name: 'Protein target', count: proteinStreak },
-          { icon: 'ti-mood-smile', name: 'Mood check-ins', count: moodStreak },
+          { icon: 'ti-flame', iconBg: 'var(--accent-bg)', iconColor: 'var(--accent)', name: 'Logging streak', count: loggingStreak },
+          { icon: 'ti-target', iconBg: 'var(--accent-bg)', iconColor: 'var(--accent)', name: 'Calorie target', count: calorieStreak },
+          { icon: 'ti-meat', iconBg: WATER_BLUE + '18', iconColor: 'var(--water-blue)', name: 'Protein target', count: proteinStreak },
+          { icon: 'ti-mood-smile', iconBg: AI_PURPLE + '18', iconColor: 'var(--ai-purple)', name: 'Mood check-ins', count: moodStreak },
         ].map((s, i, arr) => (
-          <div key={s.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--border-default)' : 'none' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <i className={`ti ${s.icon}`} style={{ fontSize: 16, color: s.count > 0 ? 'var(--accent)' : 'var(--text-muted)' }} />
-              <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{s.name}</span>
-            </div>
-            <span style={{ color: s.count > 0 ? 'var(--accent)' : 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>{s.count} day{s.count === 1 ? '' : 's'}</span>
+          <div key={s.name} style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border-default)' : 'none' }}>
+            <StreakItem {...s} />
           </div>
         ))}
       </Card>
@@ -518,7 +578,7 @@ function ClientDetailView({ client }) {
 
       <div className="grid-2" style={{ alignItems: 'start' }}>
         <Card style={{ marginBottom: 0 }}>
-          <SectionLabel>Food log — {date}</SectionLabel>
+          <SectionLabel icon="ti-clipboard-list">Food log — {date}</SectionLabel>
           {foodLoading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading…</p>
           ) : (
@@ -531,7 +591,7 @@ function ClientDetailView({ client }) {
                 const isOpen = open[mealKey];
                 return (
                   <div key={mealKey} style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 12, overflow: 'hidden' }}>
-                    <button onClick={() => setOpen(o => ({ ...o, [mealKey]: !o[mealKey] }))} style={{ width: '100%', background: 'none', border: 'none', padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <button onClick={() => setOpen(o => ({ ...o, [mealKey]: !o[mealKey] }))} className="btn-press" style={{ width: '100%', background: 'none', border: 'none', padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <div style={{ textAlign: 'left' }}>
                         <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: 15, color: 'var(--text-secondary)' }}>{MEAL_LABELS[mealKey]}</div>
                         {items.length > 0 && <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>P {mealProtein}g · C {mealCarbs}g · F {mealFat}g</div>}
@@ -567,7 +627,7 @@ function ClientDetailView({ client }) {
 
         <div>
           <Card>
-            <SectionLabel>Check-in — {date}</SectionLabel>
+            <SectionLabel icon="ti-mood-smile">Check-in — {date}</SectionLabel>
             {checkin ? (
               <>
                 <StatRow label="Mood" value={checkin.mood || '—'} />
@@ -581,7 +641,7 @@ function ClientDetailView({ client }) {
           </Card>
 
           <Card style={{ marginBottom: 0 }}>
-            <SectionLabel>Comments</SectionLabel>
+            <SectionLabel icon="ti-message-circle">Comments</SectionLabel>
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               <input
                 value={commentBody}
@@ -593,6 +653,7 @@ function ClientDetailView({ client }) {
               <button
                 onClick={handleAddComment}
                 disabled={!commentBody.trim()}
+                className="btn-press"
                 style={{ padding: '9px 16px', background: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 8, color: '#0f0f0f', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}
               >
                 Post
@@ -611,6 +672,7 @@ function ClientDetailView({ client }) {
                   </div>
                   <button
                     onClick={() => removeComment(c.id)}
+                    className="btn-press"
                     style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, flexShrink: 0 }}
                   >
                     <i className="ti ti-trash" />
