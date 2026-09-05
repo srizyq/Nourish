@@ -29,7 +29,7 @@ async function withRetry(fn, attempts = 3, delayMs = 250) {
 function draftToProfileFields(draft) {
   const targets = draft.targets || {};
   return {
-    name: draft.name || 'there',
+    name: draft.name || null,
     goal: draft.goal || null,
     age: draft.age ?? null,
     date_of_birth: draft.dateOfBirth || null,
