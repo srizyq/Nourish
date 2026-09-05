@@ -327,6 +327,31 @@ export async function upsertWeightLog(userId, date, weight, unit) {
   return data;
 }
 
+// ─── barcode_products (shared community table) ─────────────────────────────
+export async function getBarcodeProduct(barcode) {
+  const { data, error } = await supabase
+    .from('barcode_products')
+    .select('*')
+    .eq('barcode', barcode)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+// Barcode is the primary key, so a duplicate submission for one someone
+// else already added just fails the insert — the caller falls back to
+// using whatever's already there rather than treating that as a real
+// error (see lookupBarcode's shared-table branch in FoodSearch.jsx).
+export async function addBarcodeProduct(userId, barcode, fields) {
+  const { data, error } = await supabase
+    .from('barcode_products')
+    .insert({ barcode, created_by: userId, ...fields })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 // ─── trainer_clients ────────────────────────────────────────────────────────
 
 export async function getMyClients(trainerId) {

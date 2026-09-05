@@ -393,3 +393,36 @@ grant execute on function public.redeem_coach_invite_code(text) to authenticated
 -- ── anonymous (guest) sign-ins ─────────────────────────────────────────────
 -- In the Supabase dashboard: Authentication → Sign In / Providers →
 -- enable "Allow anonymous sign-ins". Required for the app's guest mode.
+
+-- ── barcode_products ─────────────────────────────────────────────────────
+-- Community-contributed nutrition data for barcodes not found in
+-- FatSecret or Open Food Facts — filled in from a photo of the product's
+-- own nutrition label (see api/recognize-label.js), shared across all
+-- users so the next person who scans the same barcode gets an instant
+-- hit instead of retyping it. First submission for a given barcode wins
+-- (barcode is the primary key); RLS lets any signed-in user read every
+-- row and insert new ones, but there's no update/delete policy — fixing
+-- a bad entry isn't handled in v1.
+create table if not exists public.barcode_products (
+  barcode text primary key,
+  name text not null,
+  brand text,
+  serving text,
+  serving_grams numeric,
+  calories numeric not null default 0,
+  protein_g numeric default 0,
+  carbs_g numeric default 0,
+  fat_g numeric default 0,
+  fibre_g numeric default 0,
+  sodium_mg numeric default 0,
+  sugar_g numeric default 0,
+  created_by uuid references auth.users (id) on delete set null,
+  created_at timestamptz default now()
+);
+
+alter table public.barcode_products enable row level security;
+
+create policy "barcode_products: select any signed-in user" on public.barcode_products
+  for select using (auth.uid() is not null);
+create policy "barcode_products: insert any signed-in user" on public.barcode_products
+  for insert with check (auth.uid() = created_by);

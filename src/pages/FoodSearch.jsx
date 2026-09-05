@@ -8,7 +8,11 @@ import { useFavouriteFoods } from '../hooks/useFavouriteFoods';
 import { useFrequentFoods } from '../hooks/useFrequentFoods';
 import { useLastLoggedAmounts } from '../hooks/useLastLoggedAmounts';
 import { useProfile } from '../hooks/useProfile';
+import { useAuth } from '../hooks/useAuth';
 import { todayLocalDate } from '../lib/patterns';
+import { getBarcodeProduct, addBarcodeProduct } from '../lib/db';
+import { supabase } from '../lib/supabase';
+import CameraCapture from '../components/CameraCapture';
 import { mealFromDate, currentTimeHHMM, timeStringToDate, formatTime12h, formatTimeFromDate } from '../lib/mealTime';
 import { scaleFood, UNITS, amountToServings } from '../lib/foodMath';
 import AppNav from '../components/AppNav';
@@ -253,7 +257,35 @@ async function lookupOpenFoodFactsBarcode(barcode) {
   return looksLikeEmptyNutrition(found) ? null : found;
 }
 
+// Last resort after FatSecret and Open Food Facts both come up empty —
+// nutrition data other Attune users have contributed for this exact
+// barcode (see barcode_products in supabase/schema.sql). Converts the DB
+// row's column names to the same `found` shape the two lookups above
+// produce, so everything downstream (scaling, AddControls) is unaware
+// of which source it came from.
+async function lookupSharedBarcodeProduct(barcode) {
+  const row = await getBarcodeProduct(barcode);
+  if (!row) return null;
+  return {
+    name: row.name,
+    brand: row.brand || '',
+    serving: row.serving || '1 serving',
+    cal: Math.round(row.calories || 0),
+    protein: Math.round((row.protein_g || 0) * 10) / 10,
+    carbs: Math.round((row.carbs_g || 0) * 10) / 10,
+    fat: Math.round((row.fat_g || 0) * 10) / 10,
+    fibre: Math.round((row.fibre_g || 0) * 10) / 10,
+    sodium: Math.round(row.sodium_mg || 0),
+    sugar: Math.round((row.sugar_g || 0) * 10) / 10,
+    source: 'community',
+    servingGrams: row.serving_grams || null,
+  };
+}
+
+const BLANK_NEW_PRODUCT = { name: '', brand: '', serving: '', servingGrams: '', cal: '', protein: '', carbs: '', fat: '', fibre: '', sodium: '', sugar: '' };
+
 function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selectedDate, isPremium, onCreateCustom, onSearchManually }) {
+  const { user } = useAuth();
   const videoRef = useRef(null);
   const controlsRef = useRef(null);
   // Guards against the decode callback firing more than once for the same
@@ -270,6 +302,19 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selected
   const [time, setTime] = useState(defaultTime);
   const [amount, setAmount] = useState(1);
   const [unit, setUnit] = useState("serving");
+
+  // "Add this product" — offered when neither FatSecret, Open Food
+  // Facts, nor the shared barcode_products table has this barcode.
+  // Nutrition facts come from a photo of the label (recognize-label);
+  // name/brand are typed, not guessed from the label, since a nutrition
+  // panel rarely carries a clean marketing name.
+  const [scannedBarcode, setScannedBarcode] = useState(null);
+  const [addingProduct, setAddingProduct] = useState(false);
+  const [newProduct, setNewProduct] = useState(BLANK_NEW_PRODUCT);
+  const [labelAnalyzing, setLabelAnalyzing] = useState(false);
+  const [labelError, setLabelError] = useState(null);
+  const [labelPreview, setLabelPreview] = useState(null);
+  const [savingProduct, setSavingProduct] = useState(false);
 
   // Jump straight into the camera on open — no reason to make someone tap
   // "Start scanning" first when they already tapped "Scan barcode" to get
@@ -335,12 +380,14 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selected
   }
 
   async function lookupBarcode(barcode) {
+    setScannedBarcode(barcode);
     try {
       const found = (await lookupFatSecretBarcode(barcode).catch(() => null))
-        || (await lookupOpenFoodFactsBarcode(barcode).catch(() => null));
+        || (await lookupOpenFoodFactsBarcode(barcode).catch(() => null))
+        || (await lookupSharedBarcodeProduct(barcode).catch(() => null));
       if (!found) {
         setResult(null);
-        setError(`Product not found for barcode ${barcode}. Try searching manually.`);
+        setError(`Product not found for barcode ${barcode}. Try searching manually, or add it yourself.`);
         return;
       }
       setError(null);
@@ -352,7 +399,111 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selected
     finally { setScanning(false); }
   }
 
-  function reset() { setResult(null); setError(null); setScanning(false); startScanner(); }
+  function reset() {
+    setResult(null); setError(null); setScanning(false); setAddingProduct(false);
+    setNewProduct(BLANK_NEW_PRODUCT); setLabelError(null); setLabelPreview(null);
+    startScanner();
+  }
+
+  function updateNewProduct(key, val) { setNewProduct(p => ({ ...p, [key]: val })); }
+
+  async function handleLabelPhoto(file) {
+    setLabelAnalyzing(true);
+    setLabelError(null);
+    try {
+      const { dataUrl, base64 } = await new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const scale = Math.min(1, 1024 / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+          const d = canvas.toDataURL("image/jpeg", 0.85);
+          resolve({ dataUrl: d, base64: d.split(",")[1] });
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Could not read that image.")); };
+        img.src = url;
+      });
+      setLabelPreview(dataUrl);
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/recognize-label", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ image: base64, mediaType: "image/jpeg" }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setLabelError(data.error || "Couldn't read this label. Try again or enter the numbers yourself.");
+        return;
+      }
+      setNewProduct(p => ({
+        ...p,
+        serving: data.serving || p.serving,
+        servingGrams: data.servingGrams != null ? String(data.servingGrams) : p.servingGrams,
+        cal: String(data.cal ?? 0),
+        protein: String(data.protein ?? 0),
+        carbs: String(data.carbs ?? 0),
+        fat: String(data.fat ?? 0),
+        fibre: String(data.fibre ?? 0),
+        sodium: String(data.sodium ?? 0),
+        sugar: String(data.sugar ?? 0),
+      }));
+    } catch (err) {
+      console.error(err);
+      setLabelError("Couldn't read this label. Check your connection and try again.");
+    } finally {
+      setLabelAnalyzing(false);
+    }
+  }
+
+  async function saveNewProduct() {
+    if (!newProduct.name.trim() || !scannedBarcode || savingProduct) return;
+    setSavingProduct(true);
+    try {
+      const fields = {
+        name: newProduct.name.trim(),
+        brand: newProduct.brand.trim() || null,
+        serving: newProduct.serving.trim() || "1 serving",
+        serving_grams: newProduct.servingGrams ? Number(newProduct.servingGrams) : null,
+        calories: Number(newProduct.cal) || 0,
+        protein_g: Number(newProduct.protein) || 0,
+        carbs_g: Number(newProduct.carbs) || 0,
+        fat_g: Number(newProduct.fat) || 0,
+        fibre_g: Number(newProduct.fibre) || 0,
+        sodium_mg: Number(newProduct.sodium) || 0,
+        sugar_g: Number(newProduct.sugar) || 0,
+      };
+      // Someone else may have submitted this exact barcode between when
+      // the lookup failed and now — an insert conflict there just means
+      // the shared table already has it, so fall back to using that
+      // instead of surfacing a confusing "already exists" error.
+      const saved = await addBarcodeProduct(user.id, scannedBarcode, fields).catch(() => lookupSharedBarcodeProduct(scannedBarcode));
+      const found = saved.barcode ? {
+        name: saved.name, brand: saved.brand || "", serving: saved.serving || "1 serving",
+        cal: Math.round(saved.calories || 0), protein: Math.round((saved.protein_g || 0) * 10) / 10,
+        carbs: Math.round((saved.carbs_g || 0) * 10) / 10, fat: Math.round((saved.fat_g || 0) * 10) / 10,
+        fibre: Math.round((saved.fibre_g || 0) * 10) / 10, sodium: Math.round(saved.sodium_mg || 0),
+        sugar: Math.round((saved.sugar_g || 0) * 10) / 10, source: "community", servingGrams: saved.serving_grams || null,
+      } : saved;
+      setAddingProduct(false);
+      setError(null);
+      setResult(found);
+      setAmount(1);
+      setUnit("serving");
+      setTime(currentTimeHHMM());
+    } catch (err) {
+      console.error(err);
+      setLabelError("Couldn't save this product. Check your connection and try again.");
+    } finally {
+      setSavingProduct(false);
+    }
+  }
 
   const servingGrams = result?.servingGrams || 100;
   const servings = result ? amountToServings(Number(amount) || 0, unit, servingGrams) : 0;
@@ -361,7 +512,7 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selected
 
   return (
     <div>
-      {!result && (
+      {!result && !addingProduct && (
         <div style={{ position: "relative", marginBottom: 14 }}>
           <video ref={videoRef} style={{ width: "100%", borderRadius: 10, background: "#0a0a0a", display: looking ? "block" : "none", maxHeight: 220, objectFit: "cover" }} />
           {looking && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}><div style={{ width: "70%", height: 2, background: "#8fbc8f", opacity: 0.7, boxShadow: "0 0 8px #8fbc8f", borderRadius: 2 }} /></div>}
@@ -369,15 +520,84 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selected
         </div>
       )}
       {scanning && <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "20px 0", color: "var(--text-muted)", fontSize: 13 }}><div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--text-hint)", borderTopColor: "var(--accent)", animation: "spin 0.8s linear infinite" }} />Looking up product…</div>}
-      {error && (
+      {error && !addingProduct && (
         <div style={{ marginBottom: 12 }}>
           <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: "var(--danger)", marginBottom: 10 }}>{error}</div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
             <button onClick={onSearchManually} style={{ flex: 1, background: "transparent", border: "1px solid var(--border-default)", borderRadius: 8, padding: "9px", fontSize: 13, color: "var(--text-secondary)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <i className="ti ti-search" style={{ fontSize: 14 }} /> Search manually
             </button>
             <button onClick={onCreateCustom} style={{ flex: 1, background: "var(--accent-bg)", border: "1px solid var(--border-active)", borderRadius: 8, padding: "9px", fontSize: 13, color: "var(--accent)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <i className="ti ti-plus" style={{ fontSize: 14 }} /> Create custom food
+            </button>
+          </div>
+          {scannedBarcode && (
+            <button onClick={() => setAddingProduct(true)} style={{ width: "100%", background: "transparent", border: "1px dashed var(--border-default)", borderRadius: 8, padding: "9px", fontSize: 13, color: "var(--text-muted)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <i className="ti ti-barcode" style={{ fontSize: 14 }} /> Add this product for everyone
+            </button>
+          )}
+        </div>
+      )}
+
+      {addingProduct && (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+            Add product — barcode {scannedBarcode}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+            <input type="text" placeholder="Product name" value={newProduct.name} onChange={e => updateNewProduct("name", e.target.value)}
+              style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none", fontFamily: "inherit" }} />
+            <input type="text" placeholder="Brand (optional)" value={newProduct.brand} onChange={e => updateNewProduct("brand", e.target.value)}
+              style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none", fontFamily: "inherit" }} />
+          </div>
+
+          {!labelPreview && (
+            <>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>Take a photo of the nutrition facts label — it'll fill in the numbers below.</div>
+              <CameraCapture onCapture={handleLabelPhoto} hint="Fit the whole nutrition panel in frame" />
+            </>
+          )}
+
+          {labelAnalyzing && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "16px 0", color: "var(--text-muted)", fontSize: 13 }}>
+              <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid var(--border-default)", borderTopColor: "var(--accent)", animation: "spin 0.8s linear infinite" }} />
+              Reading label…
+            </div>
+          )}
+          {labelError && <div style={{ background: "#1a0f0f", border: "1px solid #c0707040", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "var(--danger)", marginBottom: 10 }}>{labelError}</div>}
+
+          {labelPreview && (
+            <div style={{ display: "flex", gap: 10, marginBottom: 12, alignItems: "flex-start" }}>
+              <img src={labelPreview} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 8, flexShrink: 0 }} />
+              <div style={{ fontSize: 12, color: "var(--text-muted)", flex: 1 }}>Label read — review the numbers below and adjust anything that's off before saving.</div>
+            </div>
+          )}
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+            <input type="text" placeholder="Serving (e.g. 1 cup)" value={newProduct.serving} onChange={e => updateNewProduct("serving", e.target.value)}
+              style={{ gridColumn: "1 / -1", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 8, padding: "9px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none", fontFamily: "inherit" }} />
+            {[
+              ["cal", "Calories"], ["protein", "Protein (g)"], ["carbs", "Carbs (g)"], ["fat", "Fat (g)"],
+              ["fibre", "Fibre (g)"], ["sodium", "Sodium (mg)"], ["sugar", "Sugar (g)"], ["servingGrams", "Serving (g)"],
+            ].map(([key, label]) => (
+              <input key={key} type="number" inputMode="decimal" placeholder={label} value={newProduct[key]} onChange={e => updateNewProduct(key, e.target.value)}
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 8, padding: "9px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none", fontFamily: "inherit" }} />
+            ))}
+          </div>
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => { setAddingProduct(false); setLabelError(null); setLabelPreview(null); setNewProduct(BLANK_NEW_PRODUCT); }}
+              style={{ flex: 1, background: "transparent", border: "1px solid var(--border-default)", borderRadius: 8, padding: "10px", fontSize: 13, color: "var(--text-secondary)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+              Cancel
+            </button>
+            <button onClick={saveNewProduct} disabled={!newProduct.name.trim() || savingProduct}
+              style={{
+                flex: 2, background: !newProduct.name.trim() || savingProduct ? "var(--border-default)" : "var(--accent)",
+                border: "none", borderRadius: 8, padding: "10px", fontSize: 13, fontWeight: 600,
+                color: !newProduct.name.trim() || savingProduct ? "var(--text-muted)" : "#0f0f0f",
+                cursor: !newProduct.name.trim() || savingProduct ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif",
+              }}>
+              {savingProduct ? "Saving…" : "Save & continue"}
             </button>
           </div>
         </div>
@@ -415,7 +635,7 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selected
           <button onClick={reset} style={{ marginTop: 10, width: "100%", background: "transparent", border: "1px solid var(--border-default)", borderRadius: 8, padding: "7px 14px", fontSize: 12, color: "var(--text-muted)", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Scan again</button>
         </div>
       )}
-      {!result && !scanning && (
+      {!result && !scanning && !addingProduct && (
         <button onClick={looking ? stopScanner : startScanner} style={{ width: "100%", background: looking ? "var(--border-default)" : "var(--accent)", border: "none", borderRadius: 8, padding: "11px", fontSize: 14, fontWeight: 600, color: looking ? "var(--danger)" : "#0f0f0f", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "background 0.2s" }}>
           <i className={`ti ${looking ? "ti-x" : "ti-camera"}`} style={{ fontSize: 15 }} />
           {looking ? "Stop camera" : "Start scanning"}
