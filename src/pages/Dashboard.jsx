@@ -533,7 +533,7 @@ function ChangeRow({ label, value, trend }) {
 // Logged days fill in bold; not-yet-logged days stay light instead.
 const STREAK_WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-function StreakStrip({ byDate }) {
+function StreakStrip({ byDate, onSelectDay }) {
   const today = todayLocalDate();
   const weekStart = new Date(today + 'T00:00:00');
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
@@ -550,21 +550,24 @@ function StreakStrip({ byDate }) {
         const isToday = dateStr === today;
         const logged = !!byDate.get(dateStr)?.calories;
         return (
-          <div
+          <button
             key={dateStr}
-            title={isFuture ? undefined : (logged ? 'Logged' : 'Not logged')}
+            disabled={isFuture}
+            onClick={() => onSelectDay(dateStr)}
+            title={isFuture ? undefined : (logged ? 'Logged — view this day' : 'Not logged — view this day')}
             style={{
-              width: 22, height: 22, borderRadius: '50%',
+              width: 22, height: 22, borderRadius: '50%', padding: 0, fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 10, fontWeight: 700,
               background: logged ? 'var(--accent)' : 'transparent',
               border: `1px solid ${logged ? 'var(--accent)' : isToday ? 'var(--border-strong)' : 'var(--border-default)'}`,
               color: logged ? '#0f0f0f' : 'var(--text-hint)',
               opacity: isFuture ? 0.4 : 1,
+              cursor: isFuture ? 'default' : 'pointer',
             }}
           >
             {STREAK_WEEKDAY_LABELS[i]}
-          </div>
+          </button>
         );
       })}
     </div>
@@ -713,7 +716,7 @@ export default function Dashboard() {
             <span style={{ fontFamily: "'Syne', sans-serif", fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>{greeting}, {name} 👋</span>
             <span style={{ color: 'var(--text-hint)', fontSize: '13px', marginLeft: '12px' }}>{dateStr}</span>
           </div>
-          <StreakStrip byDate={byDate} />
+          <StreakStrip byDate={byDate} onSelectDay={(date) => navigate('/log', { state: { date } })} />
         </div>
 
         <div className="page-pad app-content-pad" style={{ maxWidth: '1100px' }}>
@@ -733,7 +736,7 @@ export default function Dashboard() {
                   setChartRange={setChartRange}
                   onChartClick={() => navigate('/nutrients')}
                   latestWeight={latestWeight}
-                  onWeightClick={() => navigate('/progress')}
+                  onWeightClick={() => navigate('/progress', { state: { scrollTo: 'weight' } })}
                   glasses={glasses}
                   setGlasses={setGlasses}
                 />,

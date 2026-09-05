@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, BarElement, Tooltip, Legend, Filler,
@@ -114,11 +114,42 @@ export function WeekBars({ days, calorieTarget }) {
 // ── main component ───────────────────────────────────────────────────────────
 export default function Progress() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile } = useProfile();
   const { theme } = useTheme();
   const [range, setRange] = useState(30);
   const [weightRange, setWeightRange] = useState("30d");
   const initials = (profile?.name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
+
+  // Dashboard's weight tile deep-links here instead of dropping the user
+  // at the top of a long page — scrolls the weight chart into view once
+  // on arrival rather than requiring them to scroll down to find it.
+  const weightSectionRef = useRef(null);
+  useEffect(() => {
+    if (location.state?.scrollTo !== 'weight') return;
+    // This page's stat cards, calendar, calorie/macro charts, and the
+    // weight chart itself all resolve from independent async hooks
+    // (useHistory, useWeightLogs, ...) that don't settle in lockstep —
+    // confirmed live that the weight section's position kept moving for
+    // over a second after mount as each one finished loading above it. A
+    // single scrollIntoView (or even a couple of delayed retries) lands
+    // wherever the layout happened to be at that instant, not where it
+    // ends up. Instead: one smooth scroll for a nice first move, then
+    // correct with instant scrolls every 150ms for ~2.5s so the view
+    // keeps tracking the target as the page settles, converging once
+    // nothing above it moves anymore.
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 16;
+    const tick = () => {
+      if (cancelled) return;
+      weightSectionRef.current?.scrollIntoView({ behavior: attempts === 0 ? 'smooth' : 'auto', block: 'start' });
+      attempts++;
+      if (attempts < maxAttempts) setTimeout(tick, 150);
+    };
+    tick();
+    return () => { cancelled = true; };
+  }, [location.state]);
 
   // Chart.js draws to <canvas>, which can't resolve CSS custom
   // properties — it needs a literal color string at render time. Unlike
@@ -412,7 +443,7 @@ export default function Progress() {
           </div>
 
           {/* weight chart */}
-          <div style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
+          <div ref={weightSectionRef} style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
               <div>
                 <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 2 }}>Weight</div>
