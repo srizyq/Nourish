@@ -462,7 +462,7 @@ function FavouritesRow({ favourites, onQuickAdd }) {
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, letterSpacing: '0.04em' }}>FAVOURITES</div>
-      <div style={{ display: 'flex', gap: 18, overflowX: 'auto' }}>
+      <div style={{ display: 'flex', gap: 18, overflowX: 'auto', touchAction: 'pan-x', overscrollBehaviorX: 'contain' }}>
         {favourites.map(fav => {
           const style = getCategoryStyle({ name: fav.name });
           const justAdded = addedId === fav.id;

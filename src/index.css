@@ -98,6 +98,13 @@ html {
 html, body {
   overflow-x: hidden;
   max-width: 100vw;
+  /* Stops the whole page visually dragging/bouncing sideways on a harsh
+     horizontal swipe (the installed-PWA "feels like a website" tell) —
+     this only suppresses the document-level rubber-band/chain effect, it
+     doesn't touch any element's own touch-action, so rows that
+     legitimately scroll horizontally (Settings tabs, Dashboard
+     favourites) are unaffected. */
+  overscroll-behavior-x: none;
 }
 
 body {
