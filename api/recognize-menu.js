@@ -28,10 +28,17 @@ function buildPrompt(goal, remaining) {
 - ${remaining.fat}g fat
 remaining today.
 
-Read the menu and recommend the 3 best options for them. You're not limited to picking 3 whole standalone items — you can combine items across menu sections (e.g. a main + a side from elsewhere on the menu) and suggest simple modifications (e.g. "dressing on the side", "swap fries for a side salad", "no bun"), as long as it's something they could realistically order at this restaurant. If you suggest a modification, recalculate the macros for the modified version — don't report the stock item's macros for a modified order.
+Read the menu and recommend the 3 best options for them. You're not limited to picking 3 whole standalone items — you can combine items across menu sections (e.g. a main plus a side from elsewhere on the menu) and suggest simple modifications (e.g. dressing on the side, swap fries for a side salad, no bun), as long as it's something they could realistically order at this restaurant. If you suggest a modification, recalculate the macros for the modified version — don't report the stock item's macros for a modified order.
 
 Reply with ONLY a JSON object (no other text, no markdown code fence) in exactly this shape:
-{"recommendations": [{"name": "short name for this pick, e.g. 'Grilled chicken bowl, dressing on the side'", "items": "what it's built from off the menu, e.g. 'Grilled chicken bowl + side of steamed veggies instead of rice'", "modifications": "what was changed from the stock menu item — the actual JSON value null (not the string "none") if ordered exactly as listed with nothing changed", "cal": number, "protein": number, "carbs": number, "fat": number, "confidence": "low" | "medium" | "high"}, ...]}
+{"recommendations": [{"name": string, "items": string, "modifications": string or null, "cal": number, "protein": number, "carbs": number, "fat": number, "confidence": "low" | "medium" | "high"}, ...]}
+
+Field notes:
+- name: a short label for this pick, for example Grilled chicken bowl, dressing on the side
+- items: what it's built from off the menu, for example Grilled chicken bowl plus a side of steamed veggies instead of rice
+- modifications: what changed from the stock menu item, as plain text. Use the JSON value null if it was ordered exactly as listed with nothing changed — do not use the word none as a string.
+- cal, protein, carbs, fat: numbers only
+- confidence: one of low, medium, or high
 
 Always return exactly 3 recommendations, ranked best first for this person's goal and remaining macros.
 
@@ -131,7 +138,7 @@ export default async function handler(req, res) {
   try {
     const response = await client.messages.create({
       model: 'claude-opus-5',
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [
         {
           role: 'user',
@@ -157,7 +164,13 @@ export default async function handler(req, res) {
 
     let parsed;
     try {
-      const cleaned = textBlock.text.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+      let cleaned = textBlock.text.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+      // Defensive second layer: if the model still wraps the JSON in stray
+      // prose despite being asked not to, take the substring between the
+      // first { and the last } rather than failing outright on it.
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start > 0 && end > start) cleaned = cleaned.slice(start, end + 1);
       parsed = JSON.parse(cleaned);
     } catch {
       console.error('Failed to parse menu recognition response:', textBlock.text);
