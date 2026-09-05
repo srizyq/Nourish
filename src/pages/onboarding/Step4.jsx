@@ -26,10 +26,14 @@ async function withRetry(fn, attempts = 3, delayMs = 250) {
   throw lastErr;
 }
 
+function randomGuestName() {
+  return `Guest ${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
 function draftToProfileFields(draft) {
   const targets = draft.targets || {};
   return {
-    name: draft.name || null,
+    name: draft.name || randomGuestName(),
     goal: draft.goal || null,
     age: draft.age ?? null,
     date_of_birth: draft.dateOfBirth || null,
