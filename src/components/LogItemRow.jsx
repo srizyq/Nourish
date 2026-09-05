@@ -52,7 +52,7 @@ function MacroReadout({ value, unit, label, color }) {
 // Macros are never edited directly; every macro/micronutrient is scaled
 // proportionally from the currently-logged amount so the numbers always
 // stay internally consistent.
-export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSave, isPremium = false }) {
+export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSave, isPremium = false, readOnly = false }) {
   // Older items logged before serving_grams was tracked have no real
   // weight on record. Silently guessing 100g there would look precise
   // without being true — so weight-based units are only offered when we
@@ -128,12 +128,22 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <span style={{ color: C.green, fontSize: 14, fontWeight: 500 }}>{Math.round(item.cal)}</span>
-          <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ background: 'none', border: 'none', color: 'var(--border-default)', cursor: 'pointer', fontSize: 15, padding: '2px 4px' }}>×</button>
+          {!readOnly && <button onClick={(e) => { e.stopPropagation(); onDelete(); }} style={{ background: 'none', border: 'none', color: 'var(--border-default)', cursor: 'pointer', fontSize: 15, padding: '2px 4px' }}>×</button>}
           <span style={{ color: 'var(--border-default)', fontSize: 12, display: 'inline-block', transition: 'transform 220ms cubic-bezier(0.77, 0, 0.175, 1)', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateRows: isExpanded ? '1fr' : '0fr', transition: 'grid-template-rows 220ms cubic-bezier(0.77, 0, 0.175, 1)' }}>
         <div style={{ overflow: 'hidden' }}>
+        {readOnly ? (
+          <div style={{ padding: '4px 18px 16px', background: 'var(--bg-subtle)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 10 }}>
+              <MacroReadout value={Math.round(item.cal)} unit="" label="Calories" color={C.green} />
+              <MacroReadout value={round1(item.protein)} unit="g" label="Protein" color={C.green} />
+              <MacroReadout value={round1(item.carbs)} unit="g" label="Carbs" color={C.blue} />
+              <MacroReadout value={round1(item.fat)} unit="g" label="Fat" color={C.purple} />
+            </div>
+          </div>
+        ) : (
         <div style={{ padding: '4px 18px 16px', background: 'var(--bg-subtle)' }}>
           <div style={{ marginBottom: 12 }}>
             <label style={labelStyle}>{hasKnownWeight ? `Amount (currently ${item.servingGrams}g)` : 'Amount ("1 serving" = what\'s currently logged)'}</label>
@@ -190,6 +200,7 @@ export default function LogItemRow({ item, isExpanded, onToggle, onDelete, onSav
             {error && <span style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</span>}
           </div>
         </div>
+        )}
         </div>
       </div>
     </div>

@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './useAuth';
 import {
   getMyClients, getMyTrainers, redeemCoachInviteCode, revokeClientLink,
   getTrainerComments, addTrainerComment, deleteTrainerComment,
+  getFoodLogsForDate,
 } from '../lib/db';
+import { mapRow } from './useFoodLogs';
 
 export function useMyClients() {
   const { user } = useAuth();
@@ -69,6 +71,40 @@ export function useMyTrainers() {
   }, [refetch]);
 
   return { trainers, loading, refetch, redeemCode, disconnect };
+}
+
+// Read-only mirror of useFoodLogs, scoped to a specific client rather than
+// the signed-in user — Coach Mode never adds/edits/deletes a client's food.
+export function useClientFoodLogs(clientId, date) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const refetch = useCallback(async () => {
+    if (!clientId || !date) { setLogs([]); setLoading(false); return; }
+    setLoading(true);
+    try {
+      setLogs(await getFoodLogsForDate(clientId, date));
+    } catch (err) {
+      console.error('Failed to load client food logs:', err);
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId, date]);
+
+  useEffect(() => { refetch(); }, [refetch]);
+
+  const items = useMemo(() => logs.map(mapRow), [logs]);
+  const meals = useMemo(() => {
+    const grouped = { breakfast: [], lunch: [], dinner: [], snacks: [] };
+    for (const item of items) {
+      const key = item.meal in grouped ? item.meal : 'snacks';
+      grouped[key].push(item);
+    }
+    return grouped;
+  }, [items]);
+
+  return { items, meals, loading };
 }
 
 export function useTrainerComments(clientId) {

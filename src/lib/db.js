@@ -332,7 +332,7 @@ export async function upsertWeightLog(userId, date, weight, unit) {
 export async function getMyClients(trainerId) {
   const { data, error } = await supabase
     .from('trainer_clients')
-    .select('id, status, created_at, client:profiles!trainer_clients_client_id_fkey(id, name, goal, calorie_target)')
+    .select('id, status, created_at, client:profiles!trainer_clients_client_id_fkey(id, name, goal, calorie_target, protein_g, carbs_g, fat_g, unit)')
     .eq('trainer_id', trainerId)
     .eq('status', 'active')
     .order('created_at', { ascending: false });

@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { addFoodLog, deleteFoodLog, updateFoodLog, getFoodLogsForDate } from '../lib/db';
 import { mealFromDate, buildDayTimeline } from '../lib/mealTime';
 
-function mapRow(row) {
+export function mapRow(row) {
   return {
     id: row.id,
     name: row.food_name,

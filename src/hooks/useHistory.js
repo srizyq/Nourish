@@ -5,23 +5,26 @@ import { joinDailyData } from '../lib/patterns';
 
 // Fetches food_logs + checkins for the last `days` days and joins them into
 // one row per calendar day, for Progress.jsx charts and the pattern engine.
-export function useHistory(startDate, endDate) {
+// `userIdOverride` lets Coach Mode reuse this for a connected client's data
+// instead of the signed-in trainer's own (RLS allows the read either way).
+export function useHistory(startDate, endDate, userIdOverride) {
   const { user } = useAuth();
+  const userId = userIdOverride || user?.id;
   const [foodLogs, setFoodLogs] = useState([]);
   const [checkins, setCheckins] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    if (!user) { setFoodLogs([]); setCheckins([]); setLoading(false); return; }
+    if (!userId) { setFoodLogs([]); setCheckins([]); setLoading(false); return; }
     setLoading(true);
     const [logs, cks] = await Promise.all([
-      getFoodLogsForRange(user.id, startDate, endDate),
-      getCheckinsForRange(user.id, startDate, endDate),
+      getFoodLogsForRange(userId, startDate, endDate),
+      getCheckinsForRange(userId, startDate, endDate),
     ]);
     setFoodLogs(logs);
     setCheckins(cks);
     setLoading(false);
-  }, [user, startDate, endDate]);
+  }, [userId, startDate, endDate]);
 
   useEffect(() => { refetch(); }, [refetch]);
 

@@ -3,20 +3,23 @@ import { useAuth } from './useAuth';
 import { getWeightLogsForRange, getLatestWeightLog, upsertWeightLog } from '../lib/db';
 
 // startDate=null fetches everything since the user started tracking (used
-// for the Progress page's "all time" range option).
-export function useWeightLogs(startDate, endDate) {
+// for the Progress page's "all time" range option). `userIdOverride` lets
+// Coach Mode reuse this for a connected client's data instead of the
+// signed-in trainer's own (RLS allows the read either way).
+export function useWeightLogs(startDate, endDate, userIdOverride) {
   const { user } = useAuth();
+  const userId = userIdOverride || user?.id;
   const [logs, setLogs] = useState([]);
   const [latest, setLatest] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const refetch = useCallback(async () => {
-    if (!user) { setLogs([]); setLatest(null); setLoading(false); return; }
+    if (!userId) { setLogs([]); setLatest(null); setLoading(false); return; }
     setLoading(true);
     try {
       const [rangeLogs, latestLog] = await Promise.all([
-        getWeightLogsForRange(user.id, startDate, endDate),
-        getLatestWeightLog(user.id),
+        getWeightLogsForRange(userId, startDate, endDate),
+        getLatestWeightLog(userId),
       ]);
       setLogs(rangeLogs);
       setLatest(latestLog);
@@ -27,16 +30,16 @@ export function useWeightLogs(startDate, endDate) {
     } finally {
       setLoading(false);
     }
-  }, [user, startDate, endDate]);
+  }, [userId, startDate, endDate]);
 
   useEffect(() => { refetch(); }, [refetch]);
 
   const logWeight = useCallback(async (date, weight, unit) => {
-    if (!user) return;
-    const created = await upsertWeightLog(user.id, date, weight, unit);
+    if (!userId) return;
+    const created = await upsertWeightLog(userId, date, weight, unit);
     await refetch();
     return created;
-  }, [user, refetch]);
+  }, [userId, refetch]);
 
   return { logs, latest, loading, logWeight, refetch };
 }
