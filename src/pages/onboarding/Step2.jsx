@@ -82,11 +82,11 @@ export default function Step2() {
   };
 
   const inputStyle = (filled) => ({
-    background: '#141414',
-    border: `1px solid ${filled ? '#3a5a3a' : '#1e1e1e'}`,
+    background: 'var(--bg-subtle)',
+    border: `1px solid ${filled ? 'var(--border-active)' : 'var(--border-default)'}`,
     borderRadius: '10px',
     padding: '14px 16px',
-    color: '#e8e8e8',
+    color: 'var(--text-primary)',
     fontSize: '16px',
     fontFamily: "'DM Sans', sans-serif",
     width: '100%',
@@ -96,7 +96,7 @@ export default function Step2() {
   });
 
   const labelStyle = {
-    color: '#666',
+    color: 'var(--text-muted)',
     fontSize: '12px',
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
@@ -105,13 +105,13 @@ export default function Step2() {
   };
 
   const segButtonStyle = (isSelected) => ({
-    background: isSelected ? '#0f1a0f' : '#141414',
-    border: `1px solid ${isSelected ? '#3a5a3a' : '#1e1e1e'}`,
+    background: isSelected ? 'var(--accent-bg)' : 'var(--bg-subtle)',
+    border: `1px solid ${isSelected ? 'var(--border-active)' : 'var(--border-default)'}`,
     borderRadius: '10px',
     padding: '12px 10px',
     textAlign: 'center',
     cursor: 'pointer',
-    color: isSelected ? '#8fbc8f' : '#ccc',
+    color: isSelected ? 'var(--accent)' : 'var(--text-secondary)',
     fontSize: '14px',
     fontWeight: 600,
     fontFamily: "'DM Sans', sans-serif",
@@ -125,20 +125,20 @@ export default function Step2() {
 
         {/* Heading */}
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-          <p style={{ color: '#555', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
             quick stats
           </p>
           <h1 style={{
             fontFamily: "'Syne', sans-serif",
             fontSize: 'clamp(26px, 4vw, 36px)',
             fontWeight: 700,
-            color: '#e8e8e8',
+            color: 'var(--text-primary)',
             lineHeight: 1.2,
             marginBottom: '8px',
           }}>
             Tell us about yourself
           </h1>
-          <p style={{ color: '#666', fontSize: '15px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>
             Used only to calculate your calorie needs.
           </p>
         </div>
@@ -152,9 +152,9 @@ export default function Step2() {
               style={{
                 padding: '6px 14px',
                 borderRadius: '6px',
-                border: `1px solid ${unit === u ? '#3a5a3a' : '#1e1e1e'}`,
-                background: unit === u ? '#0f1a0f' : 'transparent',
-                color: unit === u ? '#8fbc8f' : '#555',
+                border: `1px solid ${unit === u ? 'var(--border-active)' : 'var(--border-default)'}`,
+                background: unit === u ? 'var(--accent-bg)' : 'transparent',
+                color: unit === u ? 'var(--accent)' : 'var(--text-muted)',
                 fontSize: '12px',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
@@ -176,8 +176,8 @@ export default function Step2() {
               min={minDobISO()}
               max={maxDobISO()}
               onChange={e => setDob(e.target.value)}
-              onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-              onBlur={e => e.target.style.borderColor = dob ? '#3a5a3a' : '#1e1e1e'}
+              onFocus={e => e.target.style.borderColor = 'var(--accent-dark)'}
+              onBlur={e => e.target.style.borderColor = dob ? 'var(--border-active)' : 'var(--border-default)'}
               style={inputStyle(dob)}
             />
           </div>
@@ -188,8 +188,8 @@ export default function Step2() {
               placeholder={unit === 'metric' ? '70' : '154'}
               value={weight}
               onChange={e => setWeight(e.target.value)}
-              onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-              onBlur={e => e.target.style.borderColor = weight ? '#3a5a3a' : '#1e1e1e'}
+              onFocus={e => e.target.style.borderColor = 'var(--accent-dark)'}
+              onBlur={e => e.target.style.borderColor = weight ? 'var(--border-active)' : 'var(--border-default)'}
               style={inputStyle(weight)}
             />
           </div>
@@ -214,8 +214,8 @@ export default function Step2() {
             placeholder={unit === 'metric' ? '170' : '67'}
             value={height}
             onChange={e => setHeight(e.target.value)}
-            onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-            onBlur={e => e.target.style.borderColor = height ? '#3a5a3a' : '#1e1e1e'}
+            onFocus={e => e.target.style.borderColor = 'var(--accent-dark)'}
+            onBlur={e => e.target.style.borderColor = height ? 'var(--border-active)' : 'var(--border-default)'}
             style={inputStyle(height)}
           />
         </div>
@@ -231,8 +231,8 @@ export default function Step2() {
                 placeholder={unit === 'metric' ? '65' : '143'}
                 value={targetWeight}
                 onChange={e => setTargetWeight(e.target.value)}
-                onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-                onBlur={e => e.target.style.borderColor = targetWeight ? '#3a5a3a' : '#1e1e1e'}
+                onFocus={e => e.target.style.borderColor = 'var(--accent-dark)'}
+                onBlur={e => e.target.style.borderColor = targetWeight ? 'var(--border-active)' : 'var(--border-default)'}
                 style={inputStyle(targetWeight)}
               />
             </div>
@@ -252,8 +252,8 @@ export default function Step2() {
                       key={p.id}
                       onClick={() => setPace(p.id)}
                       style={{
-                        background: isSelected ? '#0f1a0f' : '#141414',
-                        border: `1px solid ${isSelected ? '#3a5a3a' : '#1e1e1e'}`,
+                        background: isSelected ? 'var(--accent-bg)' : 'var(--bg-subtle)',
+                        border: `1px solid ${isSelected ? 'var(--border-active)' : 'var(--border-default)'}`,
                         borderRadius: '10px',
                         padding: '12px 8px',
                         textAlign: 'center',
@@ -262,13 +262,13 @@ export default function Step2() {
                         outline: 'none',
                       }}
                     >
-                      <div style={{ color: isSelected ? '#8fbc8f' : '#ccc', fontWeight: 600, fontSize: '13px', marginBottom: '3px', fontFamily: "'Syne', sans-serif" }}>
+                      <div style={{ color: isSelected ? 'var(--accent)' : 'var(--text-secondary)', fontWeight: 600, fontSize: '13px', marginBottom: '3px', fontFamily: "'Syne', sans-serif" }}>
                         {p.label}
                       </div>
-                      <div style={{ color: '#555', fontSize: '11px', marginBottom: '2px' }}>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '2px' }}>
                         {displayRate}{displayUnit}/wk
                       </div>
-                      <div style={{ color: '#444', fontSize: '11px' }}>
+                      <div style={{ color: 'var(--text-hint)', fontSize: '11px' }}>
                         {goal === 'lose' ? '−' : '+'}{dailyKcal} kcal/day
                       </div>
                     </button>
@@ -290,8 +290,8 @@ export default function Step2() {
                   key={a.id}
                   onClick={() => setActivity(a.id)}
                   style={{
-                    background: isSelected ? '#0f1a0f' : '#141414',
-                    border: `1px solid ${isSelected ? '#3a5a3a' : '#1e1e1e'}`,
+                    background: isSelected ? 'var(--accent-bg)' : 'var(--bg-subtle)',
+                    border: `1px solid ${isSelected ? 'var(--border-active)' : 'var(--border-default)'}`,
                     borderRadius: '10px',
                     padding: '14px 16px',
                     textAlign: 'left',
@@ -301,7 +301,7 @@ export default function Step2() {
                   }}
                 >
                   <div style={{
-                    color: isSelected ? '#8fbc8f' : '#ccc',
+                    color: isSelected ? 'var(--accent)' : 'var(--text-secondary)',
                     fontWeight: 600,
                     fontSize: '14px',
                     marginBottom: '3px',
@@ -310,7 +310,7 @@ export default function Step2() {
                   }}>
                     {a.label}
                   </div>
-                  <div style={{ color: '#444', fontSize: '12px' }}>{a.desc}</div>
+                  <div style={{ color: 'var(--text-hint)', fontSize: '12px' }}>{a.desc}</div>
                 </button>
               );
             })}
@@ -325,9 +325,9 @@ export default function Step2() {
               flex: '0 0 auto',
               padding: '16px 20px',
               background: 'transparent',
-              border: '1px solid #1e1e1e',
+              border: '1px solid var(--border-default)',
               borderRadius: '10px',
-              color: '#555',
+              color: 'var(--text-muted)',
               fontSize: '15px',
               cursor: 'pointer',
               fontFamily: "'DM Sans', sans-serif",
@@ -341,10 +341,10 @@ export default function Step2() {
             style={{
               flex: 1,
               padding: '16px',
-              background: isComplete ? '#8fbc8f' : '#181818',
-              border: `1px solid ${isComplete ? '#8fbc8f' : '#2a2a2a'}`,
+              background: isComplete ? 'var(--accent)' : 'var(--bg-card)',
+              border: `1px solid ${isComplete ? 'var(--accent)' : 'var(--border-default)'}`,
               borderRadius: '10px',
-              color: isComplete ? '#0f0f0f' : '#333',
+              color: isComplete ? '#0f0f0f' : 'var(--text-hint)',
               fontSize: '15px',
               fontWeight: 600,
               cursor: isComplete ? 'pointer' : 'not-allowed',

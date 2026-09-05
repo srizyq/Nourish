@@ -45,20 +45,20 @@ export default function Step1() {
       <div style={{ width: '100%', maxWidth: '520px', textAlign: 'center' }}>
 
         {/* Heading */}
-        <p style={{ color: '#555', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
           let's personalise your experience
         </p>
         <h1 style={{
           fontFamily: "'Syne', sans-serif",
           fontSize: 'clamp(28px, 5vw, 40px)',
           fontWeight: 700,
-          color: '#e8e8e8',
+          color: 'var(--text-primary)',
           lineHeight: 1.15,
           marginBottom: '10px',
         }}>
           What's your main goal?
         </h1>
-        <p style={{ color: '#666', fontSize: '15px', marginBottom: '40px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginBottom: '40px' }}>
           We'll set your calorie targets and macro splits around this.
         </p>
 
@@ -74,8 +74,8 @@ export default function Step1() {
                 onMouseEnter={() => setHovered(g.id)}
                 onMouseLeave={() => setHovered(null)}
                 style={{
-                  background: isSelected ? '#181818' : '#141414',
-                  border: `1px solid ${isSelected ? g.color : (isHovered ? '#2a2a2a' : '#1e1e1e')}`,
+                  background: isSelected ? 'var(--bg-card)' : 'var(--bg-subtle)',
+                  border: `1px solid ${isSelected ? g.color : (isHovered ? 'var(--border-active)' : 'var(--border-default)')}`,
                   borderRadius: '12px',
                   padding: '20px 24px',
                   cursor: 'pointer',
@@ -93,13 +93,13 @@ export default function Step1() {
                   width: '48px',
                   height: '48px',
                   borderRadius: '10px',
-                  background: isSelected ? `${g.color}18` : '#181818',
-                  border: `1px solid ${isSelected ? g.color : '#2a2a2a'}`,
+                  background: isSelected ? `${g.color}18` : 'var(--bg-card)',
+                  border: `1px solid ${isSelected ? g.color : 'var(--border-default)'}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '20px',
-                  color: isSelected ? g.color : '#444',
+                  color: isSelected ? g.color : 'var(--text-hint)',
                   flexShrink: 0,
                   transition: 'all 0.2s ease',
                   fontWeight: 300,
@@ -110,7 +110,7 @@ export default function Step1() {
                 {/* Text */}
                 <div style={{ flex: 1 }}>
                   <div style={{
-                    color: isSelected ? '#e8e8e8' : '#ccc',
+                    color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
                     fontWeight: 600,
                     fontSize: '16px',
                     marginBottom: '3px',
@@ -119,7 +119,7 @@ export default function Step1() {
                   }}>
                     {g.label}
                   </div>
-                  <div style={{ color: '#555', fontSize: '13px' }}>{g.desc}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{g.desc}</div>
                 </div>
 
                 {/* Selected indicator */}
@@ -127,7 +127,7 @@ export default function Step1() {
                   width: '20px',
                   height: '20px',
                   borderRadius: '50%',
-                  border: `2px solid ${isSelected ? g.color : '#2a2a2a'}`,
+                  border: `2px solid ${isSelected ? g.color : 'var(--border-default)'}`,
                   background: isSelected ? g.color : 'transparent',
                   display: 'flex',
                   alignItems: 'center',
@@ -152,9 +152,9 @@ export default function Step1() {
               flex: '0 0 auto',
               padding: '16px 20px',
               background: 'transparent',
-              border: '1px solid #1e1e1e',
+              border: '1px solid var(--border-default)',
               borderRadius: '10px',
-              color: '#555',
+              color: 'var(--text-muted)',
               fontSize: '15px',
               cursor: 'pointer',
               fontFamily: "'DM Sans', sans-serif",
@@ -168,10 +168,10 @@ export default function Step1() {
             style={{
               flex: 1,
               padding: '16px',
-              background: selected ? '#8fbc8f' : '#181818',
-              border: `1px solid ${selected ? '#8fbc8f' : '#2a2a2a'}`,
+              background: selected ? 'var(--accent)' : 'var(--bg-card)',
+              border: `1px solid ${selected ? 'var(--accent)' : 'var(--border-default)'}`,
               borderRadius: '10px',
-              color: selected ? '#0f0f0f' : '#333',
+              color: selected ? '#0f0f0f' : 'var(--text-hint)',
               fontSize: '15px',
               fontWeight: 600,
               cursor: selected ? 'pointer' : 'not-allowed',

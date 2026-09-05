@@ -1,28 +1,36 @@
 // src/pages/onboarding/Welcome.jsx
 import { useNavigate, Link } from 'react-router-dom';
+import { useOnboardingTheme } from '../../hooks/useOnboardingTheme';
+import OnboardingThemeToggle from '../../components/OnboardingThemeToggle';
 
 // The very first screen — deliberately bare (no progress bar, no step
 // counter, no skip link) since it isn't part of the numbered flow yet.
 // Matches the user's own sketch: centered wordmark, one button below it.
 export default function Welcome() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useOnboardingTheme();
 
   return (
-    <div style={{
+    <div data-theme={theme} style={{
       minHeight: '100vh',
-      background: '#0f0f0f',
+      background: 'var(--bg-primary)',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       padding: '24px',
       fontFamily: "'DM Sans', sans-serif",
+      position: 'relative',
     }}>
+      <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
+        <OnboardingThemeToggle theme={theme} onToggle={toggleTheme} />
+      </div>
+
       <span style={{
         fontFamily: "'Syne', sans-serif",
         fontWeight: 700,
         fontSize: 'clamp(40px, 12vw, 64px)',
-        color: '#e8e8e8',
+        color: 'var(--text-primary)',
         letterSpacing: '-1px',
         marginBottom: '48px',
       }}>
@@ -35,7 +43,7 @@ export default function Welcome() {
           width: '100%',
           maxWidth: '320px',
           padding: '18px',
-          background: '#8fbc8f',
+          background: 'var(--accent)',
           border: 'none',
           borderRadius: '12px',
           color: '#0f0f0f',
@@ -52,12 +60,12 @@ export default function Welcome() {
         to="/login"
         style={{
           marginTop: '20px',
-          color: '#555',
+          color: 'var(--text-muted)',
           fontSize: '13px',
           textDecoration: 'none',
         }}
       >
-        Already have an account? <span style={{ color: '#8fbc8f' }}>Log in</span>
+        Already have an account? <span style={{ color: 'var(--accent)' }}>Log in</span>
       </Link>
     </div>
   );

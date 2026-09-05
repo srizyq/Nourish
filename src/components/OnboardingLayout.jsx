@@ -1,14 +1,17 @@
 // src/components/OnboardingLayout.jsx
 import { useNavigate } from 'react-router-dom';
+import { useOnboardingTheme } from '../hooks/useOnboardingTheme';
+import OnboardingThemeToggle from './OnboardingThemeToggle';
 
 export default function OnboardingLayout({ children, step, totalSteps = 4 }) {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useOnboardingTheme();
   const progress = (step / totalSteps) * 100;
 
   return (
-    <div style={{
+    <div data-theme={theme} style={{
       minHeight: '100vh',
-      background: '#0f0f0f',
+      background: 'var(--bg-primary)',
       display: 'flex',
       flexDirection: 'column',
       fontFamily: "'DM Sans', sans-serif",
@@ -19,51 +22,56 @@ export default function OnboardingLayout({ children, step, totalSteps = 4 }) {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '20px 32px',
-        borderBottom: '1px solid #1e1e1e',
+        borderBottom: '1px solid var(--border-default)',
+        gap: '16px',
       }}>
         {/* Logo */}
         <span style={{
           fontFamily: "'Syne', sans-serif",
           fontWeight: 700,
           fontSize: '20px',
-          color: '#8fbc8f',
+          color: 'var(--accent)',
           letterSpacing: '-0.5px',
         }}>attune</span>
 
-        {/* Step counter */}
-        <span style={{ color: '#555', fontSize: '13px' }}>
-          step <span style={{ color: '#8fbc8f' }}>{step}</span> of {totalSteps}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* Step counter */}
+          <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+            step <span style={{ color: 'var(--accent)' }}>{step}</span> of {totalSteps}
+          </span>
 
-        {/* Skip link — goes to the final step, not straight to /dashboard.
-            Skipping mid-flow means no account exists yet, so /dashboard
-            would just bounce you right back here via RequireAuth; the
-            final step silently creates a guest session (with whatever
-            partial answers you did give) before landing you in the app. */}
-        <button
-          onClick={() => navigate('/onboarding/step4')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#555',
-            fontSize: '13px',
-            cursor: 'pointer',
-            padding: '4px 0',
-            transition: 'color 0.2s',
-          }}
-          onMouseEnter={e => e.target.style.color = '#8fbc8f'}
-          onMouseLeave={e => e.target.style.color = '#555'}
-        >
-          skip for now →
-        </button>
+          <OnboardingThemeToggle theme={theme} onToggle={toggleTheme} />
+
+          {/* Skip link — goes to the final step, not straight to /dashboard.
+              Skipping mid-flow means no account exists yet, so /dashboard
+              would just bounce you right back here via RequireAuth; the
+              final step silently creates a guest session (with whatever
+              partial answers you did give) before landing you in the app. */}
+          <button
+            onClick={() => navigate('/onboarding/step4')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              fontSize: '13px',
+              cursor: 'pointer',
+              padding: '4px 0',
+              transition: 'color 0.2s',
+            }}
+            onMouseEnter={e => e.target.style.color = 'var(--accent)'}
+            onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
+          >
+            skip for now →
+          </button>
+        </div>
       </div>
 
       {/* Progress bar */}
-      <div style={{ height: '2px', background: '#181818' }}>
+      <div style={{ height: '2px', background: 'var(--border-default)' }}>
         <div style={{
           height: '100%',
           width: `${progress}%`,
-          background: '#8fbc8f',
+          background: 'var(--accent)',
           transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
         }} />
       </div>

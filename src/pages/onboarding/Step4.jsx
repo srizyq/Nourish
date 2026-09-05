@@ -44,6 +44,7 @@ function draftToProfileFields(draft) {
     unit: draft.unit || 'metric',
     activity: draft.activity || null,
     pace_kg_per_week: draft.paceKgPerWeek ?? null,
+    theme: draft.theme === 'light' ? 'light' : 'dark',
     calorie_target: targets.calories ?? null,
     protein_g: targets.protein?.g ?? null,
     carbs_g: targets.carbs?.g ?? null,
@@ -129,11 +130,11 @@ export default function Step4() {
   }
 
   const inputStyle = (filled) => ({
-    background: '#141414',
-    border: `1px solid ${filled ? '#3a5a3a' : '#1e1e1e'}`,
+    background: 'var(--bg-subtle)',
+    border: `1px solid ${filled ? 'var(--border-active)' : 'var(--border-default)'}`,
     borderRadius: '10px',
     padding: '14px 16px',
-    color: '#e8e8e8',
+    color: 'var(--text-primary)',
     fontSize: '16px',
     fontFamily: "'DM Sans', sans-serif",
     width: '100%',
@@ -145,7 +146,7 @@ export default function Step4() {
   if (preparing) {
     return (
       <OnboardingLayout step={4}>
-        <p style={{ color: '#555' }}>Setting things up…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Setting things up…</p>
       </OnboardingLayout>
     );
   }
@@ -155,21 +156,21 @@ export default function Step4() {
       <OnboardingLayout step={4}>
         <div style={{ width: '100%', maxWidth: '480px', textAlign: 'center' }}>
           <div style={{
-            width: '64px', height: '64px', borderRadius: '16px', background: '#0f1a0f',
-            border: '1px solid #1e3a1e', display: 'flex', alignItems: 'center',
+            width: '64px', height: '64px', borderRadius: '16px', background: 'var(--accent-bg)',
+            border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontSize: '28px', margin: '0 auto 24px',
           }}>✉️</div>
-          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: 700, color: '#e8e8e8', marginBottom: '8px' }}>
+          <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
             Almost there
           </h1>
-          <p style={{ color: '#666', fontSize: '15px', marginBottom: '24px' }}>
-            Check your email to confirm <span style={{ color: '#ccc' }}>{email}</span> — everything you've already logged stays right where it is.
+          <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginBottom: '24px' }}>
+            Check your email to confirm <span style={{ color: 'var(--text-secondary)' }}>{email}</span> — everything you've already logged stays right where it is.
           </p>
           <button
             onClick={() => navigate('/dashboard')}
             style={{
-              padding: '14px 28px', background: '#8fbc8f',
-              border: '1px solid #8fbc8f', borderRadius: '10px', color: '#0f0f0f',
+              padding: '14px 28px', background: 'var(--accent)',
+              border: '1px solid var(--accent)', borderRadius: '10px', color: '#0f0f0f',
               fontSize: '15px', fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
             }}
           >Continue to dashboard →</button>
@@ -183,25 +184,25 @@ export default function Step4() {
       <div style={{ width: '100%', maxWidth: '480px', textAlign: 'center' }}>
 
         <div style={{
-          width: '64px', height: '64px', borderRadius: '16px', background: '#0f1a0f',
-          border: '1px solid #1e3a1e', display: 'flex', alignItems: 'center',
+          width: '64px', height: '64px', borderRadius: '16px', background: 'var(--accent-bg)',
+          border: '1px solid var(--accent-border)', display: 'flex', alignItems: 'center',
           justifyContent: 'center', fontSize: '28px', margin: '0 auto 24px',
         }}>🌿</div>
 
-        <p style={{ color: '#555', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
           you're all set
         </p>
         <h1 style={{
           fontFamily: "'Syne', sans-serif",
           fontSize: 'clamp(26px, 4vw, 36px)',
           fontWeight: 700,
-          color: '#e8e8e8',
+          color: 'var(--text-primary)',
           lineHeight: 1.2,
           marginBottom: '8px',
         }}>
           Ready to start tracking
         </h1>
-        <p style={{ color: '#666', fontSize: '15px', marginBottom: '36px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginBottom: '36px' }}>
           You're already set up as a guest — save your progress with an account, or keep going and do it later from Settings.
         </p>
 
@@ -211,8 +212,8 @@ export default function Step4() {
             placeholder="Your name (optional)"
             value={name}
             onChange={e => setName(e.target.value)}
-            onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-            onBlur={e => e.target.style.borderColor = name ? '#3a5a3a' : '#1e1e1e'}
+            onFocus={e => e.target.style.borderColor = 'var(--accent-dark)'}
+            onBlur={e => e.target.style.borderColor = name ? 'var(--border-active)' : 'var(--border-default)'}
             style={inputStyle(name)}
           />
           <input
@@ -220,8 +221,8 @@ export default function Step4() {
             placeholder="Email address"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-            onBlur={e => e.target.style.borderColor = email ? '#3a5a3a' : '#1e1e1e'}
+            onFocus={e => e.target.style.borderColor = 'var(--accent-dark)'}
+            onBlur={e => e.target.style.borderColor = email ? 'var(--border-active)' : 'var(--border-default)'}
             style={inputStyle(email)}
             autoComplete="email"
           />
@@ -230,15 +231,15 @@ export default function Step4() {
             placeholder="Password (min. 8 characters)"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-            onBlur={e => e.target.style.borderColor = password ? '#3a5a3a' : '#1e1e1e'}
+            onFocus={e => e.target.style.borderColor = 'var(--accent-dark)'}
+            onBlur={e => e.target.style.borderColor = password ? 'var(--border-active)' : 'var(--border-default)'}
             style={inputStyle(password)}
             autoComplete="new-password"
           />
           {(prepError || error) && (
             <div style={{
               background: '#1a0f0f', border: '1px solid #c0707040', borderRadius: '8px',
-              padding: '10px 14px', fontSize: '13px', color: '#c07070',
+              padding: '10px 14px', fontSize: '13px', color: 'var(--danger)',
             }}>{prepError || error}</div>
           )}
         </div>
@@ -249,10 +250,10 @@ export default function Step4() {
           style={{
             width: '100%',
             padding: '16px',
-            background: email && password.length >= 8 ? '#8fbc8f' : '#181818',
-            border: `1px solid ${email && password.length >= 8 ? '#8fbc8f' : '#2a2a2a'}`,
+            background: email && password.length >= 8 ? 'var(--accent)' : 'var(--bg-card)',
+            border: `1px solid ${email && password.length >= 8 ? 'var(--accent)' : 'var(--border-default)'}`,
             borderRadius: '10px',
-            color: email && password.length >= 8 ? '#0f0f0f' : '#333',
+            color: email && password.length >= 8 ? '#0f0f0f' : 'var(--text-hint)',
             fontSize: '15px',
             fontWeight: 600,
             cursor: email && password.length >= 8 && !loading ? 'pointer' : 'not-allowed',
@@ -267,14 +268,14 @@ export default function Step4() {
         <button
           onClick={() => navigate('/dashboard')}
           style={{
-            background: 'none', border: 'none', color: '#555', fontSize: '13px',
+            background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '13px',
             cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", marginBottom: '20px',
           }}
         >
           Maybe later
         </button>
 
-        <p style={{ color: '#333', fontSize: '12px', lineHeight: 1.6 }}>
+        <p style={{ color: 'var(--text-hint)', fontSize: '12px', lineHeight: 1.6 }}>
           No credit card, ever. You're saved as a guest for 7 days either way — creating an account just makes it permanent.
         </p>
       </div>

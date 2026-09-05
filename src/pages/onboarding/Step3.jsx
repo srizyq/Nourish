@@ -42,13 +42,13 @@ function MacroBar({ label, grams, calories, pct, color, delay = 0 }) {
   return (
     <div style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '7px' }}>
-        <span style={{ color: '#ccc', fontSize: '14px', fontWeight: 500 }}>{label}</span>
-        <span style={{ color: '#666', fontSize: '13px' }}>
-          <span style={{ color: '#e8e8e8', fontWeight: 600 }}>{grams}g</span>
+        <span style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 500 }}>{label}</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{grams}g</span>
           {' '}· {calories} kcal
         </span>
       </div>
-      <div style={{ height: '6px', background: '#1e1e1e', borderRadius: '99px', overflow: 'hidden' }}>
+      <div style={{ height: '6px', background: 'var(--border-default)', borderRadius: '99px', overflow: 'hidden' }}>
         <div style={{
           height: '100%',
           width: `${width}%`,
@@ -101,7 +101,7 @@ export default function Step3() {
   if (!targets) {
     return (
       <OnboardingLayout step={3}>
-        <p style={{ color: '#555' }}>Calculating your targets…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Calculating your targets…</p>
       </OnboardingLayout>
     );
   }
@@ -114,76 +114,76 @@ export default function Step3() {
 
         {/* Heading */}
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-          <p style={{ color: '#555', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '12px' }}>
             your targets
           </p>
           <h1 style={{
             fontFamily: "'Syne', sans-serif",
             fontSize: 'clamp(26px, 4vw, 36px)',
             fontWeight: 700,
-            color: '#e8e8e8',
+            color: 'var(--text-primary)',
             lineHeight: 1.2,
             marginBottom: '8px',
           }}>
             Here's your daily plan
           </h1>
-          <p style={{ color: '#666', fontSize: '15px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>
             Optimised for {goalLabels[data?.goal] || 'your goal'}. You can adjust these any time.
           </p>
         </div>
 
         {/* Calorie card */}
         <div style={{
-          background: '#0f1a0f',
-          border: '1px solid #1e3a1e',
+          background: 'var(--accent-bg)',
+          border: '1px solid var(--accent-border)',
           borderRadius: '16px',
           padding: '28px',
           textAlign: 'center',
           marginBottom: '16px',
         }}>
-          <p style={{ color: '#4a7a4a', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>
+          <p style={{ color: 'var(--accent-dark)', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>
             daily calorie target
           </p>
           <div style={{
             fontFamily: "'Syne', sans-serif",
             fontSize: 'clamp(44px, 8vw, 64px)',
             fontWeight: 700,
-            color: '#8fbc8f',
+            color: 'var(--accent)',
             lineHeight: 1,
             marginBottom: '4px',
           }}>
             <AnimatedNumber target={targets.calories} />
           </div>
-          <p style={{ color: '#4a7a4a', fontSize: '14px' }}>kcal per day</p>
+          <p style={{ color: 'var(--accent-dark)', fontSize: '14px' }}>kcal per day</p>
         </div>
 
         {/* Sets expectations up front, MacroFactor-style — this number is
             a starting point from a formula, not a promise; it improves
             once there's real logged data to learn from. */}
-        <p style={{ color: '#555', fontSize: '13px', lineHeight: 1.5, textAlign: 'center', marginBottom: '20px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: 1.5, textAlign: 'center', marginBottom: '20px' }}>
           A starting point, not a promise — Attune fine-tunes this from your real logs over the next couple of weeks.
         </p>
 
         {/* Macro breakdown card */}
         <div style={{
-          background: '#181818',
-          border: '1px solid #1e1e1e',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-default)',
           borderRadius: '16px',
           padding: '24px',
           marginBottom: '16px',
         }}>
-          <p style={{ color: '#555', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '20px' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '12px', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '20px' }}>
             macro breakdown
           </p>
-          <MacroBar label="Protein"       grams={targets.protein.g} calories={targets.protein.cal} pct={targets.protein.pct} color="#8fbc8f" delay={0}   />
-          <MacroBar label="Carbohydrates" grams={targets.carbs.g}   calories={targets.carbs.cal}   pct={targets.carbs.pct}   color="#6aabcf" delay={100} />
-          <MacroBar label="Fat"           grams={targets.fat.g}     calories={targets.fat.cal}      pct={targets.fat.pct}     color="#9f97e8" delay={200} />
+          <MacroBar label="Protein"       grams={targets.protein.g} calories={targets.protein.cal} pct={targets.protein.pct} color="var(--accent)" delay={0}   />
+          <MacroBar label="Carbohydrates" grams={targets.carbs.g}   calories={targets.carbs.cal}   pct={targets.carbs.pct}   color="var(--water-blue)" delay={100} />
+          <MacroBar label="Fat"           grams={targets.fat.g}     calories={targets.fat.cal}      pct={targets.fat.pct}     color="var(--ai-purple)" delay={200} />
         </div>
 
         {/* Water target */}
         <div style={{
-          background: '#141414',
-          border: '1px solid #1e1e1e',
+          background: 'var(--bg-subtle)',
+          border: '1px solid var(--border-default)',
           borderRadius: '12px',
           padding: '16px 24px',
           display: 'flex',
@@ -194,12 +194,12 @@ export default function Step3() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '20px' }}>💧</span>
             <div>
-              <div style={{ color: '#ccc', fontSize: '14px', fontWeight: 500 }}>Water target</div>
-              <div style={{ color: '#555', fontSize: '12px' }}>Based on your body weight</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 500 }}>Water target</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Based on your body weight</div>
             </div>
           </div>
-          <div style={{ color: '#6aabcf', fontSize: '20px', fontWeight: 700, fontFamily: "'Syne', sans-serif" }}>
-            8 <span style={{ fontSize: '13px', fontWeight: 400, color: '#555' }}>glasses</span>
+          <div style={{ color: 'var(--water-blue)', fontSize: '20px', fontWeight: 700, fontFamily: "'Syne', sans-serif" }}>
+            8 <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text-muted)' }}>glasses</span>
           </div>
         </div>
 
@@ -211,9 +211,9 @@ export default function Step3() {
               flex: '0 0 auto',
               padding: '16px 20px',
               background: 'transparent',
-              border: '1px solid #1e1e1e',
+              border: '1px solid var(--border-default)',
               borderRadius: '10px',
-              color: '#555',
+              color: 'var(--text-muted)',
               fontSize: '15px',
               cursor: 'pointer',
               fontFamily: "'DM Sans', sans-serif",
@@ -226,8 +226,8 @@ export default function Step3() {
             style={{
               flex: 1,
               padding: '16px',
-              background: '#8fbc8f',
-              border: '1px solid #8fbc8f',
+              background: 'var(--accent)',
+              border: '1px solid var(--accent)',
               borderRadius: '10px',
               color: '#0f0f0f',
               fontSize: '15px',
