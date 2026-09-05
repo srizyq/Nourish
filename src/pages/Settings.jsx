@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import { goalMacroSplits, calcCalories, buildTargets, splitFromGrams } from '../lib/calorieTargets';
 import { useClosingTransition } from '../hooks/useClosingTransition';
 import { useTheme } from '../hooks/useTheme';
+import { useMyTrainers } from '../hooks/useCoach';
 import AppNav from '../components/AppNav';
 
 // ─── Reusable bits ──────────────────────────────────────────────────────────────
@@ -220,6 +221,7 @@ function AdaptiveTargetPanel({ loading, result, goal, onRefresh }) {
 const TABS = [
   { id: 'goals',    label: 'Goals & Targets' },
   { id: 'notifs',   label: 'Notifications' },
+  { id: 'coach',    label: 'Coach Mode' },
   { id: 'account',  label: 'Account' },
 ];
 
@@ -234,6 +236,9 @@ export default function Settings() {
   const reminders = useReminders();
   const [reminderTimeInput, setReminderTimeInput] = useState(reminders.time);
   const [reminderError, setReminderError] = useState(null);
+  const { trainers, loading: trainersLoading, redeemCode, disconnect } = useMyTrainers();
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
+  const [inviteStatus, setInviteStatus] = useState(null); // null | 'loading' | error string
   const initials = (profile?.name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
   const [tab, setTab] = useState('goals');
   const [saved, setSaved] = useState(false);
@@ -326,6 +331,19 @@ export default function Settings() {
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2200);
+  };
+
+  const handleRedeemCode = async () => {
+    const code = inviteCodeInput.trim();
+    if (!code) return;
+    setInviteStatus('loading');
+    try {
+      await redeemCode(code);
+      setInviteCodeInput('');
+      setInviteStatus(null);
+    } catch (err) {
+      setInviteStatus(err.message || "Couldn't connect — check the code and try again.");
+    }
   };
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -649,6 +667,77 @@ export default function Settings() {
                     <Toggle on={false} onChange={() => {}} />
                   </FieldRow>
                 ))}
+              </Card>
+            </div>
+          )}
+
+          {/* ── COACH MODE ── */}
+          {tab === 'coach' && (
+            <div className="grid-2" style={{ alignItems: 'start' }}>
+              <Card style={{ marginBottom: 0 }}>
+                <SectionLabel>Become a coach</SectionLabel>
+                <FieldRow label="Coach Pass" hint="Test toggle — real billing isn't wired up yet">
+                  <Toggle
+                    on={!!profile?.coach_pass}
+                    onChange={(on) => saveProfile(on ? { coach_pass: true } : { coach_pass: false, coach_mode: false })}
+                  />
+                </FieldRow>
+                <FieldRow label="Coach Mode" hint={profile?.coach_pass ? 'See your clients’ logged data and leave comments' : 'Requires Coach Pass'}>
+                  <Toggle
+                    on={!!profile?.coach_mode}
+                    onChange={async (on) => {
+                      if (!profile?.coach_pass) return;
+                      await saveProfile({ coach_mode: on });
+                      navigate(on ? '/coach' : '/dashboard');
+                    }}
+                  />
+                </FieldRow>
+                {profile?.coach_mode && (
+                  <button
+                    onClick={() => navigate('/coach')}
+                    style={{ marginTop: 16, padding: '9px 16px', background: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 8, color: '#0f0f0f', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                  >
+                    Open Coach Dashboard
+                  </button>
+                )}
+              </Card>
+
+              <Card style={{ marginBottom: 0 }}>
+                <SectionLabel>My trainer</SectionLabel>
+                {trainersLoading ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading…</p>
+                ) : trainers.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: '0 0 14px' }}>Not connected to a trainer yet.</p>
+                ) : (
+                  trainers.map(row => (
+                    <FieldRow key={row.id} label={row.trainer?.name || 'Trainer'} hint={`Connected ${new Date(row.created_at).toLocaleDateString()}`}>
+                      <button
+                        onClick={() => disconnect(row.id)}
+                        style={{ padding: '7px 12px', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 7, color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif" }}
+                      >
+                        Disconnect
+                      </button>
+                    </FieldRow>
+                  ))
+                )}
+                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                  <input
+                    value={inviteCodeInput}
+                    onChange={e => { setInviteCodeInput(e.target.value.toUpperCase()); setInviteStatus(null); }}
+                    placeholder="Enter invite code"
+                    style={{ flex: 1, padding: '9px 12px', background: 'var(--bg-primary)', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, fontFamily: 'inherit', outline: 'none', textTransform: 'uppercase' }}
+                  />
+                  <button
+                    onClick={handleRedeemCode}
+                    disabled={!inviteCodeInput.trim() || inviteStatus === 'loading'}
+                    style={{ padding: '9px 16px', background: 'transparent', border: '1px solid var(--border-default)', borderRadius: 8, color: 'var(--accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}
+                  >
+                    {inviteStatus === 'loading' ? 'Connecting…' : 'Connect'}
+                  </button>
+                </div>
+                {inviteStatus && inviteStatus !== 'loading' && (
+                  <p style={{ color: 'var(--danger)', fontSize: 12, margin: '8px 0 0' }}>{inviteStatus}</p>
+                )}
               </Card>
             </div>
           )}

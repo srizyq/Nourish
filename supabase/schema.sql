@@ -19,6 +19,9 @@ create table if not exists public.profiles (
   water_target int default 8,
   onboarding_completed boolean default false,
   is_premium boolean default false,
+  coach_pass boolean not null default false,
+  coach_mode boolean not null default false,
+  coach_invite_code text unique,
   theme text check (theme in ('light', 'dark')) default 'dark',
   reminder_enabled boolean default false,
   reminder_time text default '19:00',
@@ -246,6 +249,146 @@ create policy "push_subscriptions: insert own" on public.push_subscriptions
   for insert with check (auth.uid() = user_id);
 create policy "push_subscriptions: delete own" on public.push_subscriptions
   for delete using (auth.uid() = user_id);
+
+-- ── coach mode (schema update — run against an existing DB) ────────────────
+-- profiles gained coach_pass/coach_mode/coach_invite_code above; on a DB
+-- that already has a profiles table from before this update, the CREATE
+-- TABLE above is a no-op, so add them explicitly too.
+alter table public.profiles add column if not exists coach_pass boolean not null default false;
+alter table public.profiles add column if not exists coach_mode boolean not null default false;
+alter table public.profiles add column if not exists coach_invite_code text unique;
+
+-- ── trainer_clients ─────────────────────────────────────────────────────────
+-- Links a coach-pass trainer to a client who redeemed their invite code.
+-- Rows are only ever created by redeem_coach_invite_code() below (no insert
+-- policy is granted directly), so a link always implies the code was
+-- actually valid at the time — "revoked" instead of deleted so history and
+-- past trainer_comments survive a client disconnecting.
+create table if not exists public.trainer_clients (
+  id uuid primary key default gen_random_uuid(),
+  trainer_id uuid not null references public.profiles (id) on delete cascade,
+  client_id uuid not null references public.profiles (id) on delete cascade,
+  status text not null default 'active' check (status in ('active', 'revoked')),
+  created_at timestamptz default now(),
+  unique (trainer_id, client_id)
+);
+
+create index if not exists trainer_clients_trainer_idx on public.trainer_clients (trainer_id);
+create index if not exists trainer_clients_client_idx on public.trainer_clients (client_id);
+
+alter table public.trainer_clients enable row level security;
+
+create policy "trainer_clients: select as trainer or client" on public.trainer_clients
+  for select using (auth.uid() = trainer_id or auth.uid() = client_id);
+create policy "trainer_clients: trainer can update status" on public.trainer_clients
+  for update using (auth.uid() = trainer_id);
+create policy "trainer_clients: client can update status" on public.trainer_clients
+  for update using (auth.uid() = client_id);
+
+-- Trainer read access to a connected client's own data, layered on top of
+-- each table's existing "select own" policy (RLS policies are OR'd
+-- together, so this only ever widens access, never narrows it).
+create policy "profiles: select as trainer of client" on public.profiles
+  for select using (
+    exists (
+      select 1 from public.trainer_clients tc
+      where tc.client_id = profiles.id and tc.trainer_id = auth.uid() and tc.status = 'active'
+    )
+  );
+create policy "food_logs: select as trainer of client" on public.food_logs
+  for select using (
+    exists (
+      select 1 from public.trainer_clients tc
+      where tc.client_id = food_logs.user_id and tc.trainer_id = auth.uid() and tc.status = 'active'
+    )
+  );
+create policy "weight_logs: select as trainer of client" on public.weight_logs
+  for select using (
+    exists (
+      select 1 from public.trainer_clients tc
+      where tc.client_id = weight_logs.user_id and tc.trainer_id = auth.uid() and tc.status = 'active'
+    )
+  );
+create policy "checkins: select as trainer of client" on public.checkins
+  for select using (
+    exists (
+      select 1 from public.trainer_clients tc
+      where tc.client_id = checkins.user_id and tc.trainer_id = auth.uid() and tc.status = 'active'
+    )
+  );
+
+-- ── trainer_comments ────────────────────────────────────────────────────────
+-- A trainer's running notes on a client, optionally pinned to one day
+-- (comment_date null = a general note, not tied to any specific date).
+create table if not exists public.trainer_comments (
+  id uuid primary key default gen_random_uuid(),
+  trainer_id uuid not null references public.profiles (id) on delete cascade,
+  client_id uuid not null references public.profiles (id) on delete cascade,
+  comment_date date,
+  body text not null,
+  created_at timestamptz default now()
+);
+
+create index if not exists trainer_comments_client_idx on public.trainer_comments (client_id, created_at);
+
+alter table public.trainer_comments enable row level security;
+
+create policy "trainer_comments: select as trainer or client" on public.trainer_comments
+  for select using (auth.uid() = trainer_id or auth.uid() = client_id);
+create policy "trainer_comments: trainer can insert for own active client" on public.trainer_comments
+  for insert with check (
+    auth.uid() = trainer_id
+    and exists (
+      select 1 from public.trainer_clients tc
+      where tc.trainer_id = auth.uid() and tc.client_id = trainer_comments.client_id and tc.status = 'active'
+    )
+  );
+create policy "trainer_comments: trainer can update own" on public.trainer_comments
+  for update using (auth.uid() = trainer_id);
+create policy "trainer_comments: trainer can delete own" on public.trainer_comments
+  for delete using (auth.uid() = trainer_id);
+
+-- ── redeem_coach_invite_code ─────────────────────────────────────────────────
+-- SECURITY DEFINER so a client can look up a trainer by invite code without
+-- a broad "read any profile" policy — this function is the only path that
+-- writes trainer_clients. Codes are stored/compared upper-cased so the
+-- client's input is case-insensitive.
+create or replace function public.redeem_coach_invite_code(p_code text)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_trainer_id uuid;
+begin
+  if p_code is null or length(trim(p_code)) = 0 then
+    raise exception 'Enter an invite code';
+  end if;
+
+  select id into v_trainer_id
+  from public.profiles
+  where coach_invite_code = upper(trim(p_code))
+    and coach_pass = true;
+
+  if v_trainer_id is null then
+    raise exception 'That invite code is invalid or no longer active';
+  end if;
+
+  if v_trainer_id = auth.uid() then
+    raise exception 'You can''t connect to your own coach account';
+  end if;
+
+  insert into public.trainer_clients (trainer_id, client_id, status)
+  values (v_trainer_id, auth.uid(), 'active')
+  on conflict (trainer_id, client_id) do update set status = 'active';
+
+  return v_trainer_id;
+end;
+$$;
+
+revoke all on function public.redeem_coach_invite_code(text) from public;
+grant execute on function public.redeem_coach_invite_code(text) to authenticated;
 
 -- ── anonymous (guest) sign-ins ─────────────────────────────────────────────
 -- In the Supabase dashboard: Authentication → Sign In / Providers →

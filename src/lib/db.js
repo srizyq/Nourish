@@ -327,6 +327,72 @@ export async function upsertWeightLog(userId, date, weight, unit) {
   return data;
 }
 
+// ─── trainer_clients ────────────────────────────────────────────────────────
+
+export async function getMyClients(trainerId) {
+  const { data, error } = await supabase
+    .from('trainer_clients')
+    .select('id, status, created_at, client:profiles!trainer_clients_client_id_fkey(id, name, goal, calorie_target)')
+    .eq('trainer_id', trainerId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function getMyTrainers(clientId) {
+  const { data, error } = await supabase
+    .from('trainer_clients')
+    .select('id, status, created_at, trainer:profiles!trainer_clients_trainer_id_fkey(id, name)')
+    .eq('client_id', clientId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function redeemCoachInviteCode(code) {
+  const { data, error } = await supabase.rpc('redeem_coach_invite_code', { p_code: code });
+  if (error) throw error;
+  return data; // trainer_id
+}
+
+export async function revokeClientLink(trainerClientRowId) {
+  const { error } = await supabase
+    .from('trainer_clients')
+    .update({ status: 'revoked' })
+    .eq('id', trainerClientRowId);
+  if (error) throw error;
+}
+
+// ─── trainer_comments ───────────────────────────────────────────────────────
+
+export async function getTrainerComments(trainerId, clientId) {
+  const { data, error } = await supabase
+    .from('trainer_comments')
+    .select('*')
+    .eq('trainer_id', trainerId)
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+export async function addTrainerComment(trainerId, clientId, body, commentDate = null) {
+  const { data, error } = await supabase
+    .from('trainer_comments')
+    .insert({ trainer_id: trainerId, client_id: clientId, body, comment_date: commentDate })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteTrainerComment(id) {
+  const { error } = await supabase.from('trainer_comments').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ─── push_subscriptions ─────────────────────────────────────────────────────
 
 export async function savePushSubscription(userId, subscription) {

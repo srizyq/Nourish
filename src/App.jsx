@@ -17,6 +17,7 @@ import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Nutrients from "./pages/Nutrients";
 import DailyLog from "./pages/DailyLog";
+import Coach from "./pages/Coach";
 import DashboardRedesignHarness from "./prototypes/dashboard-redesign/Harness";
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/log" element={<RequireAuth><DailyLog /></RequireAuth>} />
           <Route path="/insights" element={<RequireAuth><AIInsights /></RequireAuth>} />
           <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+          <Route path="/coach" element={<RequireAuth><Coach /></RequireAuth>} />
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
           <Route path="/prototypes/dashboard-redesign" element={<DashboardRedesignHarness />} />
           <Route path="*" element={<Navigate to="/" replace />} />
