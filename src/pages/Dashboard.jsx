@@ -854,28 +854,18 @@ export default function Dashboard() {
                   glasses={glasses}
                   setGlasses={setGlasses}
                 />,
-                <div>
-                  <LogCalendar
-                    month={calMonth}
-                    byDate={calByDate}
-                    calorieTarget={calorieTarget}
-                    loading={calLoading}
-                    onPrevMonth={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-                    onNextMonth={() => canGoNextMonth && setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-                    canGoNext={canGoNextMonth}
-                    onSelectDay={(date) => navigate('/log', { state: { date } })}
-                  />
-                  {/* Text streak counter — the style that used to live in
-                      Insights & Data, brought back here under the calendar
-                      rather than duplicating the dot-strip in the header. */}
-                  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '14px 16px', marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Logging streak</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{streak} {streak === 1 ? 'day' : 'days'}</span>
-                      <i className="ti ti-flame" style={{ fontSize: 14, color: 'var(--accent)' }} />
-                    </div>
-                  </div>
-                </div>,
+                <LogCalendar
+                  month={calMonth}
+                  byDate={calByDate}
+                  calorieTarget={calorieTarget}
+                  loading={calLoading}
+                  onPrevMonth={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+                  onNextMonth={() => canGoNextMonth && setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+                  canGoNext={canGoNextMonth}
+                  onSelectDay={(date) => navigate('/log', { state: { date } })}
+                  compact
+                  streak={streak}
+                />,
               ]}
             />
           </div>
