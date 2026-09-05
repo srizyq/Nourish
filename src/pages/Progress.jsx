@@ -416,7 +416,7 @@ export default function Progress() {
               onPrevMonth={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
               onNextMonth={() => canGoNextMonth && setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
               canGoNext={canGoNextMonth}
-              onSelectDay={(date) => navigate("/log", { state: { date } })}
+              onSelectDay={(date) => navigate("/dashboard", { state: { date } })}
             />
           </div>
 

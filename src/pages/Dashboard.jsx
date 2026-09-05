@@ -1,6 +1,6 @@
 // src/pages/Dashboard.jsx
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
 import { useFoodLogs } from '../hooks/useFoodLogs';
@@ -600,10 +600,10 @@ function GuestBanner({ daysRemaining, onSave }) {
 }
 
 // ─── Shortcut buttons ───────────────────────────────────────────────────────────
-function ShortcutRow({ navigate }) {
+function ShortcutRow({ navigate, date }) {
   const shortcuts = [
-    { label: 'Log food',  icon: 'ti-plus', action: () => navigate('/food') },
-    { label: 'Scan barcode', icon: 'ti-barcode', action: () => navigate('/food', { state: { openScan: true } }) },
+    { label: 'Log food',  icon: 'ti-plus', action: () => navigate('/food', { state: { date } }) },
+    { label: 'Scan barcode', icon: 'ti-barcode', action: () => navigate('/food', { state: { date, openScan: true } }) },
   ];
   return (
     <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
@@ -688,13 +688,25 @@ function StreakStrip({ byDate, onSelectDay }) {
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
 
   const today = todayLocalDate();
+  // Streak dots and both logging calendars (this page's compact one and
+  // Progress's) deep-link here with a past date instead of the old /log
+  // page — the whole point being "see and edit that day's dashboard, not
+  // just its food log". Everything that's inherently a snapshot of one
+  // day (food log, mood, water, the weight-log modal's target date, the
+  // chart's trailing window, the calendar's default month) is scoped to
+  // viewedDate; things that are "current status" regardless of which day
+  // you're browsing (the streak strip, insights, this month's calendar
+  // nav ceiling) stay anchored to real `today`.
+  const viewedDate = location.state?.date || today;
+  const isViewingToday = viewedDate === today;
   const { profile, save: saveProfile } = useProfile();
   const isPremium = !!profile?.is_premium;
-  const { meals, dayTimeline, deleteFood, updateFood, addFood } = useFoodLogs(today);
-  const { checkin, save: saveCheckin } = useCheckins(today);
+  const { meals, dayTimeline, deleteFood, updateFood, addFood } = useFoodLogs(viewedDate);
+  const { checkin, save: saveCheckin } = useCheckins(viewedDate);
   // 90 days (not 30) so the pattern engine's more specific candidates
   // (fibre, hydration, sugar, breakfast) have a real chance to each reach
   // their own 5-day-per-bucket minimum, not just the broadest ones — and
@@ -707,7 +719,20 @@ export default function Dashboard() {
   const { closing: weightModalClosing, close: closeWeightModal } = useClosingTransition(() => setShowWeightModal(false));
   const favourites = useFavouriteFoods();
 
-  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(viewedDate + 'T00:00:00'); d.setDate(1); return d; });
+  // Clicking a streak dot or a calendar day re-navigates to this same
+  // /dashboard route with a new date in location.state rather than
+  // mounting a fresh component instance, so calMonth's one-time useState
+  // initializer above only fires once — this effect is what actually
+  // keeps the calendar showing the right month when the viewed day jumps
+  // to a different one. Deliberately keyed on viewedDate, not on calMonth
+  // itself, so it doesn't fight the prev/next-month buttons when the user
+  // is just browsing the calendar without changing which day is loaded.
+  useEffect(() => {
+    const d = new Date(viewedDate + 'T00:00:00');
+    d.setDate(1);
+    setCalMonth(d);
+  }, [viewedDate]);
   const calMonthStart = todayLocalDate(calMonth);
   const calMonthEnd = todayLocalDate(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 0));
   const { dailyData: calData, loading: calLoading } = useHistory(calMonthStart, calMonthEnd);
@@ -792,7 +817,7 @@ export default function Dashboard() {
 
   const [chartRange, setChartRange] = useState('1W');
   const chartRangeDays = { '1W': 7, '1M': 30, '3M': 90 }[chartRange];
-  const chartDays = dateRange(dateNDaysAgo(chartRangeDays - 1), today).map(date => byDate.get(date) || { date, calories: 0 });
+  const chartDays = dateRange(dateNDaysAgo(chartRangeDays - 1, new Date(viewedDate + 'T00:00:00')), viewedDate).map(date => byDate.get(date) || { date, calories: 0 });
 
   // Real 7-day weight change from actually-logged entries — omitted (not
   // faked) if there isn't at least one weight log in each end of the
@@ -809,7 +834,7 @@ export default function Dashboard() {
 
   const now = new Date();
   const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening';
-  const dateStr = now.toLocaleDateString('en-AU', { weekday: 'long', month: 'long', day: 'numeric' });
+  const dateStr = new Date(viewedDate + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', month: 'long', day: 'numeric' });
 
   async function quickAddFavourite(fav) {
     const food = {
@@ -827,10 +852,17 @@ export default function Dashboard() {
       <div className="app-content-pad" style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>
         <div className="page-pad-top" style={{ minHeight: 52, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px 12px', paddingTop: 10, paddingBottom: 10, borderBottom: '1px solid var(--border-default)', position: 'sticky', top: 0, background: 'var(--bg-primary)', zIndex: 10 }}>
           <div>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>{greeting}, {name} 👋</span>
+            <span style={{ fontFamily: "'Syne', sans-serif", fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>
+              {isViewingToday ? `${greeting}, ${name} 👋` : `${name}'s log`}
+            </span>
             <span style={{ color: 'var(--text-hint)', fontSize: '13px', marginLeft: '12px' }}>{dateStr}</span>
+            {!isViewingToday && (
+              <button onClick={() => navigate('/dashboard')} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '13px', fontWeight: 600, cursor: 'pointer', marginLeft: '12px', padding: 0, fontFamily: "'DM Sans', sans-serif" }}>
+                ← Back to today
+              </button>
+            )}
           </div>
-          <StreakStrip byDate={byDate} onSelectDay={(date) => navigate('/log', { state: { date } })} />
+          <StreakStrip byDate={byDate} onSelectDay={(date) => navigate('/dashboard', { state: { date } })} />
         </div>
 
         <div className="page-pad app-content-pad" style={{ maxWidth: '1100px' }}>
@@ -862,7 +894,7 @@ export default function Dashboard() {
                   onPrevMonth={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
                   onNextMonth={() => canGoNextMonth && setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
                   canGoNext={canGoNextMonth}
-                  onSelectDay={(date) => navigate('/log', { state: { date } })}
+                  onSelectDay={(date) => navigate('/dashboard', { state: { date } })}
                   compact
                   streak={streak}
                 />,
@@ -878,7 +910,7 @@ export default function Dashboard() {
 
           <FavouritesRow favourites={favourites.rows} onQuickAdd={quickAddFavourite} />
 
-          <ShortcutRow navigate={navigate} />
+          <ShortcutRow navigate={navigate} date={viewedDate} />
 
           {/* Daily food log */}
           <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
@@ -889,7 +921,7 @@ export default function Dashboard() {
               <span style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: 600 }}>{Math.round(consumed)} kcal logged</span>
             </div>
             <div style={{ marginBottom: '14px' }}>
-              <span onClick={() => navigate('/food', { state: { openSavedMeals: true } })} style={{ color: 'var(--text-hint)', fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span onClick={() => navigate('/food', { state: { date: viewedDate, openSavedMeals: true } })} style={{ color: 'var(--text-hint)', fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <i className="ti ti-bookmark" style={{ fontSize: 12 }} /> Saved meals
               </span>
             </div>
@@ -898,14 +930,14 @@ export default function Dashboard() {
                 segments={dayTimeline}
                 onDelete={deleteFood}
                 onSave={updateFood}
-                onNavigateAdd={(hour) => navigate('/food', { state: { presetTime: hourToHHMM(hour) } })}
+                onNavigateAdd={(hour) => navigate('/food', { state: { date: viewedDate, presetTime: hourToHHMM(hour) } })}
               />
             ) : (
               <MealLog
                 groups={Object.entries(meals).map(([key, items]) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1), items }))}
                 onDelete={deleteFood}
                 onSave={updateFood}
-                onNavigateFood={(key) => navigate('/food', { state: { openMeal: key } })}
+                onNavigateFood={(key) => navigate('/food', { state: { date: viewedDate, openMeal: key } })}
               />
             )}
           </div>
@@ -959,7 +991,7 @@ export default function Dashboard() {
           unit={weightUnit}
           closing={weightModalClosing}
           onClose={closeWeightModal}
-          onSave={(w) => logWeight(today, w, weightUnit)}
+          onSave={(w) => logWeight(viewedDate, w, weightUnit)}
           onViewTrend={() => { closeWeightModal(); navigate('/progress', { state: { scrollTo: 'weight' } }); }}
         />
       )}
