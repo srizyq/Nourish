@@ -7,10 +7,14 @@ create table if not exists public.profiles (
   name text,
   goal text check (goal in ('lose', 'maintain', 'build')),
   age int,
+  date_of_birth date,
+  sex text check (sex in ('male', 'female', 'unspecified')) default 'unspecified',
   weight numeric,
+  target_weight numeric,
   height numeric,
   unit text check (unit in ('metric', 'imperial')) default 'metric',
   activity text check (activity in ('sedentary', 'light', 'moderate', 'very')),
+  pace_kg_per_week numeric,
   calorie_target int,
   protein_g int,
   carbs_g int,
@@ -426,3 +430,12 @@ create policy "barcode_products: select any signed-in user" on public.barcode_pr
   for select using (auth.uid() is not null);
 create policy "barcode_products: insert any signed-in user" on public.barcode_products
   for insert with check (auth.uid() = created_by);
+
+-- ── onboarding: sex, DOB, target weight, pace (schema update — run against
+-- an existing DB) ────────────────────────────────────────────────────────
+-- Same story as coach_pass above: the CREATE TABLE is a no-op against a DB
+-- that already has profiles, so these are added explicitly too.
+alter table public.profiles add column if not exists date_of_birth date;
+alter table public.profiles add column if not exists sex text check (sex in ('male', 'female', 'unspecified')) default 'unspecified';
+alter table public.profiles add column if not exists target_weight numeric;
+alter table public.profiles add column if not exists pace_kg_per_week numeric;

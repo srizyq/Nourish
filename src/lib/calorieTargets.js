@@ -10,6 +10,9 @@ export const activityMultipliers = {
   very: 1.725,
 };
 
+// Flat fallback used when there's no pace on file (pre-pace profiles, or
+// "maintain" which never has one) — matches the app's original behaviour
+// before per-user pace existed.
 export const goalAdjustments = {
   lose: -400,
   maintain: 0,
@@ -22,19 +25,35 @@ export const goalMacroSplits = {
   build:    { protein: 0.30, carbs: 0.45, fat: 0.25 },
 };
 
-export function calcBMR(weight, height, age, unit) {
+// 1kg of body fat ≈ 7700 kcal — standard estimate for converting a
+// weekly-pace goal into a daily calorie deficit/surplus.
+const KCAL_PER_KG = 7700;
+
+export function calcBMR(weight, height, age, unit, sex) {
   let w = Number(weight), h = Number(height);
   if (unit === 'imperial') {
     w = w * 0.453592;   // lbs → kg
     h = h * 2.54;       // inches → cm
   }
-  return 10 * w + 6.25 * h - 5 * Number(age) + 5;
+  const base = 10 * w + 6.25 * h - 5 * Number(age);
+  // Mifflin-St Jeor: male +5, female -161. "unspecified"/missing falls
+  // back to the male constant — the app's original, pre-sex-field default.
+  return sex === 'female' ? base - 161 : base + 5;
+}
+
+// Turns a goal + optional weekly pace (kg/week, always a positive
+// magnitude) into a signed daily calorie adjustment. Falls back to the
+// flat legacy adjustment when no pace is on file.
+export function calcGoalAdjustment(goal, paceKgPerWeek) {
+  if (!paceKgPerWeek || goal === 'maintain') return goalAdjustments[goal] || 0;
+  const dailyKcal = Math.round((paceKgPerWeek * KCAL_PER_KG) / 7);
+  return goal === 'lose' ? -dailyKcal : goal === 'build' ? dailyKcal : 0;
 }
 
 export function calcCalories(form) {
-  const bmr = calcBMR(form.weight, form.height, form.age, form.unit);
+  const bmr = calcBMR(form.weight, form.height, form.age, form.unit, form.sex);
   const tdee = bmr * (activityMultipliers[form.activity] || 1.55);
-  return Math.round(tdee + (goalAdjustments[form.goal] || 0));
+  return Math.round(tdee + calcGoalAdjustment(form.goal, form.paceKgPerWeek));
 }
 
 // Build a full targets object from a calorie number + macro % split

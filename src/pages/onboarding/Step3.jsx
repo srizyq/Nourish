@@ -2,34 +2,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OnboardingLayout from '../../components/OnboardingLayout';
+import { activityMultipliers, calcBMR, calcGoalAdjustment, goalMacroSplits } from '../../lib/calorieTargets';
 
-const activityMultipliers = {
-  sedentary: 1.2,
-  light: 1.375,
-  moderate: 1.55,
-  very: 1.725,
-};
-
-const goalAdjustments = {
-  lose: -400,
-  maintain: 0,
-  build: +300,
-};
-
-const goalMacroSplits = {
-  lose:     { protein: 0.35, carbs: 0.35, fat: 0.30 },
-  maintain: { protein: 0.30, carbs: 0.40, fat: 0.30 },
-  build:    { protein: 0.30, carbs: 0.45, fat: 0.25 },
-};
-
-function calcBMR(weight, height, age, unit) {
-  // Mifflin-St Jeor (male as default; gender-neutral for now)
-  let w = weight, h = height;
-  if (unit === 'imperial') {
-    w = weight * 0.453592;   // lbs to kg
-    h = height * 2.54;       // inches to cm
-  }
-  return 10 * w + 6.25 * h - 5 * age + 5;
+function ageFromDOB(dob) {
+  const birth = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
 }
 
 function AnimatedNumber({ target, duration = 1000 }) {
@@ -87,12 +68,13 @@ export default function Step3() {
 
   useEffect(() => {
     const saved = JSON.parse(sessionStorage.getItem('attune_onboarding') || '{}');
-    setData(saved);
+    const age = saved.dateOfBirth ? ageFromDOB(saved.dateOfBirth) : saved.age;
+    setData({ ...saved, age });
 
-    if (saved.age && saved.weight && saved.height && saved.activity && saved.goal) {
-      const bmr = calcBMR(saved.weight, saved.height, saved.age, saved.unit || 'metric');
+    if (age && saved.weight && saved.height && saved.activity && saved.goal) {
+      const bmr = calcBMR(saved.weight, saved.height, age, saved.unit || 'metric', saved.sex);
       const tdee = bmr * (activityMultipliers[saved.activity] || 1.55);
-      const calorieTarget = Math.round(tdee + (goalAdjustments[saved.goal] || 0));
+      const calorieTarget = Math.round(tdee + calcGoalAdjustment(saved.goal, saved.paceKgPerWeek));
 
       const splits = goalMacroSplits[saved.goal] || goalMacroSplits.maintain;
       const proteinCal = calorieTarget * splits.protein;
@@ -111,7 +93,8 @@ export default function Step3() {
 
   const handleNext = () => {
     const existing = JSON.parse(sessionStorage.getItem('attune_onboarding') || '{}');
-    sessionStorage.setItem('attune_onboarding', JSON.stringify({ ...existing, targets }));
+    const age = existing.dateOfBirth ? ageFromDOB(existing.dateOfBirth) : existing.age;
+    sessionStorage.setItem('attune_onboarding', JSON.stringify({ ...existing, age, targets }));
     navigate('/onboarding/step4');
   };
 

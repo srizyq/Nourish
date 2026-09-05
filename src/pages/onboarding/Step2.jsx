@@ -1,5 +1,5 @@
 // src/pages/onboarding/Step2.jsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OnboardingLayout from '../../components/OnboardingLayout';
 
@@ -10,25 +10,72 @@ const activityLevels = [
   { id: 'very', label: 'Very active', desc: '6–7 hard workouts a week', multiplier: 1.725 },
 ];
 
+const sexOptions = [
+  { id: 'male', label: 'Male' },
+  { id: 'female', label: 'Female' },
+  { id: 'unspecified', label: 'Prefer not to say' },
+];
+
+// Magnitudes only — direction (deficit vs. surplus) comes from the goal.
+// "Gradual" is pre-selected since it's closest to the app's old flat
+// -400/+300 adjustment, so most people land close to previous behaviour.
+const PACE_PRESETS = [
+  { id: 'gradual', kgPerWeek: 0.25, label: 'Gradual' },
+  { id: 'moderate', kgPerWeek: 0.5, label: 'Moderate' },
+  { id: 'aggressive', kgPerWeek: 0.75, label: 'Aggressive' },
+];
+
+const KG_PER_LB = 0.453592;
+const KCAL_PER_KG = 7700;
+
+function minDobISO() {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 100);
+  return d.toISOString().slice(0, 10);
+}
+
+function maxDobISO() {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - 10);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function Step2() {
   const navigate = useNavigate();
-  const [age, setAge] = useState('');
+  const [goal, setGoal] = useState(null);
+  const [dob, setDob] = useState('');
+  const [sex, setSex] = useState('');
   const [weight, setWeight] = useState('');
+  const [targetWeight, setTargetWeight] = useState('');
   const [height, setHeight] = useState('');
   const [activity, setActivity] = useState('');
+  const [pace, setPace] = useState('gradual');
   const [unit, setUnit] = useState('metric'); // metric (kg/cm) or imperial (lbs/ft)
 
-  const isComplete = age && weight && height && activity;
+  useEffect(() => {
+    const existing = JSON.parse(sessionStorage.getItem('attune_onboarding') || '{}');
+    setGoal(existing.goal || null);
+  }, []);
+
+  const needsPaceAndTarget = goal === 'lose' || goal === 'build';
+  const isComplete = dob && sex && weight && height && activity
+    && (!needsPaceAndTarget || (targetWeight && pace));
 
   const handleNext = () => {
     if (!isComplete) return;
     const existing = JSON.parse(sessionStorage.getItem('attune_onboarding') || '{}');
+    const paceKgPerWeek = needsPaceAndTarget
+      ? PACE_PRESETS.find(p => p.id === pace)?.kgPerWeek
+      : null;
     sessionStorage.setItem('attune_onboarding', JSON.stringify({
       ...existing,
-      age: parseInt(age),
+      dateOfBirth: dob,
+      sex,
       weight: parseFloat(weight),
+      targetWeight: needsPaceAndTarget ? parseFloat(targetWeight) : null,
       height: parseFloat(height),
       activity,
+      paceKgPerWeek,
       unit,
     }));
     navigate('/onboarding/step3');
@@ -57,6 +104,21 @@ export default function Step2() {
     display: 'block',
   };
 
+  const segButtonStyle = (isSelected) => ({
+    background: isSelected ? '#0f1a0f' : '#141414',
+    border: `1px solid ${isSelected ? '#3a5a3a' : '#1e1e1e'}`,
+    borderRadius: '10px',
+    padding: '12px 10px',
+    textAlign: 'center',
+    cursor: 'pointer',
+    color: isSelected ? '#8fbc8f' : '#ccc',
+    fontSize: '14px',
+    fontWeight: 600,
+    fontFamily: "'DM Sans', sans-serif",
+    transition: 'all 0.2s ease',
+    outline: 'none',
+  });
+
   return (
     <OnboardingLayout step={2}>
       <div style={{ width: '100%', maxWidth: '520px' }}>
@@ -77,7 +139,7 @@ export default function Step2() {
             Tell us about yourself
           </h1>
           <p style={{ color: '#666', fontSize: '15px' }}>
-            Used only to calculate your calorie needs — never stored or shared.
+            Used only to calculate your calorie needs.
           </p>
         </div>
 
@@ -104,19 +166,19 @@ export default function Step2() {
           ))}
         </div>
 
-        {/* Stat inputs row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+        {/* Date of birth + Sex */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
           <div>
-            <label style={labelStyle}>Age</label>
+            <label style={labelStyle}>Date of birth</label>
             <input
-              type="number"
-              placeholder="25"
-              value={age}
-              min="10" max="100"
-              onChange={e => setAge(e.target.value)}
+              type="date"
+              value={dob}
+              min={minDobISO()}
+              max={maxDobISO()}
+              onChange={e => setDob(e.target.value)}
               onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-              onBlur={e => e.target.style.borderColor = age ? '#3a5a3a' : '#1e1e1e'}
-              style={inputStyle(age)}
+              onBlur={e => e.target.style.borderColor = dob ? '#3a5a3a' : '#1e1e1e'}
+              style={inputStyle(dob)}
             />
           </div>
           <div>
@@ -131,19 +193,91 @@ export default function Step2() {
               style={inputStyle(weight)}
             />
           </div>
-          <div>
-            <label style={labelStyle}>Height ({unit === 'metric' ? 'cm' : 'in'})</label>
-            <input
-              type="number"
-              placeholder={unit === 'metric' ? '170' : '67'}
-              value={height}
-              onChange={e => setHeight(e.target.value)}
-              onFocus={e => e.target.style.borderColor = '#4a7a4a'}
-              onBlur={e => e.target.style.borderColor = height ? '#3a5a3a' : '#1e1e1e'}
-              style={inputStyle(height)}
-            />
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <label style={labelStyle}>Sex</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+            {sexOptions.map(o => (
+              <button key={o.id} onClick={() => setSex(o.id)} style={segButtonStyle(sex === o.id)}>
+                {o.label}
+              </button>
+            ))}
           </div>
         </div>
+
+        {/* Height */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={labelStyle}>Height ({unit === 'metric' ? 'cm' : 'in'})</label>
+          <input
+            type="number"
+            placeholder={unit === 'metric' ? '170' : '67'}
+            value={height}
+            onChange={e => setHeight(e.target.value)}
+            onFocus={e => e.target.style.borderColor = '#4a7a4a'}
+            onBlur={e => e.target.style.borderColor = height ? '#3a5a3a' : '#1e1e1e'}
+            style={inputStyle(height)}
+          />
+        </div>
+
+        {/* Target weight + pace — only meaningful when there's an actual
+            direction to move in; "stay balanced" has no target to hit. */}
+        {needsPaceAndTarget && (
+          <>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={labelStyle}>Target weight ({unit === 'metric' ? 'kg' : 'lbs'})</label>
+              <input
+                type="number"
+                placeholder={unit === 'metric' ? '65' : '143'}
+                value={targetWeight}
+                onChange={e => setTargetWeight(e.target.value)}
+                onFocus={e => e.target.style.borderColor = '#4a7a4a'}
+                onBlur={e => e.target.style.borderColor = targetWeight ? '#3a5a3a' : '#1e1e1e'}
+                style={inputStyle(targetWeight)}
+              />
+            </div>
+
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{ ...labelStyle, marginBottom: '10px' }}>
+                Pace — how fast do you want to {goal === 'lose' ? 'lose' : 'gain'}?
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                {PACE_PRESETS.map(p => {
+                  const isSelected = pace === p.id;
+                  const displayRate = unit === 'imperial' ? (p.kgPerWeek / KG_PER_LB).toFixed(1) : p.kgPerWeek;
+                  const displayUnit = unit === 'imperial' ? 'lb' : 'kg';
+                  const dailyKcal = Math.round((p.kgPerWeek * KCAL_PER_KG) / 7);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setPace(p.id)}
+                      style={{
+                        background: isSelected ? '#0f1a0f' : '#141414',
+                        border: `1px solid ${isSelected ? '#3a5a3a' : '#1e1e1e'}`,
+                        borderRadius: '10px',
+                        padding: '12px 8px',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        outline: 'none',
+                      }}
+                    >
+                      <div style={{ color: isSelected ? '#8fbc8f' : '#ccc', fontWeight: 600, fontSize: '13px', marginBottom: '3px', fontFamily: "'Syne', sans-serif" }}>
+                        {p.label}
+                      </div>
+                      <div style={{ color: '#555', fontSize: '11px', marginBottom: '2px' }}>
+                        {displayRate}{displayUnit}/wk
+                      </div>
+                      <div style={{ color: '#444', fontSize: '11px' }}>
+                        {goal === 'lose' ? '−' : '+'}{dailyKcal} kcal/day
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Activity level */}
         <div style={{ marginBottom: '32px' }}>
