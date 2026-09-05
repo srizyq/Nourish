@@ -1,5 +1,5 @@
 // src/pages/Dashboard.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useProfile } from '../hooks/useProfile';
@@ -9,7 +9,7 @@ import { useHistory } from '../hooks/useHistory';
 import { useWeightLogs } from '../hooks/useWeightLogs';
 import { useAdaptiveTarget } from '../hooks/useAdaptiveTarget';
 import { useFavouriteFoods } from '../hooks/useFavouriteFoods';
-import { todayLocalDate, dateNDaysAgo, dateRange, generateInsights, computeStreak } from '../lib/patterns';
+import { todayLocalDate, dateNDaysAgo, dateRange, generateInsights } from '../lib/patterns';
 import { goalMacroSplits, buildTargets } from '../lib/calorieTargets';
 import { getCategoryStyle } from '../lib/foodCategories';
 import AppNav from '../components/AppNav';
@@ -204,6 +204,119 @@ function DashboardHero({ consumed, target, chartDays, chartRange, setChartRange,
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Swipeable hero/calendar pager — the calorie/weight/water card and
+// the logging calendar share one horizontal pager instead of both being
+// separate full-width blocks. Their natural heights differ a lot (the
+// calendar can run to 6 row of days some months, the hero card is much
+// shorter), so the frame animates its own height to match whichever page
+// is active via ResizeObserver rather than clipping content or leaving
+// dead space under the shorter page. Drag tracking is plain pointer
+// events in px (not CSS scroll-snap) so the height and transform can be
+// driven together from the same piece of state.
+function SwipePager({ pages }) {
+  const [page, setPage] = useState(0);
+  const [animate, setAnimate] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [height, setHeight] = useState(undefined);
+  const [dragX, setDragX] = useState(0);
+  const containerRef = useRef(null);
+  const pageRefs = useRef([]);
+  const drag = useRef({ startX: 0, dx: 0, dragging: false });
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => setContainerWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Re-measures whenever the active page's own content changes size (e.g.
+  // the calendar swapping between a 5-row and 6-row month), not just when
+  // the page index changes.
+  useLayoutEffect(() => {
+    const el = pageRefs.current[page];
+    if (!el) return;
+    const measure = () => setHeight(el.offsetHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [page]);
+
+  function onPointerDown(e) {
+    if (pages.length < 2) return;
+    drag.current = { startX: e.clientX, dx: 0, dragging: true };
+    setAnimate(false);
+  }
+  function onPointerMove(e) {
+    if (!drag.current.dragging) return;
+    let dx = e.clientX - drag.current.startX;
+    if ((page === 0 && dx > 0) || (page === pages.length - 1 && dx < 0)) dx *= 0.35;
+    drag.current.dx = dx;
+    setDragX(dx);
+  }
+  function onPointerUp() {
+    if (!drag.current.dragging) return;
+    drag.current.dragging = false;
+    const dx = drag.current.dx;
+    const threshold = Math.max(40, containerWidth * 0.18);
+    setAnimate(true);
+    setDragX(0);
+    if (dx < -threshold && page < pages.length - 1) setPage(p => p + 1);
+    else if (dx > threshold && page > 0) setPage(p => p - 1);
+  }
+
+  const offset = -page * containerWidth + dragX;
+
+  return (
+    <div>
+      <div
+        ref={containerRef}
+        style={{ overflow: 'hidden', borderRadius: 16, height, transition: animate ? 'height 0.25s ease' : 'none' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            width: containerWidth ? containerWidth * pages.length : '100%',
+            transform: `translateX(${offset}px)`,
+            transition: animate ? 'transform 0.25s ease' : 'none',
+            touchAction: 'pan-y',
+          }}
+        >
+          {pages.map((p, i) => (
+            <div key={i} ref={el => { pageRefs.current[i] = el; }} style={{ width: containerWidth || '100%', flexShrink: 0 }}>
+              {p}
+            </div>
+          ))}
+        </div>
+      </div>
+      {pages.length > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 }}>
+          {pages.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { setAnimate(true); setPage(i); }}
+              aria-label={`Page ${i + 1} of ${pages.length}`}
+              style={{
+                width: i === page ? 16 : 6, height: 6, borderRadius: 99, border: 'none', padding: 0, cursor: 'pointer',
+                background: i === page ? 'var(--accent)' : 'var(--border-strong)', transition: 'width 0.2s ease, background 0.2s ease',
+              }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -411,6 +524,53 @@ function ChangeRow({ label, value, trend }) {
   );
 }
 
+// ─── Streak strip — replaces the old flame + number pill ("🔥 0 day
+// streak") and the duplicate "Logging streak" row that used to live in
+// Insights & Data. A week of dots (Sunday-start, matching LogCalendar's
+// and DaySelector's own week convention elsewhere in the app) shows each
+// day's actual logging status instead of reducing everything to a single
+// number that reads as "0" — a failure — the moment a new day starts.
+// Logged days fill in bold; not-yet-logged days stay light instead.
+const STREAK_WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+function StreakStrip({ byDate }) {
+  const today = todayLocalDate();
+  const weekStart = new Date(today + 'T00:00:00');
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    return todayLocalDate(d);
+  });
+
+  return (
+    <div style={{ display: 'flex', gap: 4 }}>
+      {days.map((dateStr, i) => {
+        const isFuture = dateStr > today;
+        const isToday = dateStr === today;
+        const logged = !!byDate.get(dateStr)?.calories;
+        return (
+          <div
+            key={dateStr}
+            title={isFuture ? undefined : (logged ? 'Logged' : 'Not logged')}
+            style={{
+              width: 22, height: 22, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 10, fontWeight: 700,
+              background: logged ? 'var(--accent)' : 'transparent',
+              border: `1px solid ${logged ? 'var(--accent)' : isToday ? 'var(--border-strong)' : 'var(--border-default)'}`,
+              color: logged ? '#0f0f0f' : 'var(--text-hint)',
+              opacity: isFuture ? 0.4 : 1,
+            }}
+          >
+            {STREAK_WEEKDAY_LABELS[i]}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -494,7 +654,6 @@ export default function Dashboard() {
   const daysRemaining = user?.created_at
     ? Math.max(0, 7 - Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86400000))
     : 7;
-  const streak = computeStreak(dailyData);
   const insight = generateInsights(dailyData, 1)[0];
 
   const initials = (name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
@@ -554,28 +713,41 @@ export default function Dashboard() {
             <span style={{ fontFamily: "'Syne', sans-serif", fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)' }}>{greeting}, {name} 👋</span>
             <span style={{ color: 'var(--text-hint)', fontSize: '13px', marginLeft: '12px' }}>{dateStr}</span>
           </div>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '20px', padding: '5px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '13px' }}>🔥</span>
-            <span style={{ color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600 }}>{streak}</span>
-            <span style={{ color: 'var(--text-hint)', fontSize: '12px' }}>day streak</span>
-          </div>
+          <StreakStrip byDate={byDate} />
         </div>
 
         <div className="page-pad app-content-pad" style={{ maxWidth: '1100px' }}>
           {isGuest && <GuestBanner daysRemaining={daysRemaining} onSave={() => navigate('/settings')} />}
 
+          {/* Hero/calendar pager — swipe (or use the dots) to get from the
+              calorie/weight/water glance to the logging calendar; the
+              calendar used to be its own full-width block below. */}
           <div style={{ marginBottom: '16px' }}>
-            <DashboardHero
-              consumed={consumed}
-              target={calorieTarget}
-              chartDays={chartDays}
-              chartRange={chartRange}
-              setChartRange={setChartRange}
-              onChartClick={() => navigate('/nutrients')}
-              latestWeight={latestWeight}
-              onWeightClick={() => navigate('/progress')}
-              glasses={glasses}
-              setGlasses={setGlasses}
+            <SwipePager
+              pages={[
+                <DashboardHero
+                  consumed={consumed}
+                  target={calorieTarget}
+                  chartDays={chartDays}
+                  chartRange={chartRange}
+                  setChartRange={setChartRange}
+                  onChartClick={() => navigate('/nutrients')}
+                  latestWeight={latestWeight}
+                  onWeightClick={() => navigate('/progress')}
+                  glasses={glasses}
+                  setGlasses={setGlasses}
+                />,
+                <LogCalendar
+                  month={calMonth}
+                  byDate={calByDate}
+                  calorieTarget={calorieTarget}
+                  loading={calLoading}
+                  onPrevMonth={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+                  onNextMonth={() => canGoNextMonth && setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+                  canGoNext={canGoNextMonth}
+                  onSelectDay={(date) => navigate('/log', { state: { date } })}
+                />,
+              ]}
             />
           </div>
 
@@ -588,21 +760,6 @@ export default function Dashboard() {
           <FavouritesRow favourites={favourites.rows} onQuickAdd={quickAddFavourite} />
 
           <ShortcutRow navigate={navigate} />
-
-          {/* Logging calendar — full width now that Weight moved into the
-              hero card above. */}
-          <div style={{ marginBottom: '16px' }}>
-            <LogCalendar
-              month={calMonth}
-              byDate={calByDate}
-              calorieTarget={calorieTarget}
-              loading={calLoading}
-              onPrevMonth={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-              onNextMonth={() => canGoNextMonth && setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-              canGoNext={canGoNextMonth}
-              onSelectDay={(date) => navigate('/log', { state: { date } })}
-            />
-          </div>
 
           {/* Check in: mood — water moved into the hero card above. */}
           <div style={{ marginBottom: '16px' }}>
@@ -631,7 +788,6 @@ export default function Dashboard() {
               </div>
             </div>
             <div>
-              <ChangeRow label="Logging streak" value={`${streak} days`} trend="up" />
               {weightTrendKg !== null && (
                 <ChangeRow
                   label="Weight trend (7-day)"
