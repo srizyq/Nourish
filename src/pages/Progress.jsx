@@ -528,10 +528,10 @@ function EmptyChartBox({ icon, message }) {
   );
 }
 
-// Progress is now the only place in the app to log a new weight entry —
-// the dashboard's inline "+ Log" form (on the old standalone WeightCard)
-// was removed when weight became a compact glance-tile there that just
-// links here instead.
+// The dashboard's weight tile also has its own quick-log popup
+// (WeightLogModal in Dashboard.jsx) for logging without leaving that
+// page — this button is the equivalent entry point for anyone already
+// on Progress instead.
 function LogWeightButton({ unit, onLog }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");

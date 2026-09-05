@@ -9,9 +9,11 @@ import { useHistory } from '../hooks/useHistory';
 import { useWeightLogs } from '../hooks/useWeightLogs';
 import { useAdaptiveTarget } from '../hooks/useAdaptiveTarget';
 import { useFavouriteFoods } from '../hooks/useFavouriteFoods';
-import { todayLocalDate, dateNDaysAgo, dateRange, generateInsights } from '../lib/patterns';
+import { todayLocalDate, dateNDaysAgo, dateRange, generateInsights, computeStreak } from '../lib/patterns';
 import { goalMacroSplits, buildTargets } from '../lib/calorieTargets';
 import { getCategoryStyle } from '../lib/foodCategories';
+import { toKg, fromKg } from '../lib/adaptiveTDEE';
+import { useClosingTransition } from '../hooks/useClosingTransition';
 import AppNav from '../components/AppNav';
 import LogItemRow from '../components/LogItemRow';
 import LogCalendar from '../components/LogCalendar';
@@ -52,6 +54,115 @@ function WeightTile({ latest, onClick }) {
         {latest ? `${latest.weight}${latest.unit}` : '—'}
       </div>
     </button>
+  );
+}
+
+// ─── Weight quick-log modal — tapping the weight tile used to just
+// navigate straight to Progress, requiring a page change to log one
+// number. That deep-link (scrollTo: 'weight') still exists — it now
+// lives inside this modal's "View trend" button — but logging itself no
+// longer requires leaving the dashboard at all. Leads with a small trend
+// sparkline of recent entries so logging feels like adding one point to
+// a story, not filling a bare form.
+function WeightSparkline({ points, color }) {
+  if (points.length < 2) return null;
+  const w = 240, h = 56, pad = 6;
+  const max = Math.max(...points), min = Math.min(...points);
+  const span = max - min || 1;
+  const norm = (v) => h - pad - ((v - min) / span) * (h - pad * 2);
+  const coords = points.map((v, i) => [(i / (points.length - 1)) * w, norm(v)]);
+  const linePts = coords.map(p => p.join(',')).join(' ');
+  const areaPts = `0,${h} ${linePts} ${w},${h}`;
+  const last = coords[coords.length - 1];
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: h, display: 'block' }}>
+      <polygon points={areaPts} fill={color} opacity="0.08" />
+      <polyline points={linePts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last[0]} cy={last[1]} r="3.5" fill={color} />
+    </svg>
+  );
+}
+
+function WeightLogModal({ weightLogs, latest, unit, onSave, onClose, onViewTrend, closing }) {
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const recent = [...weightLogs]
+    .sort((a, b) => a.logged_date.localeCompare(b.logged_date))
+    .slice(-10)
+    .map(w => round1(fromKg(toKg(w.weight, w.unit), unit)));
+
+  async function submit() {
+    if (!value || saving) return;
+    setSaving(true);
+    try {
+      await onSave(Number(value));
+      onClose();
+    } catch (err) {
+      console.error('Failed to log weight:', err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} className={`modal-backdrop${closing ? ' is-closing' : ''}`} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 24 }}>
+      <div onClick={e => e.stopPropagation()} className={`modal-panel${closing ? ' is-closing' : ''}`} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-default)', borderRadius: 16, width: '100%', maxWidth: 340, padding: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>Log weight</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-hint)', cursor: 'pointer', fontSize: 18, padding: 4, lineHeight: 1 }}>×</button>
+        </div>
+
+        {recent.length >= 2 && (
+          <div style={{ marginBottom: 16 }}>
+            <WeightSparkline points={recent} color="#8fbc8f" />
+          </div>
+        )}
+
+        <div style={{ textAlign: 'center', marginBottom: 4 }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Last logged</span>
+        </div>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <span style={{ fontFamily: "'Syne', sans-serif", fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>
+            {latest ? `${latest.weight}${latest.unit}` : '—'}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <input
+            type="number"
+            inputMode="decimal"
+            autoFocus
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+            placeholder={`Weight (${unit})`}
+            style={{
+              flex: 1, padding: '11px 14px', background: 'var(--bg-primary)', border: '1px solid var(--border-default)',
+              borderRadius: 10, color: 'var(--text-primary)', fontSize: 15, fontFamily: "'DM Sans', sans-serif", outline: 'none',
+            }}
+          />
+          <button
+            onClick={submit}
+            disabled={!value || saving}
+            style={{
+              padding: '11px 18px', background: !value || saving ? 'var(--border-default)' : 'var(--accent)',
+              border: 'none', borderRadius: 10, color: !value || saving ? 'var(--text-muted)' : '#0f0f0f',
+              fontSize: 14, fontWeight: 600, cursor: !value || saving ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            {saving ? '…' : 'Save'}
+          </button>
+        </div>
+
+        <button
+          onClick={onViewTrend}
+          style={{ width: '100%', background: 'none', border: 'none', color: 'var(--accent-dark)', fontSize: 13, cursor: 'pointer', padding: '4px 0', fontFamily: "'DM Sans', sans-serif" }}
+        >
+          View trend →
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -591,7 +702,9 @@ export default function Dashboard() {
   // hand instead of a second fetch.
   const { dailyData } = useHistory(dateNDaysAgo(90), today);
   const weightUnit = profile?.unit === 'imperial' ? 'lb' : 'kg';
-  const { logs: weightLogs, latest: latestWeight } = useWeightLogs(dateNDaysAgo(89), today);
+  const { logs: weightLogs, latest: latestWeight, logWeight } = useWeightLogs(dateNDaysAgo(89), today);
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const { closing: weightModalClosing, close: closeWeightModal } = useClosingTransition(() => setShowWeightModal(false));
   const favourites = useFavouriteFoods();
 
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); d.setDate(1); return d; });
@@ -658,6 +771,7 @@ export default function Dashboard() {
     ? Math.max(0, 7 - Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86400000))
     : 7;
   const insight = generateInsights(dailyData, 1)[0];
+  const streak = computeStreak(dailyData);
 
   const initials = (name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
 
@@ -736,20 +850,32 @@ export default function Dashboard() {
                   setChartRange={setChartRange}
                   onChartClick={() => navigate('/nutrients')}
                   latestWeight={latestWeight}
-                  onWeightClick={() => navigate('/progress', { state: { scrollTo: 'weight' } })}
+                  onWeightClick={() => setShowWeightModal(true)}
                   glasses={glasses}
                   setGlasses={setGlasses}
                 />,
-                <LogCalendar
-                  month={calMonth}
-                  byDate={calByDate}
-                  calorieTarget={calorieTarget}
-                  loading={calLoading}
-                  onPrevMonth={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-                  onNextMonth={() => canGoNextMonth && setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-                  canGoNext={canGoNextMonth}
-                  onSelectDay={(date) => navigate('/log', { state: { date } })}
-                />,
+                <div>
+                  <LogCalendar
+                    month={calMonth}
+                    byDate={calByDate}
+                    calorieTarget={calorieTarget}
+                    loading={calLoading}
+                    onPrevMonth={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+                    onNextMonth={() => canGoNextMonth && setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+                    canGoNext={canGoNextMonth}
+                    onSelectDay={(date) => navigate('/log', { state: { date } })}
+                  />
+                  {/* Text streak counter — the style that used to live in
+                      Insights & Data, brought back here under the calendar
+                      rather than duplicating the dot-strip in the header. */}
+                  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '14px 16px', marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Logging streak</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{streak} {streak === 1 ? 'day' : 'days'}</span>
+                      <i className="ti ti-flame" style={{ fontSize: 14, color: 'var(--accent)' }} />
+                    </div>
+                  </div>
+                </div>,
               ]}
             />
           </div>
@@ -835,6 +961,18 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {showWeightModal && (
+        <WeightLogModal
+          weightLogs={weightLogs}
+          latest={latestWeight}
+          unit={weightUnit}
+          closing={weightModalClosing}
+          onClose={closeWeightModal}
+          onSave={(w) => logWeight(today, w, weightUnit)}
+          onViewTrend={() => { closeWeightModal(); navigate('/progress', { state: { scrollTo: 'weight' } }); }}
+        />
+      )}
     </div>
   );
 }
