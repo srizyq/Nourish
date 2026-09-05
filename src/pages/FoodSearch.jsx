@@ -425,9 +425,9 @@ function BarcodeScanner({ onAddFood, onClose, defaultMeal, defaultTime, selected
   );
 }
 
-// ─── Scan Modal (barcode only — menu/plate photo AI scanning has been removed:
-//    it required posting a secret API key from the browser, which can't be
-//    done safely client-side) ────────────────────────────────────────────────
+// ─── Scan Modal (barcode) — menu/plate photo scanning live elsewhere as
+//    MenuScanModal/PhotoScanModal, proxied through server-side /api routes
+//    so the vision API key never reaches the browser. ─────────────────────
 
 function ScanModal({ onClose, onAddFood, defaultMeal, defaultTime, selectedDate, isPremium, onCreateCustom, onSearchManually }) {
   const { closing, close } = useClosingTransition(onClose);

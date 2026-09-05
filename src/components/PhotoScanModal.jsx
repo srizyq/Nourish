@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { timeStringToDate, formatTime12h } from '../lib/mealTime';
 import { useClosingTransition } from '../hooks/useClosingTransition';
 import { supabase } from '../lib/supabase';
+import CameraCapture from './CameraCapture';
 
 const MEALS = ['Breakfast', 'Lunch', 'Dinner', 'Snacks'];
 
@@ -32,7 +33,6 @@ function resizeImage(file, maxDim = 1024, quality = 0.82) {
 
 export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaultTime, selectedDate, isPremium, onCreateCustom, onSearchManually }) {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
   const [preview, setPreview] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
@@ -126,7 +126,6 @@ export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaul
     setLimitReached(false);
     setComment('');
     setCorrectionError(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
   async function handleAdd() {
@@ -162,24 +161,8 @@ export default function PhotoScanModal({ onClose, onAddFood, defaultMeal, defaul
           <button onClick={close} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
         </div>
         <div style={{ padding: 20 }}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            style={{ display: 'none' }}
-            onChange={(e) => handleFile(e.target.files?.[0])}
-          />
-
           {!preview && (
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              style={{ width: '100%', height: 180, background: 'none', border: '1px dashed #2a2a2a', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer', color: '#555' }}
-            >
-              <i className="ti ti-camera" style={{ fontSize: 36, color: '#333' }} />
-              <div style={{ fontSize: 13 }}>Take or choose a photo</div>
-              <div style={{ fontSize: 11, color: '#333' }}>Works best with a clear, well-lit shot</div>
-            </button>
+            <CameraCapture onCapture={handleFile} hint="Line up a clear, well-lit shot" />
           )}
 
           {preview && (

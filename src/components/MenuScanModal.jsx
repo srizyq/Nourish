@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { mealFromDate } from '../lib/mealTime';
 import { useClosingTransition } from '../hooks/useClosingTransition';
 import { supabase } from '../lib/supabase';
+import CameraCapture from './CameraCapture';
 
 // Downscale + re-encode before upload — same reasoning as PhotoScanModal's
 // resizeImage: keeps the request under serverless body-size limits and
@@ -47,7 +48,6 @@ function MacroGrid({ pick }) {
 
 export default function MenuScanModal({ onClose, onAddFood, isPremium, onSearchManually }) {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
   const [preview, setPreview] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [recommendations, setRecommendations] = useState(null);
@@ -97,7 +97,6 @@ export default function MenuScanModal({ onClose, onAddFood, isPremium, onSearchM
     setPickedIndex(null);
     setError(null);
     setLimitReached(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
   async function handleLog() {
@@ -138,24 +137,8 @@ export default function MenuScanModal({ onClose, onAddFood, isPremium, onSearchM
           <button onClick={close} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: 0 }}>✕</button>
         </div>
         <div style={{ padding: 20 }}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            style={{ display: 'none' }}
-            onChange={(e) => handleFile(e.target.files?.[0])}
-          />
-
           {!preview && (
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              style={{ width: '100%', height: 180, background: 'none', border: '1px dashed #2a2a2a', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer', color: '#555' }}
-            >
-              <i className="ti ti-tools-kitchen-2" style={{ fontSize: 36, color: '#333' }} />
-              <div style={{ fontSize: 13 }}>Take or choose a photo of a menu</div>
-              <div style={{ fontSize: 11, color: '#333' }}>We'll suggest picks that fit your goal and today's remaining macros</div>
-            </button>
+            <CameraCapture onCapture={handleFile} hint="Fit the whole menu section in frame" />
           )}
 
           {preview && !picked && (
