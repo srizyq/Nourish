@@ -48,7 +48,7 @@ export default function LogCalendar({ month, byDate, calorieTarget, loading, onP
   const gridStyle = { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: compact ? 3 : 4 };
 
   return (
-    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: compact ? 16 : 20 }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: compact ? 16 : 12, padding: compact ? 16 : 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: compact ? 12 : 16 }}>
         <div>
           <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>Logging calendar</div>

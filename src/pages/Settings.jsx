@@ -241,13 +241,41 @@ export default function Settings() {
   const [inviteStatus, setInviteStatus] = useState(null); // null | 'loading' | error string
   const initials = (profile?.name || 'A').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'A';
   const [tab, setTab] = useState('goals');
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState(DEFAULT_FORM);
   const [calMode, setCalMode] = useState('calculated');
   const [customCal, setCustomCal] = useState(2000);
   const [proteinPct, setProteinPct] = useState(30);
   const [fatPct, setFatPct] = useState(30);
+
+  // Baseline snapshot of the goals-tab draft fields as of the last
+  // profile sync (initial load, or right after a save resolves and
+  // profile updates) — comparing the live draft against this is what
+  // drives the "unsaved changes" popup, replacing the old always-visible
+  // top Save button.
+  const [baseline, setBaseline] = useState(null);
+  const isDirty = !!baseline && (
+    form.unit !== baseline.unit || Number(form.age) !== baseline.age ||
+    Number(form.weight) !== baseline.weight || Number(form.height) !== baseline.height ||
+    form.goal !== baseline.goal || form.activity !== baseline.activity ||
+    calMode !== baseline.calMode || customCal !== baseline.customCal ||
+    proteinPct !== baseline.proteinPct || fatPct !== baseline.fatPct
+  );
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [popupClosing, setPopupClosing] = useState(false);
+  useEffect(() => {
+    if (isDirty) {
+      setPopupClosing(false);
+      setPopupVisible(true);
+      return;
+    }
+    if (!popupVisible) return;
+    setPopupClosing(true);
+    const t = setTimeout(() => { setPopupVisible(false); setPopupClosing(false); }, 160);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDirty]);
 
   const { compute: computeAdaptive } = useAdaptiveTarget();
   const [adaptiveResult, setAdaptiveResult] = useState(null);
@@ -262,28 +290,43 @@ export default function Settings() {
     }
   };
 
-  // Sync form state once the real profile loads
+  // Sync form state once the real profile loads — also snapshots the
+  // same values into `baseline`, since this runs again right after a
+  // save resolves (saveProfile updates the profile this hook reads), at
+  // which point draft and baseline naturally converge and the popup
+  // disappears without handleSave needing to touch baseline itself.
   useEffect(() => {
     if (!profile) return;
-    setForm({
+    const syncedForm = {
       unit: profile.unit || 'metric',
       age: profile.age || 30,
       weight: profile.weight || 70,
       height: profile.height || 170,
       goal: profile.goal || 'maintain',
       activity: profile.activity || 'moderate',
-    });
+    };
+    setForm(syncedForm);
+    let syncedCal = customCal, syncedProtein = proteinPct, syncedFat = fatPct;
     if (profile.calorie_target) {
-      setCustomCal(profile.calorie_target);
+      syncedCal = profile.calorie_target;
       const split = splitFromGrams(profile.protein_g || 0, profile.carbs_g || 0, profile.fat_g || 0);
-      setProteinPct(Math.round(split.protein * 100));
-      setFatPct(Math.round(split.fat * 100));
+      syncedProtein = Math.round(split.protein * 100);
+      syncedFat = Math.round(split.fat * 100);
+      setCustomCal(syncedCal);
+      setProteinPct(syncedProtein);
+      setFatPct(syncedFat);
     }
+    let syncedMode = calMode;
     if (profile.calorie_mode) {
-      setCalMode(profile.calorie_mode);
-      if (profile.calorie_mode === 'adaptive') refreshAdaptive(profile.goal || 'maintain');
+      syncedMode = profile.calorie_mode;
+      setCalMode(syncedMode);
+      if (syncedMode === 'adaptive') refreshAdaptive(profile.goal || 'maintain');
     }
     if (profile.reminder_time) setReminderTimeInput(profile.reminder_time);
+    setBaseline({
+      ...syncedForm, age: Number(syncedForm.age), weight: Number(syncedForm.weight), height: Number(syncedForm.height),
+      calMode: syncedMode, customCal: syncedCal, proteinPct: syncedProtein, fatPct: syncedFat,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
@@ -315,22 +358,29 @@ export default function Settings() {
   };
 
   const handleSave = async () => {
-    await saveProfile({
-      unit: form.unit,
-      age: Number(form.age),
-      weight: Number(form.weight),
-      height: Number(form.height),
-      goal: form.goal,
-      activity: form.activity,
-      calorie_mode: calMode,
-      calorie_target: preview.calories,
-      protein_g: preview.protein.g,
-      carbs_g: preview.carbs.g,
-      fat_g: preview.fat.g,
-      water_target: preview.water,
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2200);
+    setSaving(true);
+    try {
+      await saveProfile({
+        unit: form.unit,
+        age: Number(form.age),
+        weight: Number(form.weight),
+        height: Number(form.height),
+        goal: form.goal,
+        activity: form.activity,
+        calorie_mode: calMode,
+        calorie_target: preview.calories,
+        protein_g: preview.protein.g,
+        carbs_g: preview.carbs.g,
+        fat_g: preview.fat.g,
+        water_target: preview.water,
+      });
+      // No need to touch popup state here — saveProfile updates `profile`,
+      // which re-runs the sync effect above and refreshes `baseline` to
+      // match the just-saved draft, so isDirty (and the popup) clears on
+      // its own the moment the new profile lands.
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleRedeemCode = async () => {
@@ -385,22 +435,6 @@ export default function Settings() {
             </h2>
             <p style={{ color: 'var(--text-hint)', fontSize: '13px', margin: '2px 0 0' }}>Manage your goals, profile and preferences</p>
           </div>
-          {tab === 'goals' && (
-            <button
-              onClick={handleSave}
-              style={{
-                padding: '10px 20px',
-                background: saved ? 'var(--accent-bg)' : 'var(--accent)',
-                border: `1px solid ${saved ? 'var(--border-active)' : 'var(--accent)'}`,
-                borderRadius: '10px',
-                color: saved ? 'var(--accent)' : '#0f0f0f',
-                fontSize: '14px', fontWeight: 600, cursor: 'pointer',
-                fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s',
-              }}
-            >
-              {saved ? '✓ Saved' : 'Save changes'}
-            </button>
-          )}
         </div>
 
         {/* Profile preview — tap through to the full Profile page */}
@@ -435,8 +469,12 @@ export default function Settings() {
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="page-pad-top" style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingTop: 16, borderBottom: '1px solid var(--border-default)' }}>
+        {/* Tabs — touchAction/overscrollBehavior constrain this row to
+            horizontal-only: without them, a drag here can read as a
+            vertical gesture too and bounce the whole page diagonally
+            (iOS's scroll-chaining kicking in once the horizontal scroll
+            hits its own edge), instead of staying contained to this row. */}
+        <div className="page-pad-top" style={{ display: 'flex', gap: '4px', overflowX: 'auto', touchAction: 'pan-x', overscrollBehaviorX: 'contain', paddingTop: 16, borderBottom: '1px solid var(--border-default)' }}>
           {TABS.map(t => {
             const sel = tab === t.id;
             return (
@@ -836,6 +874,32 @@ export default function Settings() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {popupVisible && (
+        <div
+          className={popupClosing ? 'toast-out' : 'toast-in'}
+          style={{
+            position: 'fixed', left: '50%', bottom: 84, zIndex: 150,
+            width: 'calc(100% - 32px)', maxWidth: 420,
+            background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)', borderRadius: 14,
+            padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+          }}
+        >
+          <span style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500 }}>Unsaved changes</span>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            style={{
+              padding: '9px 18px', background: saving ? 'var(--border-default)' : 'var(--accent)',
+              border: 'none', borderRadius: 8, color: saving ? 'var(--text-muted)' : '#0f0f0f',
+              fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', fontFamily: "'DM Sans', sans-serif",
+            }}
+          >
+            {saving ? 'Saving…' : 'Save changes'}
+          </button>
         </div>
       )}
     </div>

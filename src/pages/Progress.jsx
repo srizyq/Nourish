@@ -444,22 +444,20 @@ export default function Progress() {
 
           {/* weight chart */}
           <div ref={weightSectionRef} style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-default)", borderRadius: 12, padding: 20, marginBottom: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-              <div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 2 }}>Weight</div>
-                <LogWeightButton unit={weightUnit} onLog={(w, u) => logWeight(today, w, u)} />
-              </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {WEIGHT_RANGES.map(r => (
-                  <button key={r.id} onClick={() => setWeightRange(r.id)} style={{
-                    background: weightRange === r.id ? "var(--accent-bg)" : "var(--bg-card)",
-                    border: `1px solid ${weightRange === r.id ? "var(--accent-dark)" : "var(--border-strong)"}`,
-                    borderRadius: 7, padding: "5px 11px", fontSize: 12,
-                    color: weightRange === r.id ? "var(--accent)" : "var(--text-muted)", cursor: "pointer",
-                    fontFamily: "'DM Sans', sans-serif",
-                  }}>{r.label}</button>
-                ))}
-              </div>
+            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 10 }}>Weight</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+              <LogWeightButton unit={weightUnit} onLog={(w, u) => logWeight(today, w, u)} />
+              <select
+                value={weightRange}
+                onChange={e => setWeightRange(e.target.value)}
+                style={{
+                  background: "var(--bg-primary)", border: "1px solid var(--border-default)",
+                  borderRadius: 7, padding: "7px 10px", fontSize: 12, color: "var(--text-primary)",
+                  fontFamily: "'DM Sans', sans-serif", outline: "none", cursor: "pointer",
+                }}
+              >
+                {WEIGHT_RANGES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+              </select>
             </div>
             {weightLoading ? null : weightLogs.length > 1 ? (
               <div style={{ height: 220 }}><Line data={weightChartData} options={chartOptions} /></div>
