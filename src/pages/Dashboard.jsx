@@ -761,13 +761,34 @@ export default function Dashboard() {
 
           <ShortcutRow navigate={navigate} />
 
-          {/* Check in: mood — water moved into the hero card above. */}
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Check in</div>
-            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '14px' }}>How are you feeling?</span>
-              <MoodCheckin mood={mood} setMood={setMood} energy={energy} setEnergy={setEnergy} />
+          {/* Daily food log */}
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <span onClick={() => navigate('/log')} style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                Daily food log <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
+              </span>
+              <span style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: 600 }}>{Math.round(consumed)} kcal logged</span>
             </div>
+            <div style={{ marginBottom: '14px' }}>
+              <span onClick={() => navigate('/food', { state: { openSavedMeals: true } })} style={{ color: 'var(--text-hint)', fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <i className="ti ti-bookmark" style={{ fontSize: 12 }} /> Saved meals
+              </span>
+            </div>
+            {isPremium ? (
+              <HourlyTimeline
+                segments={dayTimeline}
+                onDelete={deleteFood}
+                onSave={updateFood}
+                onNavigateAdd={(hour) => navigate('/food', { state: { presetTime: hourToHHMM(hour) } })}
+              />
+            ) : (
+              <MealLog
+                groups={Object.entries(meals).map(([key, items]) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1), items }))}
+                onDelete={deleteFood}
+                onSave={updateFood}
+                onNavigateFood={(key) => navigate('/food', { state: { openMeal: key } })}
+              />
+            )}
           </div>
 
           {/* Insights & Data */}
@@ -801,34 +822,13 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Daily food log */}
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-              <span onClick={() => navigate('/log')} style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                Daily food log <i className="ti ti-chevron-right" style={{ fontSize: 13 }} />
-              </span>
-              <span style={{ color: 'var(--accent)', fontSize: '13px', fontWeight: 600 }}>{Math.round(consumed)} kcal logged</span>
+          {/* Check in: mood — water moved into the hero card above. */}
+          <div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Check in</div>
+            <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)', borderRadius: '16px', padding: '20px' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 500, display: 'block', marginBottom: '14px' }}>How are you feeling?</span>
+              <MoodCheckin mood={mood} setMood={setMood} energy={energy} setEnergy={setEnergy} />
             </div>
-            <div style={{ marginBottom: '14px' }}>
-              <span onClick={() => navigate('/food', { state: { openSavedMeals: true } })} style={{ color: 'var(--text-hint)', fontSize: 12, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                <i className="ti ti-bookmark" style={{ fontSize: 12 }} /> Saved meals
-              </span>
-            </div>
-            {isPremium ? (
-              <HourlyTimeline
-                segments={dayTimeline}
-                onDelete={deleteFood}
-                onSave={updateFood}
-                onNavigateAdd={(hour) => navigate('/food', { state: { presetTime: hourToHHMM(hour) } })}
-              />
-            ) : (
-              <MealLog
-                groups={Object.entries(meals).map(([key, items]) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1), items }))}
-                onDelete={deleteFood}
-                onSave={updateFood}
-                onNavigateFood={(key) => navigate('/food', { state: { openMeal: key } })}
-              />
-            )}
           </div>
         </div>
       </div>
