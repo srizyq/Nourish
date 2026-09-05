@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useProfile } from '../hooks/useProfile';
 import { ThemeContext } from './themeContext';
 
@@ -15,11 +15,39 @@ import { ThemeContext } from './themeContext';
 // see RequireAuth) is theme-aware. The marketing site, onboarding, and
 // login pages fall through to :root's existing values in index.css and
 // are completely unaffected.
+
+const THEME_CACHE_KEY = 'attune_theme';
+
 export function ThemeProvider({ children }) {
   const { profile, save } = useProfile();
-  const theme = profile?.theme === 'light' ? 'light' : 'dark';
+
+  // profile.theme isn't known until the async profile fetch resolves, so
+  // deriving theme from profile alone means every single mount — every
+  // app open, every full reload — briefly renders in a hardcoded 'dark'
+  // fallback and then flashes to the real theme once the fetch finishes.
+  // A light-theme user sees that as a black-then-white flicker on every
+  // launch. Caching the last-known theme in localStorage lets the very
+  // next mount apply the right theme synchronously from the start; only
+  // a genuinely first-ever load (nothing cached yet) still falls back to
+  // 'dark' until the fetch resolves, same as onboarding's own default.
+  const [theme, setThemeState] = useState(() => {
+    try {
+      return localStorage.getItem(THEME_CACHE_KEY) === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    if (!profile) return;
+    const resolved = profile.theme === 'light' ? 'light' : 'dark';
+    setThemeState(resolved);
+    try { localStorage.setItem(THEME_CACHE_KEY, resolved); } catch { /* ignore */ }
+  }, [profile]);
 
   const setTheme = useCallback((next) => {
+    setThemeState(next);
+    try { localStorage.setItem(THEME_CACHE_KEY, next); } catch { /* ignore */ }
     save({ theme: next });
   }, [save]);
 
