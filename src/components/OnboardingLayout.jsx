@@ -1,11 +1,11 @@
 // src/components/OnboardingLayout.jsx
 import { useNavigate } from 'react-router-dom';
-import { useOnboardingTheme } from '../hooks/useOnboardingTheme';
-import OnboardingThemeToggle from './OnboardingThemeToggle';
+import { usePreAuthTheme } from '../hooks/usePreAuthTheme';
+import PreAuthThemeToggle from './PreAuthThemeToggle';
 
 export default function OnboardingLayout({ children, step, totalSteps = 4 }) {
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useOnboardingTheme();
+  const { theme, toggleTheme } = usePreAuthTheme();
   const progress = (step / totalSteps) * 100;
 
   return (
@@ -40,7 +40,7 @@ export default function OnboardingLayout({ children, step, totalSteps = 4 }) {
             step <span style={{ color: 'var(--accent)' }}>{step}</span> of {totalSteps}
           </span>
 
-          <OnboardingThemeToggle theme={theme} onToggle={toggleTheme} />
+          <PreAuthThemeToggle theme={theme} onToggle={toggleTheme} />
 
           {/* Skip link — goes to the final step, not straight to /dashboard.
               Skipping mid-flow means no account exists yet, so /dashboard

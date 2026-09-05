@@ -1,14 +1,14 @@
 // src/pages/onboarding/Welcome.jsx
 import { useNavigate, Link } from 'react-router-dom';
-import { useOnboardingTheme } from '../../hooks/useOnboardingTheme';
-import OnboardingThemeToggle from '../../components/OnboardingThemeToggle';
+import { usePreAuthTheme } from '../../hooks/usePreAuthTheme';
+import PreAuthThemeToggle from '../../components/PreAuthThemeToggle';
 
 // The very first screen — deliberately bare (no progress bar, no step
 // counter, no skip link) since it isn't part of the numbered flow yet.
 // Matches the user's own sketch: centered wordmark, one button below it.
 export default function Welcome() {
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useOnboardingTheme();
+  const { theme, toggleTheme } = usePreAuthTheme();
 
   return (
     <div data-theme={theme} style={{
@@ -23,7 +23,7 @@ export default function Welcome() {
       position: 'relative',
     }}>
       <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
-        <OnboardingThemeToggle theme={theme} onToggle={toggleTheme} />
+        <PreAuthThemeToggle theme={theme} onToggle={toggleTheme} />
       </div>
 
       <span style={{

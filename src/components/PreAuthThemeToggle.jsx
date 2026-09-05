@@ -1,6 +1,7 @@
-// Small icon button used on onboarding screens to flip between light and
-// dark before any account exists yet — see useOnboardingTheme.
-export default function OnboardingThemeToggle({ theme, onToggle }) {
+// Small icon button used on pre-auth screens (onboarding, login) to flip
+// between light and dark before there's a profile to read theme from —
+// see usePreAuthTheme.
+export default function PreAuthThemeToggle({ theme, onToggle }) {
   return (
     <button
       onClick={onToggle}

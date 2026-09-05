@@ -30,6 +30,14 @@ function randomGuestName() {
   return `Guest ${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
+function readPreAuthTheme() {
+  try {
+    return sessionStorage.getItem('attune_preauth_theme') === 'light' ? 'light' : 'dark';
+  } catch {
+    return 'dark';
+  }
+}
+
 function draftToProfileFields(draft) {
   const targets = draft.targets || {};
   return {
@@ -44,7 +52,7 @@ function draftToProfileFields(draft) {
     unit: draft.unit || 'metric',
     activity: draft.activity || null,
     pace_kg_per_week: draft.paceKgPerWeek ?? null,
-    theme: draft.theme === 'light' ? 'light' : 'dark',
+    theme: readPreAuthTheme(),
     calorie_target: targets.calories ?? null,
     protein_g: targets.protein?.g ?? null,
     carbs_g: targets.carbs?.g ?? null,
@@ -101,6 +109,7 @@ export default function Step4() {
           await withRetry(() => upsertProfile(userId, draftToProfileFields(draft)));
         }
         sessionStorage.removeItem('attune_onboarding');
+        sessionStorage.removeItem('attune_preauth_theme');
       } catch (err) {
         console.error('Failed to prepare guest session:', err);
         if (!cancelled) setPrepError("Couldn't set things up — try again.");
